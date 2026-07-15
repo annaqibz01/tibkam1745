@@ -1,0 +1,41 @@
+{
+  "name": "tibkam1745",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite build --watch",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "typegen": "node --env-file=.env generate-types.js"
+  },
+  "dependencies": {
+    "@tanstack/react-query": "^5.101.2",
+    "framer-motion": "^12.42.2",
+    "lucide-react": "^1.23.0",
+    "pocketbase": "^0.27.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-error-boundary": "^6.1.2",
+    "react-router-dom": "^7.18.1",
+    "react-to-print": "^3.3.0",
+    "sonner": "^2.0.7",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "autoprefixer": "^10.5.2",
+    "cross-var": "^1.1.0",
+    "dotenv-cli": "^11.0.0",
+    "env-cmd": "^11.0.0",
+    "pocketbase-typegen": "^1.5.0",
+    "postcss": "^8.5.16",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3"
+  }
+}

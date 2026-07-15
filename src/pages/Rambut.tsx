@@ -1,0 +1,99 @@
+// src/pages/Rambut.tsx
+import React from "react";
+import { useRambutPage } from "../hooks/useRambutPage";
+
+import { RambutHeader } from "../components/rambut/RambutHeader";
+import { RambutStats } from "../components/rambut/RambutStats";
+import { RambutScanToolbar } from "../components/rambut/RambutScanToolbar";
+import { RambutQueueTable } from "../components/rambut/RambutQueueTable";
+import { RambutModals } from "../components/rambut/RambutModals";
+import MasterPagination from "../components/master/MasterPagination";
+
+export default function RambutPage() {
+  const p = useRambutPage();
+
+  return (
+    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+      {/* 1. Header Banner (Desain Pilihanmu) */}
+      <RambutHeader
+        activePeriode={p.activePeriode || null}
+        selectedPeriode={p.selectedPeriode}
+        isAdmin={p.isAdmin}
+        onOpenCreatePeriode={() => p.setIsCreatePeriodeOpen(true)}
+        onOpenManagePeriode={() => p.setIsManagePeriodeOpen(true)}
+      />
+
+      {/* 2. Stats */}
+      <RambutStats stats={p.stats} isLoading={p.isStatsLoading} />
+
+      {/* 3. Toolbar dengan Tombol Sync + POS Bersandingan */}
+      <RambutScanToolbar
+        activeTab={p.activeTab}
+        onTabChange={(tab) => {
+          p.setActiveTab(tab);
+          p.setPage(1);
+        }}
+        selectedPeriode={p.selectedPeriode || p.activePeriode}
+        hasGeneratedQueue={p.stats.total > 0}
+        isAdmin={p.isAdmin}
+        search={p.search}
+        onSearchChange={(val) => {
+          p.setSearch(val);
+          p.setPage(1);
+        }}
+        statusFilter={p.statusFilter}
+        onStatusFilterChange={(val) => {
+          p.setStatusFilter(val);
+          p.setPage(1);
+        }}
+        pengurusSearch={p.pengurusSearch}
+        onPengurusSearchChange={p.setPengurusSearch}
+        pengurusDaerahFilter={p.pengurusDaerahFilter}
+        onPengurusDaerahFilterChange={p.setPengurusDaerahFilter}
+        daerahOptions={p.daerahOptions}
+        auditSearch={p.auditSearch}
+        onAuditSearchChange={p.setAuditSearch}
+        auditDateFilter={p.auditDateFilter}
+        onAuditDateFilterChange={p.setAuditDateFilter}
+        availableHijriDateOptions={p.availableHijriDateOptions}
+        onRefresh={p.refetchAll}
+        isLoading={p.isQueueLoading || p.isPengurusLoading}
+        onOpenPosModal={() => p.setIsPosOpen(true)}
+        onOpenAddPengurusModal={() => p.setIsImportPengurusOpen(true)}
+        onOpenGenerateQueue={p.handleOpenGenerateQueue} // ✨ HANDLER NOTIFIKASI ERROR
+      />
+      {/* 4. Multi-SubTable Container */}
+      <RambutQueueTable
+        activeTab={p.activeTab}
+        items={p.paginatedQueueItems}
+        isLoading={p.isQueueLoading}
+        page={p.page}
+        perPage={p.PER_PAGE}
+        pengurusItems={p.filteredPengurusData}
+        isPengurusLoading={p.isPengurusLoading}
+        onDeletePengurus={(item) => p.setSelectedDeletePengurus(item)}
+        auditItems={p.filteredAuditItems}
+        isAuditLoading={p.isHistoryLoading}
+        onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
+        onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
+        canExecute={
+          p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"
+        }
+      />
+
+      {/* 5. Pagination */}
+      {p.activeTab === "queue" && p.totalItems > 0 && (
+        <MasterPagination
+          page={p.page}
+          totalPages={p.totalPages}
+          totalItems={p.totalItems}
+          perPage={p.PER_PAGE}
+          onPageChange={p.setPage}
+        />
+      )}
+
+      {/* 6. Isolated Modal Container */}
+      <RambutModals {...p} />
+    </div>
+  );
+}
