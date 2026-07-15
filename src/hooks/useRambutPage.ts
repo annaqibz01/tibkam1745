@@ -1,6 +1,5 @@
 // src/hooks/useRambutPage.ts
-import React from "react";
-import { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { pb } from "../services/pocketbase";
 import { useAuth } from "./useAuth";
@@ -24,6 +23,15 @@ import type {
 
 const PER_PAGE = 15;
 
+// ✅ REGISTERED MODAL REGISTRY TYPE
+export type RambutModalType = 
+  | "CREATE_PERIODE" 
+  | "MANAGE_PERIODE" 
+  | "MANAGE_PENGURUS" 
+  | "POS" 
+  | "IMPORT_PENGURUS" 
+  | "CONFIRM_GENERATE";
+
 export function useRambutPage() {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
@@ -35,9 +43,7 @@ export function useRambutPage() {
   // Filter States - Queue
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | WajibSetorRambutStatusSetorOptions
-  >("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | WajibSetorRambutStatusSetorOptions>("all");
 
   // Filter States - Pengurus
   const [pengurusSearch, setPengurusSearch] = useState("");
@@ -47,22 +53,15 @@ export function useRambutPage() {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditDateFilter, setAuditDateFilter] = useState("all");
 
-  const [selectedPeriode, setSelectedPeriode] =
-    useState<PeriodeRambutResponse | null>(null);
+  const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
 
-  // Modal Visibility States
-  const [isPosOpen, setIsPosOpen] = useState(false);
-  const [isImportPengurusOpen, setIsImportPengurusOpen] = useState(false);
-  const [isCreatePeriodeOpen, setIsCreatePeriodeOpen] = useState(false);
-  const [isManagePeriodeOpen, setIsManagePeriodeOpen] = useState(false);
-  const [isManagePengurusOpen, setIsManagePengurusOpen] = useState(false);
-  const [selectedExecuteItem, setSelectedExecuteItem] =
-    useState<WajibSetorExpanded | null>(null);
-  const [selectedDispensasiItem, setSelectedDispensasiItem] =
-    useState<WajibSetorExpanded | null>(null);
-  const [isConfirmGenerateOpen, setIsConfirmGenerateOpen] = useState(false);
-  const [selectedDeletePengurus, setSelectedDeletePengurus] =
-    useState<PengurusItem | null>(null);
+  // 🔥 DIET KETAT STATE: 6 State boolean dilebur menjadi 1 Registry State
+  const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
+
+  // Data-Driven Modals (Tetap dipertahankan karena mempassing object record)
+  const [selectedExecuteItem, setSelectedExecuteItem] = useState<WajibSetorExpanded | null>(null);
+  const [selectedDispensasiItem, setSelectedDispensasiItem] = useState<WajibSetorExpanded | null>(null);
+  const [selectedDeletePengurus, setSelectedDeletePengurus] = useState<PengurusItem | null>(null);
   const [isDeletingPengurus, setIsDeletingPengurus] = useState(false);
 
   const {
@@ -79,8 +78,7 @@ export function useRambutPage() {
   } = useRambut();
 
   const { data: activePeriode } = useActivePeriode();
-  const { data: periodeList = [], isLoading: isPeriodeListLoading } =
-    usePeriodeList();
+  const { data: periodeList = [], isLoading: isPeriodeListLoading } = usePeriodeList();
   const deletePeriodeMutation = useDeletePeriode();
 
   useEffect(() => {
@@ -115,24 +113,17 @@ export function useRambutPage() {
   const daerahOptions = useMemo(() => {
     const set = new Set<string>();
     rawPengurusData.forEach((p) => {
-      const dom =
-        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
+      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
       if (dom) {
-        const cleanDom = dom.toString().trim().toUpperCase();
-        const firstChar = cleanDom.charAt(0); // Ambil huruf paling depan
-
-        // Pengaman: Pastikan berupa karakter alfabet A-Z
-        if (firstChar && firstChar >= "A" && firstChar <= "Z") {
-          set.add(firstChar);
-        }
+        const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+        if (firstChar && firstChar >= 'A' && firstChar <= 'Z') set.add(firstChar);
       }
     });
-    return Array.from(set).sort(); // Urutkan alfabetis A -> Z
+    return Array.from(set).sort();
   }, [rawPengurusData]);
 
   const filteredPengurusData = useMemo(() => {
     return rawPengurusData.filter((p) => {
-      // Filter Pencarian Teks (ID PPS, Nama, Jabatan)
       const santriNama = p.expand?.santri?.nama || "";
       const matchSearch =
         !pengurusSearch ||
@@ -140,19 +131,14 @@ export function useRambutPage() {
         santriNama.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
         p.jabatan.toLowerCase().includes(pengurusSearch.toLowerCase());
 
-      // Filter Daerah Berdasarkan Huruf Depan Kompleks
-      const dom =
-        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
-      const cleanDom = dom.toString().trim().toUpperCase();
-      const firstChar = cleanDom.charAt(0); // Ekstrak huruf depan data pengurus
-
-      // Gembok COCOK: Jika filter "all" ATAU huruf depannya sama dengan yang dipilih di filter
-      const matchDaerah =
-        pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
+      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      const matchDaerah = pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
 
       return matchSearch && matchDaerah;
     });
   }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
+
   // 2. Queue Data
   const {
     data: fullQueueData = [],
@@ -168,15 +154,12 @@ export function useRambutPage() {
         item.id_pps.toLowerCase().includes(search.toLowerCase()) ||
         santriNama.toLowerCase().includes(search.toLowerCase());
 
-      const matchStatus =
-        statusFilter === "all" || item.status_setor === statusFilter;
+      const matchStatus = statusFilter === "all" || item.status_setor === statusFilter;
 
       return matchSearch && matchStatus;
     });
 
-    return list.sort(
-      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps),
-    );
+    return list.sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
   }, [fullQueueData, search, statusFilter]);
 
   const totalItems = filteredSortedQueue.length;
@@ -187,24 +170,19 @@ export function useRambutPage() {
   }, [filteredSortedQueue, page]);
 
   // 3. Audit Data
-  const { data: historyData = [], isLoading: isHistoryLoading } =
-    useRiwayatSetorList(currentPeriodeId);
+  const { data: historyData = [], isLoading: isHistoryLoading } = useRiwayatSetorList(currentPeriodeId);
 
   const availableHijriDateOptions = useMemo(() => {
     if (!historyData) return [];
     const map = new Map<string, string>();
     historyData.forEach((item: any) => {
-      const dateKey = (item.tanggal_setor || item.created || "").substring(
-        0,
-        10,
-      );
+      const dateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
       if (dateKey && !map.has(dateKey)) {
         map.set(dateKey, dateKey);
       }
     });
     return Array.from(map.keys()).map((dateStr) => ({
       value: dateStr,
-      // ✅ Menggunakan Opsi A global: Bungkus label opsi filter dengan komponen kalender internal kita
       label: React.createElement(HijriText, { date: dateStr }),
     }));
   }, [historyData]);
@@ -214,9 +192,7 @@ export function useRambutPage() {
     return historyData.filter((item: any) => {
       const santriNama = item.expand?.santri?.nama || "";
       const petugasNama =
-        item.expand?.petugas_eksekutor?.name ||
-        item.expand?.petugas_eksekutor?.username ||
-        "";
+        item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "";
       const catatan = item.catatan_operasional || item.catatan || "";
 
       const matchSearch =
@@ -226,50 +202,35 @@ export function useRambutPage() {
         petugasNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
         catatan.toLowerCase().includes(auditSearch.toLowerCase());
 
-      const itemDateKey = (item.tanggal_setor || item.created || "").substring(
-        0,
-        10,
-      );
-      const matchDate =
-        auditDateFilter === "all" || itemDateKey === auditDateFilter;
+      const itemDateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
+      const matchDate = auditDateFilter === "all" || itemDateKey === auditDateFilter;
 
       return matchSearch && matchDate;
     });
   }, [historyData, auditSearch, auditDateFilter]);
 
   // 4. Stats
-  const { data: statsData, isLoading: isStatsLoading } =
-    useRambutStats(currentPeriodeId);
+  const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
   // Handlers
   const handleCreatePeriode = (payload: CreatePeriodePayload) => {
     createPeriodeMutation.mutate(payload, {
       onSuccess: () => {
-        showSuccess(
-          `Periode ${payload.nama_periode} berhasil dibuat!`,
-          "Periode Baru",
-        );
-        setIsCreatePeriodeOpen(false);
+        showSuccess(`Periode ${payload.nama_periode} berhasil dibuat!`, "Periode Baru");
+        setActiveModal(null);
       },
       onError: (err) => showError(err.message, "Gagal Buat Periode"),
     });
   };
 
-  const handleUpdateStatusPeriode = (
-    periodeId: string,
-    status: PeriodeRambutStatusPeriodeOptions,
-  ) => {
+  const handleUpdateStatusPeriode = (periodeId: string, status: PeriodeRambutStatusPeriodeOptions) => {
     updateStatusPeriodeMutation.mutate(
       { periodeId, status },
       {
-        onSuccess: () =>
-          showSuccess(
-            `Status periode diubah ke ${status.toUpperCase()}`,
-            "Status Diperbarui",
-          ),
+        onSuccess: () => showSuccess(`Status periode diubah ke ${status.toUpperCase()}`, "Status Diperbarui"),
         onError: (err) => showError(err.message, "Gagal Ubah Status"),
-      },
+      }
     );
   };
 
@@ -295,14 +256,11 @@ export function useRambutPage() {
       },
       {
         onSuccess: () => {
-          showSuccess(
-            `Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`,
-            "Verifikasi Sukses",
-          );
+          showSuccess(`Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`, "Verifikasi Sukses");
           setSelectedExecuteItem(null);
         },
         onError: (err) => showError(err.message, "Gagal Verifikasi"),
-      },
+      }
     );
   };
 
@@ -312,14 +270,11 @@ export function useRambutPage() {
       { wajibSetorId: selectedDispensasiItem.id, catatan },
       {
         onSuccess: () => {
-          showSuccess(
-            `Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`,
-            "Dispensasi Disimpan",
-          );
+          showSuccess(`Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`, "Dispensasi Disimpan");
           setSelectedDispensasiItem(null);
         },
         onError: (err) => showError(err.message, "Gagal Dispensasi"),
-      },
+      }
     );
   };
 
@@ -328,10 +283,7 @@ export function useRambutPage() {
     setIsDeletingPengurus(true);
     try {
       await pb.collection("pengurus_santri").delete(selectedDeletePengurus.id);
-      showSuccess(
-        `Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`,
-        "Berhasil Hapus",
-      );
+      showSuccess(`Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`, "Berhasil Hapus");
       setSelectedDeletePengurus(null);
       refetchPengurus();
     } catch {
@@ -343,11 +295,10 @@ export function useRambutPage() {
 
   const handleConfirmGenerateQueue = () => {
     if (!currentPeriodeId) return;
-    setIsConfirmGenerateOpen(false);
+    setActiveModal(null);
     generateQueueMutation.mutate(currentPeriodeId, {
       onSuccess: (res: any) => {
-        const msg =
-          res.addedCount > 0 ? `+${res.addedCount} baru` : "Sudah sinkron";
+        const msg = res.addedCount > 0 ? `+${res.addedCount} baru` : "Sudah sinkron";
         showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
         refetchQueue();
       },
@@ -358,12 +309,12 @@ export function useRambutPage() {
   const handleOpenGenerateQueue = () => {
     if (!currentPeriodeId) {
       showError(
-        "Gagal memproses! Tidak ada periode yang sedang aktif atau ditinjau. Silakan buat atau pilih periode terlebih dahulu.",
-        "Periode Tidak Ditemukan",
+        "Gagal memproses! Tidak ada periode yang sedang aktif atau ditinjau.",
+        "Periode Tidak Ditemukan"
       );
       return;
     }
-    setIsConfirmGenerateOpen(true);
+    setActiveModal("CONFIRM_GENERATE");
   };
 
   return {
@@ -404,27 +355,18 @@ export function useRambutPage() {
     filteredAuditItems,
     isHistoryLoading,
     availableHijriDateOptions,
-    // Modal states & triggers
-    isPosOpen,
-    setIsPosOpen,
-    isImportPengurusOpen,
-    setIsImportPengurusOpen,
-    isCreatePeriodeOpen,
-    setIsCreatePeriodeOpen,
-    isManagePeriodeOpen,
-    setIsManagePeriodeOpen,
-    isManagePengurusOpen,
-    setIsManagePengurusOpen,
+    // Unified Modal Registry State
+    activeModal,
+    setActiveModal,
+    // Data-driven states
     selectedExecuteItem,
     setSelectedExecuteItem,
     selectedDispensasiItem,
     setSelectedDispensasiItem,
-    isConfirmGenerateOpen,
-    setIsConfirmGenerateOpen,
     selectedDeletePengurus,
     setSelectedDeletePengurus,
     isDeletingPengurus,
-    // Action Callbacks
+    // Callbacks
     refetchAll: () => {
       refetchQueue();
       refetchPengurus();
@@ -437,7 +379,6 @@ export function useRambutPage() {
     handleConfirmDeletePengurus,
     handleConfirmGenerateQueue,
     handleOpenGenerateQueue,
-
     isCreatePending: createPeriodeMutation.isPending,
     isUpdateStatusPending: updateStatusPeriodeMutation.isPending,
     isDeletePeriodePending: deletePeriodeMutation.isPending,

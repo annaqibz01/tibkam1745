@@ -14,19 +14,19 @@ export default function RambutPage() {
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Header Banner (Desain Pilihanmu) */}
+      {/* 1. Header Banner */}
       <RambutHeader
         activePeriode={p.activePeriode || null}
         selectedPeriode={p.selectedPeriode}
         isAdmin={p.isAdmin}
-        onOpenCreatePeriode={() => p.setIsCreatePeriodeOpen(true)}
-        onOpenManagePeriode={() => p.setIsManagePeriodeOpen(true)}
+        onOpenCreatePeriode={() => p.setActiveModal("CREATE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
+        onOpenManagePeriode={() => p.setActiveModal("MANAGE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
       />
 
       {/* 2. Stats */}
       <RambutStats stats={p.stats} isLoading={p.isStatsLoading} />
 
-      {/* 3. Toolbar dengan Tombol Sync + POS Bersandingan */}
+      {/* 3. Toolbar */}
       <RambutScanToolbar
         activeTab={p.activeTab}
         onTabChange={(tab) => {
@@ -58,10 +58,11 @@ export default function RambutPage() {
         availableHijriDateOptions={p.availableHijriDateOptions}
         onRefresh={p.refetchAll}
         isLoading={p.isQueueLoading || p.isPengurusLoading}
-        onOpenPosModal={() => p.setIsPosOpen(true)}
-        onOpenAddPengurusModal={() => p.setIsImportPengurusOpen(true)}
-        onOpenGenerateQueue={p.handleOpenGenerateQueue} // ✨ HANDLER NOTIFIKASI ERROR
+        onOpenPosModal={() => p.setActiveModal("POS")} // ✅ MODAL REGISTRY PATTERN
+        onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")} // ✅ MODAL REGISTRY PATTERN
+        onOpenGenerateQueue={p.handleOpenGenerateQueue} 
       />
+
       {/* 4. Multi-SubTable Container */}
       <RambutQueueTable
         activeTab={p.activeTab}
@@ -76,9 +77,7 @@ export default function RambutPage() {
         isAuditLoading={p.isHistoryLoading}
         onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
         onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
-        canExecute={
-          p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"
-        }
+        canExecute={p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"}
       />
 
       {/* 5. Pagination */}

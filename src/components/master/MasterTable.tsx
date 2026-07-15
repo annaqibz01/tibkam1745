@@ -1,13 +1,14 @@
 // src/components/master/MasterTable.tsx
 import React, { useCallback, useMemo } from 'react';
 import { Loader2, UserCheck, UserX, FileSpreadsheet } from 'lucide-react';
+import type { MasterResponse } from '../../types/pocketbase-types';
 
 // =============================================================================
 // TYPES
 // =============================================================================
 
 interface MasterTableProps {
-  items: any[];
+  items: MasterResponse[];
   isLoading: boolean;
   isFetching: boolean;
   isPendingToggle?: boolean;

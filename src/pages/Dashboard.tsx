@@ -1,13 +1,12 @@
 // src/pages/Dashboard.tsx
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { pb } from '../services/pocketbase';
+import React from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useUsers } from '../hooks/useUsers';
+import { useDashboardSantriStats } from '../hooks/useDashboard'; // ✅ Menggunakan hook sehat yang baru
 import { WelcomeBanner } from '../components/dashboard/shared/WelcomeBanner';
 import { AdminStatsGrid } from '../components/dashboard/admin/AdminStatsGrid';
 import { RecentActivityLog } from '../components/dashboard/admin/RecentActivityLog';
-import SantriStatsSummary, { SantriStatsData } from '../components/dashboard/shared/SantriStatsSummary';
+import SantriStatsSummary from '../components/dashboard/shared/SantriStatsSummary';
 import { Loader2, Scissors } from 'lucide-react';
 
 interface User {
@@ -21,83 +20,10 @@ const Dashboard: React.FC = () => {
   const { getUsers } = useUsers();
   const { data: users, isLoading: isUsersLoading } = getUsers;
 
-  // 🚀 Fetch Data Santri dari PocketBase
-  const { data: santriList, isLoading: isSantriLoading } = useQuery({
-    queryKey: ['dashboard-santri-stats'],
-    queryFn: async () => {
-      return await pb.collection('master').getFullList({
-        fields: 'status_aktif,tingkatan,status_domisili,domisili',
-      });
-    },
-    staleTime: 1000 * 60 * 5,
-  });
+  // ⚡ SEHAT & RAMPING: Panggil data statistik langsung matang dari server cache layer
+  const { data: santriStats, isLoading: isSantriLoading } = useDashboardSantriStats();
 
-  // 📊 Agregasi Data Santri (Shared untuk Semua Role)
-  const santriStats = useMemo<SantriStatsData | undefined>(() => {
-    if (!santriList) return undefined;
-
-    let totalSantriAktif = 0;
-    let totalPps = 0;
-    let totalLpps = 0;
-    const tingkatanCounts: Record<string, number> = {};
-    const domisiliCounts: Record<string, number> = {};
-
-    santriList.forEach((item) => {
-      // 🚫 Abaikan santri non-aktif
-      if (!item.status_aktif) return;
-
-      totalSantriAktif++;
-
-      const statusDomisili = (item.status_domisili || '').toString().trim().toUpperCase();
-      const domisiliVal = (item.domisili || '').toString().trim().toUpperCase();
-      const firstChar = domisiliVal.charAt(0);
-
-      // 1. DOMISILI PPS (A-T & Z)
-      if (statusDomisili === 'PPS') {
-        const isATorZ = (firstChar >= 'A' && firstChar <= 'T') || firstChar === 'Z';
-        const isNotDKSK = !domisiliVal.startsWith('DKS') && !domisiliVal.includes('DKS-K');
-
-        if (isATorZ && isNotDKSK) {
-          totalPps++;
-          
-          // Kelompokkan berdasarkan huruf Kompleks saja (bukan per kamar)
-          const namaKompleks = `Daerah ${firstChar}`;
-          domisiliCounts[namaKompleks] = (domisiliCounts[namaKompleks] || 0) + 1;
-        }
-      } 
-      // 2. DOMISILI LPPS
-      else if (statusDomisili === 'LPPS') {
-        totalLpps++;
-      }
-
-      // 3. SEBARAN TINGKATAN (Gabungkan Idadiyah)
-      let rawTingkatan = item.tingkatan?.toString().trim() || 'Lainnya';
-      let normTingkatan = rawTingkatan;
-
-      const lowerTingkatan = rawTingkatan.toLowerCase();
-      if (
-        lowerTingkatan.includes('idadiyah') || 
-        lowerTingkatan.includes('almiftah') || 
-        lowerTingkatan.includes('al-miftah')
-      ) {
-        normTingkatan = 'Idadiyah';
-      }
-
-      if (normTingkatan && normTingkatan !== '-') {
-        tingkatanCounts[normTingkatan] = (tingkatanCounts[normTingkatan] || 0) + 1;
-      }
-    });
-
-    return {
-      totalSantriAktif,
-      totalPps,
-      totalLpps,
-      tingkatanCounts,
-      domisiliCounts,
-    };
-  }, [santriList]);
-
-  // ⏳ State Loading yang Dihaluskan
+  // ⏳ State Loading Mewah Khusus Sinkronisasi Awal
   if (!user || isUsersLoading) {
     return (
       <div className="relative min-h-screen flex items-center justify-center bg-gray-950 text-indigo-400 p-4">
@@ -143,11 +69,6 @@ const Dashboard: React.FC = () => {
           </div>
         );
 
-      case 'umum':
-        // 💡 Role 'umum' tidak membutuhkan card placeholder.
-        // Cukup menampilkan Dashboard Shared Utama (WelcomeBanner + SantriStatsSummary).
-        return null;
-
       default:
         return null;
     }
@@ -158,10 +79,10 @@ const Dashboard: React.FC = () => {
       {/* 1. Welcome Banner (Shared untuk Semua Role) */}
       <WelcomeBanner user={user} />
 
-      {/* 2. Ringkasan Statistik Santri Real-time (Shared untuk Semua Role) */}
+      {/* 2. Ringkasan Statistik Santri Matang (Tanpa lag re-render komponen) */}
       <SantriStatsSummary data={santriStats} isLoading={isSantriLoading} />
 
-      {/* 3. Konten Tambahan Khusus Role (Admin / Rambut / Omit for Umum) */}
+      {/* 3. Konten Tambahan Khusus Role */}
       {renderRoleSpecificContent()}
     </div>
   );

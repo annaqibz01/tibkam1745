@@ -12,13 +12,13 @@ export default defineConfig({
     // 2. Membersihkan isi pb_public yang lama setiap kali npm run build
     emptyOutDir: true,
 
-    // 3. Pintasan Code Splitting (Memecah library xlsx yang besar agar tidak membebani file utama)
-    rolldownOptions: {
+    // 3. Pintasan Code Splitting Resmi Rollup Engine
+    rollupOptions: {
       output: {
         manualChunks(id) {
           if (id.includes('node_modules')) {
             if (id.includes('xlsx')) {
-              return 'vendor-excel'; // File excel akan dipisahkan sendiri
+              return 'vendor-excel'; // File excel dipisahkan sendiri
             }
             return 'vendor'; // Library pihak ketiga lainnya
           }
@@ -30,7 +30,6 @@ export default defineConfig({
     chunkSizeWarningLimit: 1000,
   },
   server: {
-    // Opsional: Memudahkan saat dev agar port selalu 5173
     port: 5173,
     strictPort: true,
   }

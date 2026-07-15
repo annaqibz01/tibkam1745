@@ -1,27 +1,11 @@
 // src/hooks/useKalenderHijriyah.ts
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { pb } from '../services/pocketbase';
-import { ClientResponseError } from 'pocketbase';
+import { parsePocketBaseError } from '../utils/errorHandler'; // ✅ KUNCI SINKRONISASI
 import type { 
   KalenderHijriyahResponse, 
   KalenderHijriyahBulanHijriNamaOptions 
 } from '../types/pocketbase-types';
-
-function parsePocketBaseError(error: unknown): string {
-  if (error instanceof ClientResponseError) {
-    if (error.status === 403 || error.status === 400) {
-      return error.response?.message || "Akses ditolak atau data tidak valid.";
-    }
-    if (error.response?.message) {
-      return error.response.message;
-    }
-    return error.message || "Gagal memproses data di server PocketBase.";
-  }
-  if (error instanceof Error) {
-    return error.message;
-  }
-  return "Terjadi kesalahan yang tidak diketahui.";
-}
 
 export function useTodayHijri() {
   const today = new Date();
@@ -74,14 +58,13 @@ export function useHijriByDate(dateInput?: string | Date | null) {
       }
     },
     enabled: !!dateStr,
-    staleTime: 1000 * 60 * 60 * 24, // Cache 24 jam
+    staleTime: 1000 * 60 * 60 * 24,
   });
 }
 
 export function useAdminKalender() {
   const queryClient = useQueryClient();
 
-  // 1. Fetch List Kalender dengan Pagination (Tabel)
   const useKalenderList = (params: { page: number; perPage: number; tahun?: number; bulanAngka?: number }) => {
     return useQuery({
       queryKey: ['kalender-list', params.page, params.perPage, params.tahun, params.bulanAngka],
@@ -103,9 +86,6 @@ export function useAdminKalender() {
     });
   };
 
-  
-
-  // 2. ✨ HOOK BARU: Fetch Seluruh Hari Dalam 1 Bulan Hijriyah (Untuk Preview Grid Kalender Dinding)
   const useKalenderBulan = (tahun: number, bulanAngka: number) => {
     return useQuery<KalenderHijriyahResponse[]>({
       queryKey: ['kalender-bulan-full', tahun, bulanAngka],
@@ -120,7 +100,6 @@ export function useAdminKalender() {
     });
   };
 
-  // 3. Hook Ambil Record Terakhir untuk Otomatisasi Form
   const useLatestKalender = () => {
     return useQuery<KalenderHijriyahResponse | null>({
       queryKey: ['latest-kalender-record'],
@@ -137,7 +116,6 @@ export function useAdminKalender() {
     });
   };
 
-  // 4. Logic Generation + Proteksi Duplikasi & Overlap
   const useGenerateBulan = () => {
     return useMutation({
       mutationFn: async (payload: GenerateBulanPayload) => {
@@ -147,9 +125,7 @@ export function useAdminKalender() {
           });
 
           if (checkExistMonth.totalItems > 0) {
-            throw new Error(
-              `Bulan ${payload.bulan_nama} ${payload.tahun} H sudah pernah dipetakan sebelumnya!`
-            );
+            throw new Error(`Bulan ${payload.bulan_nama} ${payload.tahun} H sudah pernah dipetakan sebelumnya!`);
           }
 
           const checkOverlap = await pb.collection('kalender_hijriyah').getList(1, 1, {
@@ -158,14 +134,11 @@ export function useAdminKalender() {
 
           if (checkOverlap.totalItems > 0) {
             const sample = checkOverlap.items[0] as KalenderHijriyahResponse;
-            throw new Error(
-              `Rentang Masehi yang Anda pilih bentrok dengan data terdaftar (${sample.string_hijri}).`
-            );
+            throw new Error(`Rentang Masehi yang Anda pilih bentrok dengan data terdaftar (${sample.string_hijri}).`);
           }
 
           const start = new Date(payload.tanggal_awal_masehi);
           const end = new Date(payload.tanggal_akhir_masehi);
-
           start.setHours(12, 0, 0, 0);
           end.setHours(12, 0, 0, 0);
 
@@ -173,13 +146,10 @@ export function useAdminKalender() {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
           if (diffDays !== 29 && diffDays !== 30) {
-            throw new Error(
-              `Jumlah hari terhitung ${diffDays} hari. Bulan Hijriyah wajib 29 atau 30 hari!`
-            );
+            throw new Error(`Jumlah hari terhitung ${diffDays} hari. Bulan Hijriyah wajib 29 atau 30 hari!`);
           }
 
           const batch = pb.createBatch();
-
           for (let i = 0; i < diffDays; i++) {
             const currentDate = new Date(start);
             currentDate.setDate(currentDate.getDate() + i);
@@ -201,7 +171,7 @@ export function useAdminKalender() {
           await batch.send();
           return diffDays;
         } catch (error) {
-          throw new Error(parsePocketBaseError(error));
+          throw new Error(parsePocketBaseError(error)); // Menggunakan util terpusat
         }
       },
       onSuccess: () => {

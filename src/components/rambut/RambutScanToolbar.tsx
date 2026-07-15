@@ -40,7 +40,7 @@ interface RambutScanToolbarProps {
   onAuditSearchChange: (val: string) => void;
   auditDateFilter: string;
   onAuditDateFilterChange: (val: string) => void;
-  availableHijriDateOptions: { value: string; label: string }[];
+  availableHijriDateOptions: { value: string; label: React.ReactNode }[];
 
   onRefresh: () => void;
   isLoading: boolean;

@@ -20,28 +20,28 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
   return (
     <>
       <CreatePeriodeModal
-        isOpen={p.isCreatePeriodeOpen}
-        onClose={() => p.setIsCreatePeriodeOpen(false)}
+        isOpen={p.activeModal === "CREATE_PERIODE"}
+        onClose={() => p.setActiveModal(null)}
         onSubmit={p.handleCreatePeriode}
         isPending={p.isCreatePending}
       />
 
       <ManagePeriodeModal
-        isOpen={p.isManagePeriodeOpen}
-        onClose={() => p.setIsManagePeriodeOpen(false)}
+        isOpen={p.activeModal === "MANAGE_PERIODE"}
+        onClose={() => p.setActiveModal(null)}
         periodeList={p.periodeList}
         isLoading={p.isPeriodeListLoading}
         selectedPeriodeId={p.currentPeriodeId}
         onSelectPeriode={(periode) => {
           p.setSelectedPeriode(periode);
-          p.setIsManagePeriodeOpen(false);
+          p.setActiveModal(null);
           p.setPage(1);
         }}
         onUpdateStatus={p.handleUpdateStatusPeriode}
         isUpdatingStatus={p.isUpdateStatusPending}
         onDeletePeriode={p.handleDeletePeriode}
         isDeletingPeriode={p.isDeletePeriodePending}
-        onOpenCreateModal={() => p.setIsCreatePeriodeOpen(true)}
+        onOpenCreateModal={() => p.setActiveModal("CREATE_PERIODE")}
       />
 
       <ExecuteSetorModal
@@ -61,19 +61,19 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
       />
 
       <ManagePengurusModal
-        isOpen={p.isManagePengurusOpen}
-        onClose={() => p.setIsManagePengurusOpen(false)}
+        isOpen={p.activeModal === "MANAGE_PENGURUS"}
+        onClose={() => p.setActiveModal(null)}
       />
 
       <RapidScanPosModal
-        isOpen={p.isPosOpen}
-        onClose={() => p.setIsPosOpen(false)}
+        isOpen={p.activeModal === "POS"}
+        onClose={() => p.setActiveModal(null)}
         periodeId={p.currentPeriodeId}
       />
 
       <ImportPengurusModal
-        isOpen={p.isImportPengurusOpen}
-        onClose={() => p.setIsImportPengurusOpen(false)}
+        isOpen={p.activeModal === "IMPORT_PENGURUS"}
+        onClose={() => p.setActiveModal(null)}
         onSuccessImport={p.refetchAll}
       />
 
@@ -119,7 +119,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                 type="button"
                 onClick={() => p.setSelectedDeletePengurus(null)}
                 disabled={p.isDeletingPengurus}
-                className="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold"
               >
                 Batal
               </button>
@@ -127,7 +127,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                 type="button"
                 onClick={p.handleConfirmDeletePengurus}
                 disabled={p.isDeletingPengurus}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-600/25 active:scale-95 transition-all disabled:opacity-50 border border-rose-400/30"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl border border-rose-400/30"
               >
                 {p.isDeletingPengurus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Ya, Hapus Pengurus</span>
@@ -137,28 +137,22 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         )}
       </BaseModal>
 
-      {/* ⚡ POP-UP DINAMIS: GENERATE PERTAMA ATAU SMART SYNC */}
+      {/* POP-UP GENERATE ATAU SMART SYNC */}
       <BaseModal
-        isOpen={p.isConfirmGenerateOpen}
-        onClose={() => p.setIsConfirmGenerateOpen(false)}
+        isOpen={p.activeModal === "CONFIRM_GENERATE"}
+        onClose={() => p.setActiveModal(null)}
         title={hasQueue ? "Smart Sync Rekonsiliasi Antrean" : "Generate Antrean Periode"}
         icon={hasQueue ? <RefreshCw className="w-5 h-5 text-purple-400" /> : <Zap className="w-5 h-5 text-amber-300" />}
         maxWidth="max-w-md"
       >
         <div className="space-y-4 pt-1 text-center font-mono select-none">
           <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
-            {hasQueue ? (
-              <RefreshCw className="w-6 h-6 animate-spin" />
-            ) : (
-              <Zap className="w-6 h-6 text-amber-300 animate-bounce" />
-            )}
+            {hasQueue ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6 text-amber-300 animate-bounce" />}
           </div>
 
           <div className="space-y-2">
             <h4 className="text-sm font-bold text-white">
-              {hasQueue
-                ? `Sync Antrean "${currentPeriodeNama}"?`
-                : `Generate Antrean "${currentPeriodeNama}"?`}
+              {hasQueue ? `Sync Antrean "${currentPeriodeNama}"?` : `Generate Antrean "${currentPeriodeNama}"?`}
             </h4>
 
             <p className="text-xs text-gray-300 leading-relaxed bg-gray-950/60 p-3.5 rounded-2xl border border-gray-800 text-left font-sans">
@@ -167,11 +161,11 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                   Sistem akan melakukan rekonsiliasi data:
                   <br /><br />
                   • <strong className="text-emerald-400">Data Baru:</strong> Otomatis ditambahkan.<br />
-                  • <strong className="text-indigo-300">Data Lama:</strong> <u className="underline">Tetap utuh</u> (Status setor & riwayat tidak berubah).
+                  • <strong className="text-indigo-300">Data Lama:</strong> <u className="underline">Tetap utuh</u>.
                 </>
               ) : (
                 <>
-                  Sistem akan memindai seluruh santri aktif (Aliyah, Kuliah Syariah) dan Pengurus/Petugas, lalu membuat daftar antrean wajib setor awal untuk periode <strong>{currentPeriodeNama}</strong>.
+                  Sistem akan memindai seluruh santri aktif (Aliyah, Kuliah Syariah) dan Pengurus/Petugas untuk membuat daftar antrean awal periode <strong>{currentPeriodeNama}</strong>.
                 </>
               )}
             </p>
@@ -180,8 +174,8 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
             <button
               type="button"
-              onClick={() => p.setIsConfirmGenerateOpen(false)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all"
+              onClick={() => p.setActiveModal(null)}
+              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300"
             >
               Batal
             </button>
@@ -189,7 +183,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
               type="button"
               onClick={p.handleConfirmGenerateQueue}
               disabled={p.isGeneratePending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-purple-600/20 active:scale-95 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg active:scale-95 transition-all"
             >
               {p.isGeneratePending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
