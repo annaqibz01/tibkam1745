@@ -1,6 +1,6 @@
 // src/utils/syncExcelToPocketBase.ts
-import { pb } from "../services/pocketbase";
-import type { MasterRecord, MasterResponse } from "../types/pocketbase-types";
+import { pb } from "@/lib/pocketbase";
+import type { MasterRecord, MasterResponse } from "@/types/pocketbase-types";
 
 export type ExcelSantriRow = Omit<MasterRecord, "id" | "created" | "updated" | "status_aktif">;
 

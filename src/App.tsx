@@ -1,38 +1,18 @@
 // src/App.tsx
 import { BrowserRouter, Routes, Route, Navigate, Outlet, useLocation } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
-import { ProtectedRoute } from './components/ProtectedRoute';
-import Sidebar from './components/Sidebar';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import Profile from './pages/Profile';
-import Users from './pages/Users';
-import Master from './pages/Master';
-import Kalender from './pages/Kalender';
-import Rambut from './pages/Rambut'; // ✨ Import halaman Layanan Rambut
+import { ProtectedRoute } from '@/features/auth';
+import DashboardLayout from '@/layouts/DashboardLayout/DashboardLayout';
+import {LoginPage as Login} from '@/features/auth';
+import { DashboardPage as Dashboard } from '@/features/dashboard';
+import Profile from '@/features/profile/pages/Profile'; 
+import { UsersPage as Users } from '@/features/users';
+import { MasterPage as Master } from '@/features/master';
+import { KalenderPage as Kalender } from '@/features/kalender';
+import { RambutPage as Rambut } from '@/features/rambut';
 import { PageTransition } from './components/shared/PageTransition';
 
-/**
- * Layout khusus halaman terproteksi dengan Transisi Instant-Smooth
- */
-function DashboardLayout() {
-  const location = useLocation();
 
-  return (
-    <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
-      {/* Sidebar Navigasi Utama */}
-      <Sidebar />
-
-      {/* Area Konten Utama */}
-      <main className="flex-1 h-full overflow-y-auto">
-        {/* ✨ KUNCI: key={location.pathname} langsung memicu transisi halus instan */}
-        <PageTransition key={location.pathname}>
-          <Outlet />
-        </PageTransition>
-      </main>
-    </div>
-  );
-}
 
 export default function App() {
   return (

@@ -1,6 +1,6 @@
 // src/components/shared/HijriText.tsx
 import React from 'react';
-import { useHijriByDate } from '../../hooks/useKalenderHijriyah';
+import { useHijriByDate } from '../../features/kalender/hooks/useKalenderHijriyah';
 
 interface HijriTextProps {
   date: string | Date | null | undefined;

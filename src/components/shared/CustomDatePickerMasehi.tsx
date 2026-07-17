@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useQuery } from "@tanstack/react-query";
-import { pb } from "../../services/pocketbase";
+import { pb } from "../../lib/pocketbase";
 import type { KalenderHijriyahResponse } from "../../types/pocketbase-types";
 import {
   Calendar,

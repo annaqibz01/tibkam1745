@@ -8,47 +8,50 @@ interface PageTransitionProps {
   className?: string;
 }
 
-// ✨ Easing Curve Khas Vercel / Apple iOS (Emphasized Decelerate)
+// ✨ Premium Fluid Curve (Emphasized Decelerate - Gabungan Vercel & Apple iOS)
 const EASING_CURVE = [0.16, 1, 0.3, 1] as const;
 
 /**
- * Varian Animasi Standar (Mulus & Responsif)
+ * Varian Animasi Premium (Ultra-Smooth & Fluid)
  */
 const pageVariants: Variants = {
   initial: {
     opacity: 0,
-    y: 6, // Pergeseran sangat tipis (6px) agar tidak menyebabkan disorientasi visual
+    y: 10,       // Pergeseran sedikit dinaikkan (10px) agar pergerakan kinetiknya terlihat anggun
+    scale: 0.99, // 🔮 KUNCI: Efek mikro-skala menciptakan ilusi transisi lapis kedalaman yang halus
   },
   animate: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
-      duration: 0.2, // Durasi 200ms (sweet spot untuk pergeseran antarmuka)
+      duration: 0.35, // ⏱️ Sweet-spot baru (350ms) agar kurva akselerasi terlihat mengalir sempurna
       ease: EASING_CURVE,
     },
   },
   exit: {
     opacity: 0,
-    y: -4, // Pergeseran keluar sangat halus jika dibungkus AnimatePresence
+    y: -8,
+    scale: 0.99,   // Mikro-skala mengecil halus saat halaman memudar keluar
     transition: {
-      duration: 0.15,
+      duration: 0.25,
       ease: EASING_CURVE,
     },
   },
 };
 
 /**
- * Varian Khusus Aksesibilitas (Tanpa Pergeseran Y untuk Pengguna "Reduce Motion")
+ * Varian Khusus Aksesibilitas (Fade Murni tanpa Pergeseran Fisik)
  */
 const reducedMotionVariants: Variants = {
   initial: { opacity: 0 },
   animate: {
     opacity: 1,
-    transition: { duration: 0.15 },
+    transition: { duration: 0.25 },
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.1 },
+    transition: { duration: 0.15 },
   },
 };
 
@@ -66,7 +69,7 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
       animate="animate"
       exit="exit"
       variants={activeVariants}
-      style={{ willChange: 'transform, opacity' }} // ✨ Memaksa browser menyiapkan layer komposisi GPU
+      style={{ willChange: 'transform, opacity' }} // Memaksa browser menyiapkan layer komposisi GPU
       className={`w-full transform-gpu ${className}`.trim()}
     >
       {children}

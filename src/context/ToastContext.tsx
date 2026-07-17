@@ -1,6 +1,6 @@
 // src/context/ToastContext.tsx
 import React, { createContext, useContext, useState, ReactNode } from "react";
-import NotificationToast, { ToastMessage, ToastType } from "../components/shared/NotificationToast";
+import NotificationToast, { ToastMessage, ToastType } from "@/components/shared/NotificationToast";
 
 interface ToastContextType {
   showToast: (toast: ToastMessage) => void;
