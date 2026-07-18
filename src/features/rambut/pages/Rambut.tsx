@@ -7,7 +7,7 @@ import { RambutStats } from "../components/RambutStats";
 import { RambutScanToolbar } from "../components/RambutScanToolbar";
 import { RambutQueueTable } from "../components/RambutQueueTable";
 import { RambutModals } from "../components/RambutModals";
-import MasterPagination from "@/features/master/components/MasterPagination";
+import { MasterPagination } from "@/features/master";
 
 export default function RambutPage() {
   const p = useRambutPage();

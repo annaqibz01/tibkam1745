@@ -5,7 +5,7 @@ import { ProtectedRoute } from '@/features/auth';
 import DashboardLayout from '@/layouts/DashboardLayout/DashboardLayout';
 import {LoginPage as Login} from '@/features/auth';
 import { DashboardPage as Dashboard } from '@/features/dashboard';
-import Profile from '@/features/profile/pages/Profile'; 
+import {ProfilePage as Profile} from '@/features/profile'; 
 import { UsersPage as Users } from '@/features/users';
 import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';

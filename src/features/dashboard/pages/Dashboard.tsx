@@ -1,7 +1,7 @@
 // src/pages/Dashboard.tsx
 import React from 'react';
 import { useAuth } from '@/features/auth';
-import { useUsers } from '@/features/users/hooks/useUsers';
+import { useUsers } from '@/features/users';
 import { useDashboardSantriStats } from '../hooks/useDashboard'; // ✅ Menggunakan hook sehat yang baru
 import { WelcomeBanner } from '../components/WelcomeBanner';
 import { AdminStatsGrid } from '../components/AdminStatsGrid';

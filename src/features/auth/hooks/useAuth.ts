@@ -1,3 +1,4 @@
+// src/features/auth/hooks/useAuth.ts
 import { useEffect, useState, useCallback } from 'react';
 import { pb } from '@/lib/pocketbase';
 import type { RecordModel } from 'pocketbase';
@@ -20,13 +21,22 @@ export function useAuth() {
   const [isValid, setIsValid] = useState<boolean>(pb.authStore.isValid);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
+  // 🛡️ Guard Pencocokan Status Sinkronisasi Sesi
   const syncAuthState = useCallback(() => {
-    setUser(pb.authStore.model as RecordModel | null);
-    setIsValid(pb.authStore.isValid);
+    const model = pb.authStore.model;
+    
+    // Jika token valid tapi ternyata status user dirubah jadi nonaktif (false)
+    if (model && model.status === false) {
+      pb.authStore.clear(); // Tendang paksa sesi dari lokal
+      setUser(null);
+      setIsValid(false);
+    } else {
+      setUser(model as RecordModel | null);
+      setIsValid(pb.authStore.isValid);
+    }
   }, []);
 
   const validateSession = useCallback(async () => {
-    // Guest guard: skip authRefresh if no token is present
     if (!pb.authStore.isValid) {
       syncAuthState();
       setIsLoading(false);
@@ -35,7 +45,14 @@ export function useAuth() {
 
     setIsLoading(true);
     try {
-      await pb.collection('users').authRefresh();
+      // Refresh token sekaligus mengambil cetakan data user terbaru dari server
+      const refreshData = await pb.collection('users').authRefresh();
+      
+      // 🛡️ Guard 1: Cek apakah di tengah sesi berjalan, akun ini dinonaktifkan oleh Admin
+      if (refreshData.record && refreshData.record.status === false) {
+        console.warn('Sesi dibatalkan otomatis karena akun dinonaktifkan.');
+        pb.authStore.clear();
+      }
     } catch (error) {
       console.warn('Session refresh failed:', extractErrorMessage(error));
       pb.authStore.clear();
@@ -46,13 +63,19 @@ export function useAuth() {
   }, [syncAuthState]);
 
   useEffect(() => {
-    // Subscribe to auth store changes
+    // Berlangganan pada perubahan toko otentikasi lokal
     const unsubscribe = pb.authStore.onChange((_token, model) => {
+      // 🛡️ Guard 2: Interseptor real-time jika ada injeksi auth model nonaktif
+      if (model && model.status === false) {
+        pb.authStore.clear();
+        setUser(null);
+        setIsValid(false);
+        return;
+      }
       setUser(model as RecordModel | null);
       setIsValid(pb.authStore.isValid);
     });
 
-    // Initial session validation
     validateSession();
 
     return () => {
@@ -63,7 +86,17 @@ export function useAuth() {
   const login = useCallback(async (username: string, password: string): Promise<AuthResult> => {
     setIsLoading(true);
     try {
-      await pb.collection('users').authWithPassword(username, password);
+      const authData = await pb.collection('users').authWithPassword(username, password);
+      
+      // 🛡️ Guard 3: Interseptor utama saat tombol "Masuk Sistem" diklik
+      if (authData.record && authData.record.status === false) {
+        pb.authStore.clear(); // Hapus token biner yang terlanjur terunduh
+        return { 
+          success: false, 
+          error: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator system.' 
+        };
+      }
+
       return { success: true };
     } catch (error) {
       return { success: false, error: extractErrorMessage(error) };
@@ -74,7 +107,6 @@ export function useAuth() {
 
   const logout = useCallback((): void => {
     pb.authStore.clear();
-    // onChange listener will update state automatically
   }, []);
 
   return {
