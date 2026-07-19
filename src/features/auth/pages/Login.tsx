@@ -1,18 +1,19 @@
 // src/pages/Login.tsx
-import { useState, useEffect, type FormEvent } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
 import {
   User,
   Lock,
   Loader2,
-  AlertCircle,
   ArrowRight,
   Eye,
   EyeOff,
-  Sparkles,
   ShieldCheck,
-} from 'lucide-react';
-import { useAuth } from '../hooks/useAuth';
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import NotificationToast, {
+  type ToastMessage,
+} from "@/components/shared/NotificationToast";
 
 const Login = () => {
   // --- Router ---
@@ -23,13 +24,13 @@ const Login = () => {
   const { login, isLoading, isValid } = useAuth();
 
   // --- Form State ---
-  const [username, setUsername] = useState<string>('');
-  const [password, setPassword] = useState<string>('');
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // --- Derive redirect destination ---
-  const from = (location.state as { from?: string })?.from || '/dashboard';
+  const from = (location.state as { from?: string })?.from || "/dashboard";
 
   // --- Auto-redirect if already authenticated ---
   useEffect(() => {
@@ -41,62 +42,63 @@ const Login = () => {
   // --- Submit Handler ---
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setErrorMsg(null);
+    setToast(null);
 
     const res = await login(username, password);
 
     if (res.success) {
       navigate(from, { replace: true });
     } else {
-      setErrorMsg(res.error ?? 'Terjadi kesalahan kredensial. Silakan coba lagi.');
+      setToast({
+        title: "Otentikasi Gagal",
+        message:
+          res.error ?? "Terjadi kesalahan kredensial. Silakan coba lagi.",
+        type: "error",
+      });
     }
   };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-gray-950 p-4 sm:p-6 overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* 🛡️ Floating Notification Toast */}
+      <NotificationToast toast={toast} onClose={() => setToast(null)} />
+
       {/* 🔮 Ambient Glow Mesh Background */}
       <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
 
       {/* 🚀 Glassmorphic Card Container */}
       <div className="relative w-full max-w-md z-10">
-        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-8 sm:p-10 shadow-2xl backdrop-blur-2xl">
+        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl transition-all duration-300">
           {/* 🔮 Garis Aksen Top Highlight */}
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
 
           {/* Header Branding */}
-          <div className="text-center mb-8">
-            <div className="inline-flex items-center justify-center p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-4 shadow-inner">
-              <Sparkles className="w-6 h-6" />
+          <div className="text-center mb-6 flex flex-col items-center justify-center">
+            {/* 🎯 Logo SVG Diperbesar (w-56 h-56) & Diberi Negative Margin untuk Memotong Spasi Kosong */}
+            <div className="inline-flex items-center justify-center -mb-6">
+              <img
+                src="/logo_tibkam_1745.svg"
+                alt="Logo TIBKAM 1745"
+                draggable="false"
+                className="w-60 h-50 object-contain"
+                loading="eager"
+                select-none
+              />
             </div>
 
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-wider text-white font-mono">
-              TIBKAM<span className="text-indigo-400">1745</span>
-            </h1>
-            
-            <p className="mt-1.5 text-xs font-mono text-gray-400 leading-relaxed">
-              Masuk ke portal otentikasi & sistem terpadu
+            <p className="select-none text-sm font-mono text-gray-400 tracking-wide">
+              Portal Otentikasi & Sistem Terpadu
             </p>
           </div>
 
-          {/* Error Banner */}
-          {errorMsg && (
-            <div
-              className="flex items-start gap-3 p-4 mb-6 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-300 animate-in fade-in slide-in-from-top-2 duration-300"
-              role="alert"
-            >
-              <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0 text-red-400" />
-              <p className="text-xs font-mono leading-relaxed">{errorMsg}</p>
-            </div>
-          )}
-
           {/* Form Login */}
-          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
             {/* Field Username */}
             <div>
               <label
                 htmlFor="username"
-                className="block text-xs font-mono font-medium text-gray-300 mb-1.5"
+                className="select-none block text-xs font-mono font-medium text-gray-300 mb-1.5"
               >
                 Username
               </label>
@@ -121,7 +123,7 @@ const Login = () => {
             <div>
               <label
                 htmlFor="password"
-                className="block text-xs font-mono font-medium text-gray-300 mb-1.5"
+                className="select-none block text-xs font-mono font-medium text-gray-300 mb-1.5"
               >
                 Password
               </label>
@@ -131,7 +133,7 @@ const Login = () => {
                 </div>
                 <input
                   id="password"
-                  type={showPassword ? 'text' : 'password'}
+                  type={showPassword ? "text" : "password"}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
@@ -143,7 +145,11 @@ const Login = () => {
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-500 hover:text-gray-300 transition-colors"
-                  title={showPassword ? 'Sembunyikan kata sandi' : 'Tampilkan kata sandi'}
+                  title={
+                    showPassword
+                      ? "Sembunyikan kata sandi"
+                      : "Tampilkan kata sandi"
+                  }
                 >
                   {showPassword ? (
                     <EyeOff className="w-4 h-4" />
@@ -154,11 +160,11 @@ const Login = () => {
               </div>
             </div>
 
-            {/* Tombol Submit Bergradien */}
+            {/* 🎯 Tombol Submit Bergradien (Sudah Dihapus class pt-1 yang Merusak Posisi Center Vertikal) */}
             <button
               type="submit"
               disabled={isLoading}
-              className="group w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono font-semibold text-xs rounded-2xl shadow-lg shadow-indigo-600/25 border border-indigo-400/30 transition-all duration-200 active:scale-95 mt-2"
+              className="group w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono font-semibold text-xs rounded-2xl shadow-lg shadow-indigo-600/25 border border-indigo-400/30 transition-all duration-200 active:scale-95"
             >
               {isLoading ? (
                 <>
@@ -175,9 +181,9 @@ const Login = () => {
           </form>
 
           {/* Footer Security Badge */}
-          <div className="mt-8 pt-5 border-t border-gray-800/80 flex items-center justify-center gap-1.5 text-[11px] font-mono text-gray-500">
+          <div className="select-none mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-center gap-1.5 text-[11px] font-mono text-gray-500">
             <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Sistem Otentikasi Enkripsi PocketBase Active</span>
+            <span>Sistem Otentikasi Enkripsi Terproteksi Active</span>
           </div>
         </div>
       </div>

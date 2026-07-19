@@ -35,6 +35,15 @@ const BULAN_HIJRI_LIST: { angka: number; nama: KalenderHijriyahBulanHijriNamaOpt
   { angka: 12, nama: "Dzulhijjah" },
 ];
 
+// 🛠️ Pindahkan fungsi helper ke luar agar bisa dipakai di level root komponen
+const getLocalDateStr = (dInput: string | Date) => {
+  const d = new Date(dInput);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
 export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> = ({
   value,
   onChange,
@@ -45,8 +54,27 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
+  // String masehi hari ini untuk pencarian fallback
+  const todayDateStr = useMemo(() => getLocalDateStr(new Date()), []);
+
+  // State tampilan bulan & tahun (default aman sebelum data termuat)
   const [viewTahunHijri, setViewTahunHijri] = useState<number>(1448);
-  const [viewBulanHijri, setViewBulanHijri] = useState<number>(1);
+  const [viewBulanHijri, setViewBulanHijri] = useState<number>(2); // Safar sebagai cadangan terdekat
+
+  // 1. 🔍 QUERY BARU: Ambil data Hijriyah hari ini dari database untuk acuan default buka calendar
+  const { data: todayRecord } = useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ["datepicker-hijri-today-record", todayDateStr],
+    queryFn: async () => {
+      try {
+        return await pb.collection("kalender_hijriyah").getFirstListItem<KalenderHijriyahResponse>(
+          `tanggal_masehi >= "${todayDateStr} 00:00:00" && tanggal_masehi <= "${todayDateStr} 23:59:59"`
+        );
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 60 * 12, // Tahan 12 jam karena tanggal hari ini awet
+  });
 
   // Query record Hijriyah dari nilai terpilih
   const { data: selectedRecord, isLoading: isSelectedLoading } = useQuery<KalenderHijriyahResponse | null>({
@@ -65,12 +93,17 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
     staleTime: 1000 * 60 * 30,
   });
 
+  // 2. 🔄 FIX SYNC EFFECT: Cek record terpilih, jika kosong langsung pakai hari ini (Safar)
   useEffect(() => {
     if (selectedRecord) {
       if (selectedRecord.tahun_hijri) setViewTahunHijri(selectedRecord.tahun_hijri);
       if (selectedRecord.bulan_hijri_angka) setViewBulanHijri(selectedRecord.bulan_hijri_angka);
+    } else if (!value && todayRecord) {
+      // Jika user belum memilih tanggal apapun, langsung sinkronkan ke bulan sekarang
+      if (todayRecord.tahun_hijri) setViewTahunHijri(todayRecord.tahun_hijri);
+      if (todayRecord.bulan_hijri_angka) setViewBulanHijri(todayRecord.bulan_hijri_angka);
     }
-  }, [selectedRecord]);
+  }, [selectedRecord, todayRecord, value]);
 
   // Query hari dalam bulan Hijriyah aktif
   const { data: hijriMonthDays, isLoading: isMonthLoading } = useQuery<KalenderHijriyahResponse[]>({
@@ -164,25 +197,14 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
     }
   };
 
-  const getLocalDateStr = (dInput: string | Date) => {
-    const d = new Date(dInput);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  };
-
   const selectedDateStr = value ? getLocalDateStr(value) : "";
-  const todayDateStr = getLocalDateStr(new Date());
 
-  // ✨ Teks tampilan: Hanya Tanggal & Bulan Hijriyah
   const displayText = selectedRecord
     ? `${selectedRecord.tanggal_hijri} ${selectedRecord.bulan_hijri_nama} ${selectedRecord.tahun_hijri} H`
     : placeholder;
 
   return (
     <div className="w-full">
-      {/* TRIGGER BUTTON - KUNCI: Tinggi h-[42px] presisi, tanpa melar */}
       <button
         ref={triggerRef}
         type="button"
@@ -224,7 +246,6 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
         )}
       </button>
 
-      {/* POPOVER KALENDER HIJRIYAH */}
       {isOpen &&
         createPortal(
           <div

@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { NavLink } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useAuth } from "@/features/auth";      
-import { getAvatarUrl } from "@/features/users"; 
+import { useAuth } from "@/features/auth";
+import { getAvatarUrl } from "@/features/users";
 import type {
   UsersResponse,
   UsersRoleOptions,
@@ -78,11 +78,11 @@ const Sidebar = () => {
       allowedRoles: ["admin", "umum", "rambut"],
     },
     {
-    title: "Layanan Rambut",
-    path: "/rambut",
-    icon: Scissors,
-    allowedRoles: ["admin", "rambut"], 
-  },
+      title: "Layanan Rambut",
+      path: "/rambut",
+      icon: Scissors,
+      allowedRoles: ["admin", "rambut"],
+    },
     {
       title: "Kalender",
       path: "/kalender",
@@ -100,7 +100,7 @@ const Sidebar = () => {
   // Filter menu berdasarkan role user
   const filteredMenu = currentUser
     ? menuItems.filter((item) =>
-        item.allowedRoles.includes(currentUser.role as UsersRoleOptions)
+        item.allowedRoles.includes(currentUser.role as UsersRoleOptions),
       )
     : [];
 
@@ -173,18 +173,23 @@ const Sidebar = () => {
 
         {/* ----- Top Section: Header, Profile & Navigation ----- */}
         <div className="relative z-10 flex flex-col flex-1 min-h-0">
-          
           {/* 1. Header Logo Area (Tinggi Terkunci Presisi h-[73px]) */}
           <div className="flex items-center justify-between px-3 h-[73px] border-b border-gray-800/80 flex-shrink-0 overflow-hidden">
             {/* Logo Brand Title */}
             <div
               className={`flex items-center gap-2.5 overflow-hidden transition-all duration-300 ease-in-out ${
-                isCollapsed ? "max-w-0 opacity-0" : "max-w-[180px] opacity-100 pl-1"
+                isCollapsed
+                  ? "max-w-0 opacity-0"
+                  : "max-w-[200px] opacity-100 pl-1"
               }`}
             >
-              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 shadow-sm flex-shrink-0">
-                <Sparkles className="w-4 h-4" />
-              </div>
+              {/* Logo Sayap Saja menggantikan box Sparkles lama */}
+              <img
+                src="logo_tibkam_sayap_saja.svg"
+                alt="Logo Tibkam"
+                className="h-7 w-auto flex-shrink-0 object-contain"
+              />
+
               <div className="min-w-0">
                 <h2 className="text-base font-extrabold tracking-wider text-white whitespace-nowrap font-mono leading-none">
                   TIBKAM<span className="text-indigo-400">1745</span>
@@ -298,7 +303,11 @@ const Sidebar = () => {
                         <motion.div
                           layoutId="sidebarActiveIndicator"
                           className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent border-l-2 border-indigo-400 pointer-events-none"
-                          transition={{ type: "spring", stiffness: 380, damping: 30 }}
+                          transition={{
+                            type: "spring",
+                            stiffness: 380,
+                            damping: 30,
+                          }}
                         />
                       )}
 

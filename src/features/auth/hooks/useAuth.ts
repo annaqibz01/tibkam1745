@@ -1,37 +1,73 @@
 // src/features/auth/hooks/useAuth.ts
 import { useEffect, useState, useCallback } from 'react';
 import { pb } from '@/lib/pocketbase';
-import type { RecordModel } from 'pocketbase';
-import { ClientResponseError } from 'pocketbase';
+import { ClientResponseError } from 'pocketbase';// Atau 'pocketbase' sesuai import project Anda
+import type { UsersResponse } from '@/types/pocketbase-types'; 
 
 type AuthResult = { success: boolean; error?: string };
 
-function extractErrorMessage(error: unknown): string {
+// Fungsi penanganan error asinkron khusus untuk alur login
+async function extractLoginErrorMessage(error: unknown, username: string): Promise<string> {
   if (error instanceof ClientResponseError) {
-    return error.response?.message || error.message || 'Username atau password salah.';
+    // 1. Jika server mati atau masalah jaringan
+    if (error.status === 0) {
+      return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+    }
+
+    // 2. Jika kredensial salah (Username/Password tidak cocok)
+    if (error.status === 400) {
+      try {
+        // Cari data user secara anonim berdasarkan input username/email
+        // Pastikan API Rule "View" atau "List" koleksi users di PocketBase mengizinkan pencarian field 'role'
+        const userCheck = await pb.collection('users').getFirstListItem(
+          `username = "${username}" || email = "${username}"`, 
+          { fields: 'role' } // Optimasi: Hanya ambil field role saja
+        );
+
+        // Kondisi pesan error berdasarkan tingkat hierarki role
+        if (userCheck.role === 'super_admin' || userCheck.role === 'superadmin') {
+          return 'Password salah. Jika Anda lupa password Utama, silakan hubungi Tim Pengembang Sistem.';
+        } 
+        
+        if (userCheck.role === 'admin') {
+          return 'Password salah. Jika Anda lupa password Admin, silakan hubungi Super Admin.';
+        }
+
+        // Default untuk user biasa
+        return 'Username atau password salah. Jika Anda lupa, silakan hubungi Admin.';
+      } catch {
+        // Fallback jika username memang tidak terdaftar atau API Rule PocketBase dikunci total
+        return 'Username atau password salah. Jika Anda lupa kredensial, silakan hubungi Admin.';
+      }
+    }
+
+    return error.response?.message || error.message || 'Gagal masuk ke sistem.';
   }
-  if (error instanceof Error) {
+
+  if (error instanceof Error) return error.message;
+  return 'Terjadi kesalahan pada sistem.';
+}
+
+// Fungsi penanganan error umum (untuk sync & refresh session)
+function extractGeneralErrorMessage(error: unknown): string {
+  if (error instanceof ClientResponseError) {
+    if (error.status === 0) return 'Koneksi ke server terputus.';
     return error.message;
   }
-  return 'Username atau password salah.';
+  return 'Sesi tidak valid.';
 }
 
 export function useAuth() {
-  const [user, setUser] = useState<RecordModel | null>(null);
+  const [user, setUser] = useState<UsersResponse | null>(pb.authStore.model as UsersResponse | null);
   const [isValid, setIsValid] = useState<boolean>(pb.authStore.isValid);
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // 🛡️ Guard Pencocokan Status Sinkronisasi Sesi
   const syncAuthState = useCallback(() => {
-    const model = pb.authStore.model;
-    
-    // Jika token valid tapi ternyata status user dirubah jadi nonaktif (false)
+    const model = pb.authStore.model as UsersResponse | null;
     if (model && model.status === false) {
-      pb.authStore.clear(); // Tendang paksa sesi dari lokal
-      setUser(null);
-      setIsValid(false);
+      pb.authStore.clear();
     } else {
-      setUser(model as RecordModel | null);
+      setUser(model);
       setIsValid(pb.authStore.isValid);
     }
   }, []);
@@ -43,36 +79,30 @@ export function useAuth() {
       return;
     }
 
-    setIsLoading(true);
     try {
-      // Refresh token sekaligus mengambil cetakan data user terbaru dari server
       const refreshData = await pb.collection('users').authRefresh();
-      
-      // 🛡️ Guard 1: Cek apakah di tengah sesi berjalan, akun ini dinonaktifkan oleh Admin
-      if (refreshData.record && refreshData.record.status === false) {
+      if (refreshData.record && (refreshData.record as unknown as UsersResponse).status === false) {
         console.warn('Sesi dibatalkan otomatis karena akun dinonaktifkan.');
         pb.authStore.clear();
       }
     } catch (error) {
-      console.warn('Session refresh failed:', extractErrorMessage(error));
+      console.warn('Session refresh failed:', extractGeneralErrorMessage(error));
       pb.authStore.clear();
     } finally {
-      syncAuthState();
       setIsLoading(false);
     }
   }, [syncAuthState]);
 
   useEffect(() => {
-    // Berlangganan pada perubahan toko otentikasi lokal
     const unsubscribe = pb.authStore.onChange((_token, model) => {
-      // 🛡️ Guard 2: Interseptor real-time jika ada injeksi auth model nonaktif
-      if (model && model.status === false) {
+      const userModel = model as UsersResponse | null;
+      if (userModel && userModel.status === false) {
         pb.authStore.clear();
         setUser(null);
         setIsValid(false);
         return;
       }
-      setUser(model as RecordModel | null);
+      setUser(userModel);
       setIsValid(pb.authStore.isValid);
     });
 
@@ -87,19 +117,21 @@ export function useAuth() {
     setIsLoading(true);
     try {
       const authData = await pb.collection('users').authWithPassword(username, password);
+      const userModel = authData.record as unknown as UsersResponse;
       
-      // 🛡️ Guard 3: Interseptor utama saat tombol "Masuk Sistem" diklik
-      if (authData.record && authData.record.status === false) {
-        pb.authStore.clear(); // Hapus token biner yang terlanjur terunduh
+      if (userModel && userModel.status === false) {
+        pb.authStore.clear();
         return { 
           success: false, 
-          error: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator system.' 
+          error: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator sistem.' 
         };
       }
 
       return { success: true };
     } catch (error) {
-      return { success: false, error: extractErrorMessage(error) };
+      // Menggunakan penanganan error kustom yang dinamis berdasarkan input username
+      const dynamicError = await extractLoginErrorMessage(error, username);
+      return { success: false, error: dynamicError };
     } finally {
       setIsLoading(false);
     }

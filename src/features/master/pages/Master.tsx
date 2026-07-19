@@ -1,11 +1,14 @@
 // src/pages/Master.tsx
 import { useState } from "react";
 import { useMaster } from "../hooks/useMaster";
-import { syncExcelToPocketBase, type ExcelSantriRow } from "@/utils/syncExcelToPocketBase";
+import {
+  syncExcelToPocketBase,
+  type ExcelSantriRow,
+} from "@/utils/syncExcelToPocketBase";
 import * as XLSX from "xlsx";
 import MasterHeader from "../components/MasterHeader";
 import SyncReportBanner from "../components/SyncReportBanner";
-import ImportErrorBanner from "../components/ImportErrorBanner"; 
+import ImportErrorBanner from "../components/ImportErrorBanner";
 import MasterToolbar from "../components/MasterToolbar";
 import MasterTable from "../components/MasterTable";
 import MasterPagination from "../components/MasterPagination";
@@ -68,7 +71,6 @@ export default function MasterPage() {
     const expectedName = `${year}-${month}-${day}-database`;
     const uploadedFileName = file.name.substring(0, file.name.lastIndexOf("."));
 
-    // ❌ KOREKSI: Ganti alert nama berkas salah menjadi popup kustom melayang
     if (uploadedFileName !== expectedName) {
       setImportError(
         `Nama berkas tidak sesuai dengan tanggal hari ini.\n\n` +
@@ -84,77 +86,64 @@ export default function MasterPage() {
     setImportError(null); // Bersihkan riwayat eror lama jika ada
 
     try {
-      const reader = new FileReader();
-      reader.onload = async (loadEvt) => {
-        try {
-          const binaryStr = loadEvt.target?.result;
-          if (typeof binaryStr !== "string") return;
+      // 🚀 OPTIMASI UTAMA: Menggunakan modern ArrayBuffer API langsung dari objek File
+      // Menghilangkan instansiasi `new FileReader()` dan penumpukan callback `reader.onload`
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" }); // type diubah menjadi 'array'
 
-          const workbook = XLSX.read(binaryStr, { type: "binary" });
-          const sheetName = workbook.SheetNames[0];
-          const sheet = workbook.Sheets[sheetName];
-          const rawData: unknown[] = XLSX.utils.sheet_to_json(sheet, {
-            defval: "",
-          });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawData: unknown[] = XLSX.utils.sheet_to_json(sheet, {
+        defval: "",
+      });
 
-          const mapped: ExcelSantriRow[] = (rawData as any[])
-            .filter((row: any) => {
-              const idPps = row["ID PPS"]?.toString().trim();
-              return idPps && idPps.length > 0;
-            })
-            .map((row: any) => ({
-              id_pps: row["ID PPS"]?.toString().trim() ?? "",
-              nomor_daftar: row["Nomor Daftar"]?.toString().trim() ?? "",
-              tanggal_daftar: row["Tanggal Daftar"]?.toString().trim() ?? "",
-              nama: row["Nama"]?.toString().trim() ?? "",
-              nama_akte: row["Nama Akte"]?.toString().trim() ?? "",
-              desa: row["Desa"]?.toString().trim() ?? "",
-              kecamatan: row["Kecamatan"]?.toString().trim() ?? "",
-              kabupaten: row["Kabupaten"]?.toString().trim() ?? "",
-              provinsi: row["Provinsi"]?.toString().trim() ?? "",
-              nik: row["NIK"]?.toString().trim() ?? "",
-              kk: row["KK"]?.toString().trim() ?? "",
-              nisn: row["NISN"]?.toString().trim() ?? "",
-              nik_ayah: row["NIK Ayah"]?.toString().trim() ?? "",
-              nama_ayah: row["Nama Ayah"]?.toString().trim() ?? "",
-              nik_ibu: row["NIK Ibu"]?.toString().trim() ?? "",
-              nama_ibu: row["Nama Ibu"]?.toString().trim() ?? "",
-              nik_wali: row["NIK Wali"]?.toString().trim() ?? "",
-              nama_wali: row["Nama Wali"]?.toString().trim() ?? "",
-              kontak_wali: row["Kontak Wali"]?.toString().trim() ?? "",
-              status_domisili: row["Status Domisili"]?.toString().trim() ?? "",
-              domisili: row["Domisili"]?.toString().trim() ?? "",
-              kelas: row["Kelas"]?.toString().trim() ?? "",
-              tingkatan: row["Tingkat"]?.toString().trim() ?? "",
-              noabsen: row["NoAbsen"]?.toString().trim() ?? "",
-              ruang_kelas: row["Ruang Kelas"]?.toString().trim() ?? "",
-              alasan_update_status:
-                row["Alasan Update Status"]?.toString().trim() ?? "",
-              keterangan_update_domisi:
-                row["Ket. Update Domisili"]?.toString().trim() ?? "",
-            }));
+      const mapped: ExcelSantriRow[] = (rawData as any[])
+        .filter((row: any) => {
+          const idPps = row["ID PPS"]?.toString().trim();
+          return idPps && idPps.length > 0;
+        })
+        .map((row: any) => ({
+          id_pps: row["ID PPS"]?.toString().trim() ?? "",
+          nomor_daftar: row["Nomor Daftar"]?.toString().trim() ?? "",
+          tanggal_daftar: row["Tanggal Daftar"]?.toString().trim() ?? "",
+          nama: row["Nama"]?.toString().trim() ?? "",
+          nama_akte: row["Nama Akte"]?.toString().trim() ?? "",
+          desa: row["Desa"]?.toString().trim() ?? "",
+          kecamatan: row["Kecamatan"]?.toString().trim() ?? "",
+          kabupaten: row["Kabupaten"]?.toString().trim() ?? "",
+          provinsi: row["Provinsi"]?.toString().trim() ?? "",
+          nik: row["NIK"]?.toString().trim() ?? "",
+          kk: row["KK"]?.toString().trim() ?? "",
+          nisn: row["NISN"]?.toString().trim() ?? "",
+          nik_ayah: row["NIK Ayah"]?.toString().trim() ?? "",
+          nama_ayah: row["Nama Ayah"]?.toString().trim() ?? "",
+          nik_ibu: row["NIK Ibu"]?.toString().trim() ?? "",
+          nama_ibu: row["Nama Ibu"]?.toString().trim() ?? "",
+          nik_wali: row["NIK Wali"]?.toString().trim() ?? "",
+          nama_wali: row["Nama Wali"]?.toString().trim() ?? "",
+          kontak_wali: row["Kontak Wali"]?.toString().trim() ?? "",
+          status_domisili: row["Status Domisili"]?.toString().trim() ?? "",
+          domisili: row["Domisili"]?.toString().trim() ?? "",
+          kelas: row["Kelas"]?.toString().trim() ?? "",
+          tingkatan: row["Tingkat"]?.toString().trim() ?? "",
+          noabsen: row["NoAbsen"]?.toString().trim() ?? "",
+          ruang_kelas: row["Ruang Kelas"]?.toString().trim() ?? "",
+          alasan_update_status:
+            row["Alasan Update Status"]?.toString().trim() ?? "",
+          keterangan_update_domisi:
+            row["Ket. Update Domisili"]?.toString().trim() ?? "",
+        }));
 
-          const report = await syncExcelToPocketBase(mapped);
-          setSyncReport(report);
-          refetch();
-        } catch (err) {
-          console.error("Gagal sinkronisasi:", err);
-          // ❌ KOREKSI: Ganti alert crash pemrosesan data biner menjadi popup kustom
-          setImportError(
-            "Struktur kolom berkas Excel tidak valid atau rusak. Periksa kembali isi file Anda.",
-          );
-        } finally {
-          setIsImporting(false);
-          e.target.value = "";
-        }
-      };
-
-      reader.readAsBinaryString(file);
+      const report = await syncExcelToPocketBase(mapped);
+      setSyncReport(report);
+      refetch();
     } catch (err) {
-      console.error(err);
+      console.error("Gagal sinkronisasi berkas:", err);
       setImportError(
-        "Sistem gagal membaca dokumen Excel ini. Coba buka dan simpan ulang berkas Anda.",
+        "Struktur dokumen Excel tidak valid, rusak, atau gagal diproses oleh sistem. Periksa kembali berkas Anda.",
       );
+    } finally {
+      // Blok finally terpadu menjamin state loading & input element selalu dibersihkan dengan aman
       setIsImporting(false);
       e.target.value = "";
     }

@@ -30,8 +30,8 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-indigo-400"
     >
-      {/* Pills Status dimasukkan sebagai children */}
-      <div className="flex items-center bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 p-1 rounded-2xl shadow-lg">
+      {/* Pills Status diselaraskan dengan h-12 dan rounded-2xl agar sejajar rata air */}
+      <div className="flex items-center gap-1 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 p-1 rounded-2xl shadow-lg h-12">
         {(["all", "belum", "sudah", "dispensasi"] as const).map((st) => {
           const isActive = statusFilter === st;
           return (
@@ -39,7 +39,7 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
               key={st}
               type="button"
               onClick={() => onStatusFilterChange(st)}
-              className={`relative px-3 py-1.5 rounded-xl text-xs font-mono font-bold capitalize transition-colors duration-200 select-none active:scale-95 ${
+              className={`relative px-4 h-full flex items-center rounded-xl text-xs font-sans font-bold capitalize transition-colors duration-200 select-none active:scale-95 ${
                 isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
               }`}
             >
@@ -50,7 +50,7 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
                   transition={{ type: "spring", stiffness: 400, damping: 30 }}
                 />
               )}
-              <span className="relative z-10">
+              <span className="relative z-10 whitespace-nowrap">
                 {st === "all" ? "Semua Status" : st}
               </span>
             </button>

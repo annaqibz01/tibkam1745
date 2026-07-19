@@ -39,7 +39,12 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-purple-400"
     >
-      {/* Dropdown Kompleks Daerah dimasukkan sebagai children */}
+      {/* 
+        Dropdown Kompleks Daerah dimasukkan sebagai children.
+        Pastikan di dalam komponen <CustomGlassDropdown> tombol utamanya 
+        menggunakan kelas `h-12` dan `rounded-2xl` agar selaras rata air 
+        dengan Search Bar dan Tombol Refresh.
+      */}
       <CustomGlassDropdown
         value={daerahFilter}
         onChange={onDaerahFilterChange}

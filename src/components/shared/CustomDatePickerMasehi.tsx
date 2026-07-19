@@ -46,13 +46,21 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
   const selectedDate = useMemo(() => parseLocalYMD(value), [value]);
   const [viewDate, setViewDate] = useState<Date>(selectedDate || new Date());
 
+  // 1. 🔄 FIX SYNC EFFECT: Menjamin kalender otomatis reset ke bulan sekarang jika nilainya kosong (saat buat periode baru)
+  useEffect(() => {
+    if (selectedDate) {
+      setViewDate(selectedDate);
+    } else if (!value) {
+      setViewDate(new Date());
+    }
+  }, [selectedDate, value]);
+
   const year = viewDate.getFullYear();
   const month = viewDate.getMonth();
   const monthPadded = String(month + 1).padStart(2, "0");
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-  // ✨ Navigasi Bulan Masehi
   const handlePrevMonth = () => {
     setViewDate(new Date(year, month - 1, 1));
   };
@@ -61,7 +69,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     setViewDate(new Date(year, month + 1, 1));
   };
 
-  // ✨ Query 1: Ambil record Hijriyah untuk bulan Masehi aktif (Pakai operator ~)
+  // 🔍 Query 1: Ambil record Hijriyah untuk bulan Masehi aktif
   const { data: monthHijriRecords } = useQuery<KalenderHijriyahResponse[]>({
     queryKey: ["datepicker-masehi-hijri-month", year, monthPadded],
     queryFn: async () => {
@@ -77,7 +85,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     staleTime: 1000 * 60 * 30,
   });
 
-  // ✨ Query 2: Ambil record Hijriyah untuk tanggal terpilih di Trigger Button (Pakai operator ~)
+  // 🔍 Query 2: Ambil record Hijriyah untuk tanggal terpilih di Trigger Button
   const { data: selectedHijriRecord } = useQuery<KalenderHijriyahResponse | null>({
     queryKey: ["datepicker-masehi-selected-hijri", value],
     queryFn: async () => {
@@ -94,17 +102,22 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     staleTime: 1000 * 60 * 30,
   });
 
+  // 2. 🛡️ FIX MAP DAY ANTI-SHIFT: Ekstraksi string murni YYYY-MM-DD tanpa melalui engine Date JavaScript agar tidak bergeser hari
   const hijriDayMap = useMemo(() => {
     const map = new Map<number, KalenderHijriyahResponse>();
     if (!monthHijriRecords) return map;
     monthHijriRecords.forEach((rec) => {
-      const d = new Date(rec.tanggal_masehi);
-      map.set(d.getDate(), rec);
+      const cleanStr = rec.tanggal_masehi.split(" ")[0].split("T")[0]; // "YYYY-MM-DD"
+      const parts = cleanStr.split("-").map(Number);
+      if (parts.length === 3) {
+        const dayNum = parts[2]; // Ambil porsi tanggalnya saja
+        map.set(dayNum, rec);
+      }
     });
     return map;
   }, [monthHijriRecords]);
 
-  // ✨ Kalkulasi Posisi Popover dengan Clamping Aman
+  // Kalkulasi Posisi Popover
   const updatePosition = useCallback(() => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
@@ -117,7 +130,6 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
 
       let top = rect.bottom + 6;
       if (top + 300 > window.innerHeight) {
-        // Clamping Math.max agar tidak terpotong ke atas layar
         top = Math.max(16, rect.top - 300 - 6);
       }
 
@@ -162,6 +174,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
 
   return (
     <div className="w-full">
+      {/* TRIGGER BUTTON - [UBAH]: Disetarakan tinggi h-[42px] & layout shrink-0 agar sejajar sempurna */}
       <button
         ref={triggerRef}
         type="button"
@@ -169,7 +182,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
           if (!isOpen && selectedDate) setViewDate(selectedDate);
           setIsOpen(!isOpen);
         }}
-        className={`w-full flex items-center justify-between px-3 py-2.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner ${
+        className={`w-full h-[42px] flex items-center justify-between px-3.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner shrink-0 overflow-hidden ${
           isOpen
             ? "border-amber-400 ring-2 ring-amber-500/20 text-white"
             : value
@@ -177,21 +190,21 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
             : "border-amber-500/25 text-gray-400 hover:border-amber-500/40"
         }`}
       >
-        <div className="flex items-center gap-2 truncate min-w-0">
+        <div className="flex items-center gap-2 truncate min-w-0 flex-1">
           <Calendar className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-          <span className="truncate">{formattedMasehiDisplay}</span>
+          <span className="truncate font-bold text-xs">{formattedMasehiDisplay}</span>
 
           {selectedHijriRecord && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex-shrink-0">
-              <Moon className="w-2.5 h-2.5 text-amber-400" />
-              <span>{selectedHijriRecord.string_hijri}</span>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex-shrink-0 max-w-[120px] truncate">
+              <Moon className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+              <span className="truncate">{selectedHijriRecord.string_hijri}</span>
             </span>
           )}
         </div>
 
         {value ? (
           <X
-            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors flex-shrink-0 ml-1"
+            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors flex-shrink-0 ml-1.5"
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -199,7 +212,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
           />
         ) : (
           <ChevronDown
-            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 flex-shrink-0 ml-1 ${
+            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 flex-shrink-0 ml-1.5 ${
               isOpen ? "rotate-180 text-amber-400" : ""
             }`}
           />
@@ -266,14 +279,15 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
                   new Date().getMonth() === month &&
                   new Date().getFullYear() === year;
 
+                // Format string YYYY-MM-DD lokal untuk fungsi onChange
+                const currentMasehiStr = `${year}-${monthPadded}-${String(dayNum).padStart(2, "0")}`;
+
                 return (
                   <button
                     key={dayNum}
                     type="button"
                     onClick={() => {
-                      const m = String(month + 1).padStart(2, "0");
-                      const d = String(dayNum).padStart(2, "0");
-                      onChange(`${year}-${m}-${d}`);
+                      onChange(currentMasehiStr);
                       setIsOpen(false);
                     }}
                     title={hijriRecord ? hijriRecord.string_hijri : undefined}

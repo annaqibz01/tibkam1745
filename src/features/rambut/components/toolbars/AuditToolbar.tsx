@@ -32,7 +32,11 @@ export const AuditToolbar: React.FC<AuditToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-amber-400"
     >
-      {/* Dropdown Tanggal Hijriyah dimasukkan sebagai children */}
+      {/* 
+        Dropdown Tanggal Hijriyah dimasukkan sebagai children.
+        Pastikan trigger/tombol di dalam <CustomGlassDropdown> memakai class `h-12` 
+        dan `rounded-2xl` agar tingginya presisi mendampingi search bar.
+      */}
       <CustomGlassDropdown
         value={dateFilter}
         onChange={onDateFilterChange}

@@ -30,9 +30,9 @@ export const RambutAuditSubTable: React.FC<Props> = ({ items, isLoading }) => {
             <th className="px-2.5 py-3 w-[16%]">Tgl Hijriyah</th>
             <th className="px-2.5 py-3 w-[10%]">ID PPS</th>
             <th className="px-2.5 py-3 w-[16%]">Nama Santri</th>
-            <th className="px-2.5 py-3 w-[12%]">Domisili / Daerah</th>
-            <th className="px-2.5 py-3 w-[16%]">Alamat Asal</th>
-            <th className="px-2.5 py-3 w-[10%] text-center">Waktu WIS</th>
+            <th className="px-2.5 py-3 w-[12%]">Domisili</th>
+            <th className="px-2.5 py-3 w-[16%]">Alamat</th>
+            <th className="px-2.5 py-3 w-[10%] text-center">Waktu</th>
             <th className="px-2.5 py-3 w-[10%]">Petugas</th>
             <th className="px-2.5 py-3 w-[16%]">Catatan</th>
           </tr>

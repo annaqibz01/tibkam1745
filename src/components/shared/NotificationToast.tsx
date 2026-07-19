@@ -1,5 +1,6 @@
 // src/components/shared/NotificationToast.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom"; // 👈 Kita pakai Portal dari React DOM
 import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
@@ -13,7 +14,7 @@ export interface ToastMessage {
 interface NotificationToastProps {
   toast: ToastMessage | null;
   onClose: () => void;
-  duration?: number; // Durasi tampil dalam ms (default: 4000ms)
+  duration?: number;
 }
 
 export default function NotificationToast({
@@ -25,12 +26,10 @@ export default function NotificationToast({
   const [displayToast, setDisplayToast] = useState<ToastMessage | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Handler penutupan dengan animasi smooth exit
   const handleClose = useCallback(() => {
     setIsVisible(false);
     if (timerRef.current) clearTimeout(timerRef.current);
     
-    // Tunggu 300ms sampai animasi fade-out selesai baru bersihkan data & panggil onClose
     timerRef.current = setTimeout(() => {
       setDisplayToast(null);
       onClose();
@@ -40,10 +39,8 @@ export default function NotificationToast({
   useEffect(() => {
     if (toast) {
       setDisplayToast(toast);
-      // Delay tipis agar transisi CSS fade-in terdeteksi browser
       const animTimeout = setTimeout(() => setIsVisible(true), 20);
 
-      // Auto dismiss
       const autoDismissTimeout = setTimeout(() => {
         handleClose();
       }, duration);
@@ -53,19 +50,16 @@ export default function NotificationToast({
         clearTimeout(autoDismissTimeout);
       };
     } else {
-      // Jika toast di-reset dari luar (context)
       setIsVisible(false);
       const clearDelay = setTimeout(() => setDisplayToast(null), 300);
       return () => clearTimeout(clearDelay);
     }
   }, [toast, duration, handleClose]);
 
-  // Jika data toast kosong, jangan render elemen HTML sama sekali
   if (!displayToast) return null;
 
   const currentType = displayToast.type || "success";
 
-  // Config warna dan ikon berdasarkan tipe
   const toastConfig = {
     success: {
       border: "border-emerald-500/30",
@@ -93,8 +87,9 @@ export default function NotificationToast({
     },
   }[currentType];
 
-  return (
-    <div className="fixed top-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+  // 💡 Menggunakan createPortal untuk merender komponen langsung di bawah <body>
+  return createPortal(
+    <div className="fixed top-6 inset-x-0 z-[9999] flex justify-center px-4 pointer-events-none">
       <div
         className={`pointer-events-auto max-w-md w-full rounded-2xl border bg-gray-900/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
           toastConfig.border
@@ -132,6 +127,7 @@ export default function NotificationToast({
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body // 👈 Target injeksi portal
   );
 }

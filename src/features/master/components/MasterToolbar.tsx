@@ -19,11 +19,20 @@ export default function MasterToolbar({
   onRefresh,
   isListLoading,
 }: MasterToolbarProps) {
-  // State untuk mengontrol buka/tutup menu dropdown kustom
+  // 1. State untuk Dropdown
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Auto Close Dropdown jika klik di luar area menu
+  // 2. State & Ref untuk Pencarian Anti-Spam
+  const [localSearch, setLocalSearch] = useState(search);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sinkronisasi input pencarian jika direset dari luar
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // Auto Close Dropdown
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -34,14 +43,32 @@ export default function MasterToolbar({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Struktur data opsi filter status
+  // 3. Fungsi saat menekan tombol Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSearchChange(localSearch); // Tembak request ke server
+
+      // Auto-select seluruh teks agar mudah ditimpa
+      setTimeout(() => {
+        inputRef.current?.select();
+      }, 0);
+    }
+  };
+
+  // 4. Fungsi tombol bersihkan pencarian
+  const handleClear = () => {
+    setLocalSearch("");
+    onSearchChange(""); // Langsung kirim string kosong ke server
+    inputRef.current?.focus();
+  };
+
   const filterOptions = [
     { value: "aktif", label: "Status Aktif" },
     { value: "all", label: "Semua Status" },
     { value: "nonaktif", label: "Status Nonaktif" },
   ] as const;
 
-  // Label teks dari status yang sedang aktif saat ini
   const currentLabel =
     filterOptions.find((opt) => opt.value === statusFilter)?.label ?? "Status Aktif";
 
@@ -49,22 +76,25 @@ export default function MasterToolbar({
 
   return (
     <div className="mb-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-      {/* 🔍 1. Input Pencarian dengan Clear Button & Glassmorphism */}
+      {/* 🔍 1. Input Pencarian dengan Clear Button */}
       <div className="relative flex-1 max-w-md group">
         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
           <Search className="w-4 h-4 sm:w-5 sm:h-5" />
         </div>
         <input
+          ref={inputRef}
           type="text"
-          value={search}
-          onChange={(e) => onSearchChange(e.target.value)}
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Cari nama atau ID PPS santri..."
-          className="w-full pl-11 pr-10 py-3 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-lg transition-all duration-200"
+          // [UBAH]: Mengganti py-3 menjadi h-12 agar tingginya tetap
+          className="w-full h-12 pl-11 pr-10 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-lg transition-all duration-200"
         />
-        {search && (
+        {localSearch && (
           <button
             type="button"
-            onClick={() => onSearchChange("")}
+            onClick={handleClear}
             className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
             title="Bersihkan pencarian"
           >
@@ -80,7 +110,8 @@ export default function MasterToolbar({
           <button
             type="button"
             onClick={() => setIsOpen(!isOpen)}
-            className={`w-full sm:w-48 flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-sm font-medium transition-all duration-200 shadow-lg ${
+            // [UBAH]: Mengganti py-3 menjadi h-12 agar setara dengan Search Input
+            className={`w-full sm:w-48 h-12 flex items-center justify-between px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-sm font-medium transition-all duration-200 shadow-lg ${
               isOpen || isFilterActive
                 ? "border-indigo-500/50 text-white ring-2 ring-indigo-500/20"
                 : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
@@ -142,7 +173,8 @@ export default function MasterToolbar({
           type="button"
           onClick={onRefresh}
           disabled={isListLoading}
-          className="inline-flex items-center gap-2 px-4.5 py-3 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-xs font-mono font-semibold text-gray-300 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          // [UBAH]: Mengganti py-3 menjadi h-12 dan merapikan padding agar simetris
+          className="inline-flex items-center gap-2 px-5 h-12 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-xs font-mono font-semibold text-gray-300 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
           title="Segarkan data"
         >
           <RefreshCw
