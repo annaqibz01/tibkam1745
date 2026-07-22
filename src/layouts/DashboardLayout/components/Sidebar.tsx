@@ -21,6 +21,7 @@ import {
   Database,
   Sparkles,
   CalendarDays,
+  FileText,
   type LucideIcon,
 } from "lucide-react";
 
@@ -81,6 +82,12 @@ const Sidebar = () => {
       title: "Layanan Rambut",
       path: "/rambut",
       icon: Scissors,
+      allowedRoles: ["admin", "rambut"],
+    },
+    {
+      title: "Laporan Rambut",
+      path: "/laporan/rambut",
+      icon: FileText,
       allowedRoles: ["admin", "rambut"],
     },
     {

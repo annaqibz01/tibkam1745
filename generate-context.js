@@ -3,13 +3,13 @@ import path from 'path';
 
 const OUTPUT_FILE = 'context.txt';
 const IGNORED_DIRS = new Set([
-  'node_modules', '.git', '.vscode', 'build', 'dist', '.next', 'coverage'
+  'node_modules', '.git', '.vscode', 'build', 'dist', '.next', 'coverage', 'target', 'src-tauri'
 ]);
 const IGNORED_FILES = new Set([
-  OUTPUT_FILE, 'package-lock.json', 'yarn.lock', 'pnpm-lock.yaml', 'generate-context.js', 'generate-context.cjs', '.DS_Store'
+  OUTPUT_FILE, 'package-lock.json', 'cargo.lock', 'yarn.lock', 'pnpm-lock.yaml', 'generate-context.js', 'generate-context.cjs', '.DS_Store'
 ]);
 const VALID_EXTENSIONS = new Set([
-  '.js', '.jsx', '.ts', '.tsx', '.css', '.scss', '.json', '.html'
+  '.js', '.jsx', '.ts', '.tsx', '.css', '.scss', '.json', '.html', '.rs', '.toml'
 ]);
 
 function walkDir(dir, callback) {

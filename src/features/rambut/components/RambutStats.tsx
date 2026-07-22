@@ -32,7 +32,7 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
       dotColor: "bg-indigo-400",
     },
     {
-      title: "Sudah Perapian",
+      title: "Sudah Setor",
       value: stats.sudah,
       sub: `${percentSudah}% Tuntas terverifikasi`,
       icon: CheckCircle2,
@@ -72,11 +72,22 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
         {Array.from({ length: 4 }).map((_, idx) => (
           <div
             key={`stat-skeleton-${idx}`}
-            className="rounded-3xl border border-gray-800/80 bg-gray-900/60 p-5 md:p-6 animate-pulse space-y-3"
+            className="rounded-3xl border border-gray-800/80 bg-gray-900/60 p-5 md:p-6 animate-pulse flex flex-col justify-between"
           >
-            <div className="h-3 w-28 rounded-lg bg-gray-800" />
-            <div className="h-8 w-20 rounded-xl bg-gray-800" />
-            <div className="h-3 w-32 rounded bg-gray-800/60" />
+            {/* Top Section: Title, Value & Placeholder Icon Box */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="space-y-2">
+                <div className="h-3 w-28 rounded-lg bg-gray-800" />
+                <div className="h-9 w-24 rounded-xl bg-gray-800" />
+              </div>
+              <div className="w-11 h-11 rounded-2xl bg-gray-800/80 flex-shrink-0" />
+            </div>
+
+            {/* Bottom Section: Border + Subtext Placeholder */}
+            <div className="mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
+              <div className="h-3 w-36 rounded bg-gray-800/60" />
+            </div>
           </div>
         ))}
       </div>

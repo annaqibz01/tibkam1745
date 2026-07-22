@@ -5,7 +5,26 @@ import { parsePocketBaseError } from '@/utils/errorHandler';
 import type { 
   KalenderHijriyahResponse, 
   KalenderHijriyahBulanHijriNamaOptions 
-} from '../../../types/pocketbase-types';
+} from '@/types/pocketbase-types';
+
+/**
+ * 💡 HELPER ASYNC: Bisa dipanggil langsung di fungsi event handler / onClick (non-hook)
+ */
+export async function fetchHijriByDate(dateInput?: string | Date | null): Promise<KalenderHijriyahResponse | null> {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  try {
+    return await pb.collection('kalender_hijriyah').getFirstListItem<KalenderHijriyahResponse>(
+      `tanggal_masehi >= "${dateStr} 00:00:00" && tanggal_masehi <= "${dateStr} 23:59:59"`
+    );
+  } catch {
+    return null;
+  }
+}
 
 export function useTodayHijri() {
   const today = new Date();
@@ -47,16 +66,7 @@ export function useHijriByDate(dateInput?: string | Date | null) {
 
   return useQuery<KalenderHijriyahResponse | null>({
     queryKey: ['kalender-hijriyah-by-date', dateStr],
-    queryFn: async () => {
-      if (!dateStr) return null;
-      try {
-        return await pb.collection('kalender_hijriyah').getFirstListItem<KalenderHijriyahResponse>(
-          `tanggal_masehi >= "${dateStr} 00:00:00" && tanggal_masehi <= "${dateStr} 23:59:59"`
-        );
-      } catch {
-        return null;
-      }
-    },
+    queryFn: () => fetchHijriByDate(validDate), // Menggunakan helper di atas
     enabled: !!dateStr,
     staleTime: 1000 * 60 * 60 * 24,
   });
@@ -171,7 +181,7 @@ export function useAdminKalender() {
           await batch.send();
           return diffDays;
         } catch (error) {
-          throw new Error(parsePocketBaseError(error)); // Menggunakan util terpusat
+          throw new Error(parsePocketBaseError(error));
         }
       },
       onSuccess: () => {

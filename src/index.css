@@ -1,55 +1,50 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   ✨ LUXURY DARK UI, SELECTION & CUSTOM SCROLLBAR ENGINE
+   ✨ LUXURY DARK UI - NATIVE APP CLEAN LAYOUT
    ========================================================================== */
 
-/* 🔮 Smooth Scrolling & Global Dark System Defaults */
-html {
-  scroll-behavior: smooth;
+/* 🔮 System Defaults */
+html, body {
   color-scheme: dark;
   -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  background-color: #090a0f; /* Samakan dengan warna background tergelap UI kamu */
 }
 
-/* 🎨 Luxury Text Selection Highlight (Indiglow Accent) */
-::selection {
-  background-color: rgba(99, 102, 241, 0.3); /* indigo-500/30 */
-  color: #e0e7ff; /* indigo-100 */
-  text-shadow: 0 0 10px rgba(99, 102, 241, 0.5);
+/* 🔒 Lock selection global untuk feel Native App */
+body {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
 }
 
-/* --- Firefox Scrollbar Support --- */
+/* --- Firefox Scrollbar --- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(75, 85, 99, 0.5) transparent;
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
 }
 
 /* --- Webkit Browsers (Chrome, Edge, Safari, Opera) --- */
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 
+/* Track transparan penuh agar tidak menyisakan kolom hitam mati */
 ::-webkit-scrollbar-track {
   background: transparent;
-  border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(75, 85, 99, 0.4); /* Soft Alpha Dark Gray */
+  background: rgba(255, 255, 255, 0.12);
   border-radius: 9999px;
-  border: 2px solid transparent;
-  background-clip: padding-box;
-  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* ✨ Interactive Hover State: Indigo Glossy Glow */
+/* ✨ Interactive Hover State: Indigo Glow */
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.75); /* Vibrant Indigo Glow */
-  border-radius: 9999px;
-  border: 1px solid rgba(129, 140, 248, 0.4);
-  background-clip: padding-box;
-  box-shadow: 0 0 12px rgba(99, 102, 241, 0.6);
+  background: rgba(99, 102, 241, 0.8);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
 }
 
 /* ⚡ Active Dragging State */
@@ -57,25 +52,23 @@ html {
   background: rgba(129, 140, 248, 0.95);
 }
 
-/* 🛡️ Prevent White Square on Corner Intersections (Scroll Horizontal + Vertikal) */
+/* 🛡️ Prevent White Square on Corner Intersections */
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
 /* ==========================================================================
-   🛠️ UTILITY CLASSES (FOR SIDEBAR, TABLES & MODALS)
+   🛠️ UTILITY CLASSES
    ========================================================================== */
 
-/* 1. Hide Scrollbar completely while keeping scroll functionality */
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 .no-scrollbar {
-  -ms-overflow-style: none; /* IE and Edge */
-  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }
 
-/* 2. Ultra-Sleek Micro Scrollbar (Cocok untuk Sidebar / Dropdown) */
 .scrollbar-mini::-webkit-scrollbar {
   width: 4px;
   height: 4px;
@@ -85,4 +78,11 @@ html {
 }
 .scrollbar-mini::-webkit-scrollbar-thumb:hover {
   background: rgba(99, 102, 241, 0.8);
+}
+
+@layer utilities {
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
 }

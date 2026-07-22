@@ -1,12 +1,11 @@
 // src/components/rambut/ManagePeriodeModal.tsx
 import React, { useState } from "react";
-import { BaseModal } from "../../../components/shared/BaseModal";
-import { formatHijriDate } from "../hooks/useRambut";
-import { HijriText } from "../../../components/shared/HijriText";
+import { BaseModal } from "@/components/shared/BaseModal";
+import { HijriText } from "@/components/shared/HijriText";
 import type {
   PeriodeRambutResponse,
   PeriodeRambutStatusPeriodeOptions,
-} from "../../../types/pocketbase-types";
+} from "@/types/pocketbase-types";
 import {
   Calendar,
   CheckCircle2,
@@ -20,6 +19,7 @@ import {
   Trash2,
   AlertTriangle,
   Moon,
+  PlusCircle,
 } from "lucide-react";
 
 interface ManagePeriodeModalProps {
@@ -97,7 +97,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         icon={<CalendarDays className="w-5 h-5 text-indigo-400" />}
         maxWidth="max-w-4xl"
       >
-        <div className="space-y-4 pt-1 select-none flex flex-col min-h-0">
+        {/* ✨ Ditambahkan px-6 pb-6 pt-2 agar isi modal tidak mepet ke pinggir */}
+        <div className="space-y-4 px-6 pb-6 pt-2 select-none flex flex-col min-h-0">
           {/* TOP TOOLBAR */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
             <div className="text-xs font-mono text-gray-400 leading-relaxed">
@@ -105,14 +106,15 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
             </div>
             <button
               type="button"
+              disabled={isUpdatingStatus || isDeletingPeriode}
               onClick={() => {
                 onClose();
                 onOpenCreateModal();
               }}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-xs font-mono font-bold shadow-md transition-all active:scale-95 border border-indigo-400/30 shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-mono font-bold shadow-md transition-all active:scale-95 border border-indigo-400/30 shrink-0"
             >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span>+ Buat Periode Baru</span>
+              <PlusCircle className="w-4 h-4 text-indigo-100" />
+              <span>Buat Periode Baru</span>
             </button>
           </div>
 
@@ -124,7 +126,6 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                   <tr className="bg-gray-950 border-b border-gray-800 text-gray-400 text-[10px] uppercase sticky top-0 z-20 backdrop-blur-md">
                     <th className="px-4 py-3 w-12 text-center bg-gray-950">#</th>
                     <th className="px-4 py-3 min-w-[170px] bg-gray-950">Nama Periode</th>
-                    {/* 🌙 HEADER DIUBAH MENJADI RENTANG HIJRIYAH */}
                     <th className="px-4 py-3 min-w-[210px] text-center bg-gray-950">Rentang Hijriyah</th>
                     <th className="px-4 py-3 w-28 text-center bg-gray-950">Status</th>
                     <th className="px-4 py-3 w-56 text-center bg-gray-950">Aksi & Kontrol</th>
@@ -134,11 +135,21 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                   {isLoading ? (
                     Array.from({ length: 4 }).map((_, idx) => (
                       <tr key={`skel-per-${idx}`} className="animate-pulse">
-                        {Array.from({ length: 5 }).map((_, cellIdx) => (
-                          <td key={cellIdx} className="px-4 py-3">
-                            <div className="h-4 bg-gray-800/60 rounded w-20 mx-auto" />
-                          </td>
-                        ))}
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="h-3.5 bg-gray-800/60 rounded w-4 mx-auto" />
+                        </td>
+                        <td className="px-4 py-3.5">
+                          <div className="h-3.5 bg-gray-800/60 rounded w-32" />
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="h-5 bg-gray-800/60 rounded-lg w-44 mx-auto" />
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="h-5 bg-gray-800/60 rounded-full w-16 mx-auto" />
+                        </td>
+                        <td className="px-4 py-3.5 text-center">
+                          <div className="h-6 bg-gray-800/60 rounded-xl w-36 mx-auto" />
+                        </td>
                       </tr>
                     ))
                   ) : periodeList.length === 0 ? (
@@ -152,7 +163,6 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                       const isBeingInspected = selectedPeriodeId === p.id;
                       const isAktif = p.status_periode === "aktif";
                       const isSelesai = p.status_periode === "selesai";
-
 
                       return (
                         <tr
@@ -195,8 +205,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => onSelectPeriode(p)}
-                                disabled={isBeingInspected}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all ${
+                                disabled={isBeingInspected || isUpdatingStatus || isDeletingPeriode}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                   isBeingInspected
                                     ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
                                     : "bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-indigo-500/40 active:scale-95"
@@ -212,8 +222,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onUpdateStatus(p.id, "aktif")}
-                                  disabled={isUpdatingStatus}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40"
+                                  disabled={isUpdatingStatus || isDeletingPeriode}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                                   title="Jadikan sebagai Periode Aktif Utama"
                                 >
                                   {isUpdatingStatus ? (
@@ -230,8 +240,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                                 <button
                                   type="button"
                                   onClick={() => onUpdateStatus(p.id, "selesai")}
-                                  disabled={isUpdatingStatus}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40"
+                                  disabled={isUpdatingStatus || isDeletingPeriode}
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
                                   title="Tutup & Selesaikan Periode Ini"
                                 >
                                   {isUpdatingStatus ? (
@@ -247,8 +257,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                               <button
                                 type="button"
                                 onClick={() => setPeriodeToDelete(p)}
-                                disabled={isDeletingPeriode}
-                                className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-90 disabled:opacity-40"
+                                disabled={isDeletingPeriode || isUpdatingStatus}
+                                className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
                                 title="Hapus Periode Ini"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -269,7 +279,8 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 rounded-2xl border border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800 text-xs font-mono font-semibold transition-all active:scale-95"
+              disabled={isUpdatingStatus || isDeletingPeriode}
+              className="px-4 py-2 rounded-2xl border border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800 text-xs font-mono font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Tutup
             </button>
@@ -280,12 +291,15 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
       {/* 🚨 POP-UP PERINGATAN KONFIRMASI HAPUS PERIODE */}
       <BaseModal
         isOpen={!!periodeToDelete}
-        onClose={() => setPeriodeToDelete(null)}
+        onClose={() => {
+          if (!isDeletingPeriode) setPeriodeToDelete(null);
+        }}
         title="Konfirmasi Hapus Periode"
         icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 pt-1 text-center font-mono select-none">
+        {/* ✨ Ditambahkan px-6 pb-6 pt-2 pada modal konfirmasi */}
+        <div className="space-y-4 px-6 pb-6 pt-2 text-center font-mono select-none">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
             <Trash2 className="w-6 h-6" />
           </div>
@@ -295,15 +309,16 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
               Hapus Periode "{periodeToDelete?.nama_periode}"?
             </h4>
             <p className="text-xs text-rose-300/90 leading-relaxed bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20">
-              ⚠️ Peringatan: Tindakan ini akan **menghapus secara permanen** seluruh data antrean wajib setor di dalamnya!
+              ⚠️ Peringatan: Tindakan ini akan <strong>menghapus secara permanen</strong> seluruh data antrean wajib setor di dalamnya!
             </p>
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
             <button
               type="button"
+              disabled={isDeletingPeriode}
               onClick={() => setPeriodeToDelete(null)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all"
+              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Batal
             </button>
@@ -311,7 +326,7 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
               type="button"
               onClick={handleConfirmDelete}
               disabled={isDeletingPeriode}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-600/20 active:scale-95 transition-all disabled:opacity-50"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-600/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isDeletingPeriode ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />

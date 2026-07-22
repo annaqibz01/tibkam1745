@@ -63,7 +63,7 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
                 {santriData?.nama || "Santri"}
               </p>
               <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.tingkatan || "-"} / Kelas {santriData?.kelas || "-"}
+                {santriData?.kelas || "-"}  {santriData?.tingkatan || "-"}
               </p>
             </div>
           </div>
@@ -78,7 +78,7 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
             type="text"
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
-            placeholder="Contoh: Sakit di RS / Tugas Luar / Sanksi Gundul"
+            placeholder="Contoh: Sakit Atau Pulang"
             className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
             required
           />

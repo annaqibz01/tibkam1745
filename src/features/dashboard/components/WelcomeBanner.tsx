@@ -46,7 +46,7 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
   const motivationalText =
     user.role === 'admin'
       ? 'Kelola sistem, pantau performa, dan kendalikan seluruh layanan.'
-      : 'Akselerasi hari Anda dengan ekosistem layanan terpadu.';
+      : 'Dashboard Layanan terpadu Tibkam1745';
 
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">

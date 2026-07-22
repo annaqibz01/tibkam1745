@@ -10,7 +10,10 @@ const IGNORE_LIST = [
   '.env',
   'package-lock.json',
   'directory-tree.txt',
-  'generate-tree.js'
+  'generate-tree.js',
+  'target',
+  'gen',
+  'icons'
 ];
 
 function generateTree(dir, prefix = '') {

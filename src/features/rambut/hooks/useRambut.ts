@@ -1,4 +1,4 @@
-// src/hooks/useRambut.ts
+// src/features/rambut/hooks/useRambut.ts
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
 import { pb } from "@/lib/pocketbase";
 import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
@@ -12,7 +12,7 @@ import type {
   PeriodeRambutStatusPeriodeOptions,
   WajibSetorRambutKategoriWajibOptions,
   WajibSetorRambutStatusSetorOptions,
-} from "../../../types/pocketbase-types";
+} from "@/types/pocketbase-types";
 
 export const formatHijriDate = (dateInput?: string | Date | null): string => {
   if (!dateInput) return "-";
@@ -152,13 +152,16 @@ export function useRambut() {
           const periode = await pb.collection("periode_rambut").getOne<PeriodeRambutResponse>(periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
+          // 🎯 FILTER DIPERBARUI: Hanya ambil santri aktif dengan status_domisili PPS (Bukan LPPS)
           const masterSantri = await pb.collection("master").getFullList<MasterResponse>({
-            filter: 'status_aktif = true && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
+            filter: 'status_aktif = true && status_domisili = "PPS" && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
             batch: 500,
           });
 
-          const pengurusList = await pb.collection("pengurus_santri").getFullList<PengurusSantriResponse>({
+          // 🎯 PENGURUS: Expand relasi santri untuk verifikasi status domisili PPS
+          const pengurusList = await pb.collection("pengurus_santri").getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
             filter: "status_aktif = true",
+            expand: "santri",
             batch: 500,
           });
 
@@ -167,6 +170,10 @@ export function useRambut() {
           for (const s of masterSantri) {
             const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
             if (!cleanIdPps) continue;
+
+            // 🛡️ Double Check Status Domisili PPS
+            const statusDomisili = (s.status_domisili || "").toString().trim().toUpperCase();
+            if (statusDomisili !== "PPS") continue;
 
             const lowerTingkatan = (s.tingkatan || "").toLowerCase();
             let kategori: WajibSetorRambutKategoriWajibOptions = "aliyah";
@@ -179,6 +186,11 @@ export function useRambut() {
           for (const p of pengurusList) {
             const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
             if (!cleanIdPps) continue;
+
+            // 🛡️ Pengurus yang berstatus domisili LPPS dilewati
+            const santriDomisili = (p.expand?.santri?.status_domisili || "").toString().trim().toUpperCase();
+            if (santriDomisili && santriDomisili !== "PPS") continue;
+
             if (!targetEligibleMap.has(cleanIdPps)) {
               targetEligibleMap.set(cleanIdPps, { santriId: p.santri, kategori: "pengurus_petugas" });
             }

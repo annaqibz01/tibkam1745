@@ -1,4 +1,4 @@
-// src/hooks/useRambutPage.ts
+// src/features/rambut/hooks/useRambutPage.ts
 import React, { useState, useMemo, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { pb } from "@/lib/pocketbase";
@@ -295,14 +295,34 @@ export function useRambutPage() {
 
   const handleConfirmGenerateQueue = () => {
     if (!currentPeriodeId) return;
+
+    // ✨ Cek apakah antrean sudah ada atau masih kosong sebelum mutasi
+    const hasExistingQueue = stats.total > 0;
+
     setActiveModal(null);
     generateQueueMutation.mutate(currentPeriodeId, {
       onSuccess: (res: any) => {
-        const msg = res.addedCount > 0 ? `+${res.addedCount} baru` : "Sudah sinkron";
-        showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
+        const addedCount = res?.addedCount ?? 0;
+
+        if (hasExistingQueue) {
+          // Toast untuk Smart Sync (Antrean Sudah Ada)
+          const msg = addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
+          showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
+        } else {
+          // Toast untuk Generate Awal (Antrean Masih Kosong)
+          showSuccess(
+            `Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`,
+            "Generate Antrean Berhasil"
+          );
+        }
+
         refetchQueue();
       },
-      onError: (err) => showError(err.message, "Gagal Sync Antrean"),
+      onError: (err) =>
+        showError(
+          err.message,
+          hasExistingQueue ? "Gagal Sync Antrean" : "Gagal Generate Antrean"
+        ),
     });
   };
 

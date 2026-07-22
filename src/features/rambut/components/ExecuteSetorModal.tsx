@@ -60,7 +60,7 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
                 {santriData?.nama || "Santri"}
               </p>
               <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.tingkatan || "-"} / Kelas {santriData?.kelas || "-"}
+                {santriData?.kelas || "-"} {santriData?.tingkatan || "-"}
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
             type="text"
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
-            placeholder="Contoh: Rapi standar / Cukur ulang jam 2"
+            placeholder=""
             className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
           />
         </div>

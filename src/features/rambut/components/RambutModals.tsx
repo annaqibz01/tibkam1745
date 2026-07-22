@@ -8,12 +8,13 @@ import { ManagePengurusModal } from "./ManagePengurusModal";
 import { DispensasiModal } from "./DispensasiModal";
 import { RapidScanPosModal } from "./RapidScanPosModal";
 import { ImportPengurusModal } from "./ImportPengurusModal";
-import { RefreshCw, Loader2, Trash2, User, Zap } from "lucide-react";
+import { RefreshCw, Loader2, Trash2, User, Wand2, Sparkles } from "lucide-react";
 import type { useRambutPage } from "../hooks/useRambutPage";
 
 type RambutModalsProps = ReturnType<typeof useRambutPage>;
 
 export const RambutModals: React.FC<RambutModalsProps> = (p) => {
+  // ✨ Pengecekan hasQueue lebih akurat berdasarkan total antrean statistik saat ini
   const hasQueue = p.stats.total > 0;
   const currentPeriodeNama = p.selectedPeriode?.nama_periode || p.activePeriode?.nama_periode || "Periode Aktif";
 
@@ -86,7 +87,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         maxWidth="max-w-md"
       >
         {p.selectedDeletePengurus && (
-          <div className="space-y-4 pt-1 select-none font-mono">
+          <div className="space-y-4 px-6 pb-6 pt-2 select-none font-mono">
             <div className="p-4 rounded-2xl bg-gray-950/70 border border-rose-500/30 space-y-2.5">
               <div className="flex items-center justify-between border-b border-gray-800 pb-2">
                 <span className="text-[10px] text-gray-400 uppercase">ID PPS Pengurus</span>
@@ -119,7 +120,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                 type="button"
                 onClick={() => p.setSelectedDeletePengurus(null)}
                 disabled={p.isDeletingPengurus}
-                className="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold"
+                className="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 Batal
               </button>
@@ -127,7 +128,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                 type="button"
                 onClick={p.handleConfirmDeletePengurus}
                 disabled={p.isDeletingPengurus}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl border border-rose-400/30"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl border border-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
               >
                 {p.isDeletingPengurus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Ya, Hapus Pengurus</span>
@@ -140,14 +141,33 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
       {/* POP-UP GENERATE ATAU SMART SYNC */}
       <BaseModal
         isOpen={p.activeModal === "CONFIRM_GENERATE"}
-        onClose={() => p.setActiveModal(null)}
+        onClose={() => !p.isGeneratePending && p.setActiveModal(null)}
         title={hasQueue ? "Smart Sync Rekonsiliasi Antrean" : "Generate Antrean Periode"}
-        icon={hasQueue ? <RefreshCw className="w-5 h-5 text-purple-400" /> : <Zap className="w-5 h-5 text-amber-300" />}
+        icon={
+          hasQueue ? (
+            <RefreshCw className="w-5 h-5 text-purple-400" />
+          ) : (
+            /* ✨ Ikon Wand2 melambangkan Fitur Generate Otomatis */
+            <Wand2 className="w-5 h-5 text-amber-400" />
+          )
+        }
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 pt-1 text-center font-mono select-none">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-purple-400 flex items-center justify-center mx-auto shadow-inner">
-            {hasQueue ? <RefreshCw className="w-6 h-6 animate-spin" /> : <Zap className="w-6 h-6 text-amber-300 animate-bounce" />}
+        <div className="space-y-4 px-6 pb-6 pt-2 text-center font-mono select-none">
+          {/* Box Ikon Header */}
+          <div
+            className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
+              hasQueue
+                ? "bg-purple-500/10 border border-purple-500/20 text-purple-400"
+                : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+            }`}
+          >
+            {hasQueue ? (
+              <RefreshCw className="w-6 h-6 animate-spin" />
+            ) : (
+              /* ✨ Ikon Wand2 dengan Efek Pulse untuk Mode Generate */
+              <Wand2 className="w-6 h-6 text-amber-300 animate-pulse" />
+            )}
           </div>
 
           <div className="space-y-2">
@@ -161,11 +181,12 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                   Sistem akan melakukan rekonsiliasi data:
                   <br /><br />
                   • <strong className="text-emerald-400">Data Baru:</strong> Otomatis ditambahkan.<br />
+                  • <strong className="text-red-400">Petugas di copot:</strong> Otomatis dihapus.<br />
                   • <strong className="text-indigo-300">Data Lama:</strong> <u className="underline">Tetap utuh</u>.
                 </>
               ) : (
                 <>
-                  Sistem akan memindai seluruh santri aktif (Aliyah, Kuliah Syariah) dan Pengurus/Petugas untuk membuat daftar antrean awal periode <strong>{currentPeriodeNama}</strong>.
+                  Sistem akan memindai seluruh santri aktif yang berdomisili pps (Aliyah, Kuliah Syariah) dan Pengurus/Petugas untuk membuat daftar antrean awal periode <strong>{currentPeriodeNama}</strong>.
                 </>
               )}
             </p>
@@ -174,8 +195,9 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
             <button
               type="button"
+              disabled={p.isGeneratePending}
               onClick={() => p.setActiveModal(null)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300"
+              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
             >
               Batal
             </button>
@@ -183,14 +205,19 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
               type="button"
               onClick={p.handleConfirmGenerateQueue}
               disabled={p.isGeneratePending}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-semibold rounded-xl shadow-lg active:scale-95 transition-all"
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all ${
+                hasQueue
+                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/20"
+                  : "bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 shadow-amber-600/20"
+              }`}
             >
               {p.isGeneratePending ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
               ) : hasQueue ? (
                 <RefreshCw className="w-3.5 h-3.5" />
               ) : (
-                <Zap className="w-3.5 h-3.5 text-amber-300" />
+                /* ✨ Ikon Sparkles pada tombol Generate */
+                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
               )}
               <span>{hasQueue ? "Jalankan Smart Sync" : "Proses Generate"}</span>
             </button>
