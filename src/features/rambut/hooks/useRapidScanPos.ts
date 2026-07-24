@@ -63,17 +63,23 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
     return () => clearInterval(interval);
   }, []);
 
+  // 🎯 PERBAIKAN: Beri delay singkat agar React selesai merender status `disabled={false}` 
+  // lalu fokuskan kursor dan seleksi seluruh isi teks.
   const focusInput = useCallback(() => {
-    if (inputRef.current) {
-      inputRef.current.focus();
-    }
+    setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+        inputRef.current.select(); // 👈 Menyeleksi seluruh isi input agar scan berikutnya langsung menimpa
+      }
+    }, 50);
   }, []);
 
+  // 🎯 PERBAIKAN: Memicu fokus & seleksi otomatis setiap kali modal dibuka ATAU setelah proses scan selesai (isProcessing = false)
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && !isProcessing) {
       focusInput();
     }
-  }, [isOpen, focusInput]);
+  }, [isOpen, isProcessing, focusInput]);
 
   const handleProcessScan = async (codeToProcess: string) => {
     const queryCode = codeToProcess.trim();
@@ -193,7 +199,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         ...prev.slice(0, 9),
       ]);
 
-      queryClient.invalidateQueries({queryKey: ["rambut-wajib-setor-list-full"],});
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
@@ -208,7 +214,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (enableSound) playAudioFeedback("error");
     } finally {
       setIsProcessing(false);
-      focusInput();
+      focusInput(); // Memicu seleksi teks & fokus ulang setelah proses selesai
     }
   };
 

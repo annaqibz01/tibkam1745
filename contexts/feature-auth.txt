@@ -1,0 +1,412 @@
+# CONTEXT: FEATURE-AUTH
+
+## Included Files:
+- `src/features/auth/components/ProtectedRoute.tsx`
+- `src/features/auth/hooks/useAuth.ts`
+- `src/features/auth/index.ts`
+- `src/features/auth/pages/Login.tsx`
+
+---
+
+### `src/features/auth/components/ProtectedRoute.tsx`
+```tsx
+import { Navigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { Loader2 } from 'lucide-react';
+
+interface ProtectedRouteProps {
+  children: React.ReactNode;
+}
+
+export function ProtectedRoute({ children }: ProtectedRouteProps) {
+  const { user, isValid, isLoading } = useAuth();
+  const location = useLocation();
+
+  // Loading state
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white">
+        <div className="flex flex-col items-center gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
+          <p className="text-gray-400">Memverifikasi sesi...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Not authenticated
+  if (!isValid || !user) {
+    return (
+      <Navigate
+        to="/login"
+        state={{ from: location.pathname }}
+        replace
+      />
+    );
+  }
+
+  // Authenticated
+  return <>{children}</>;
+}
+```
+
+### `src/features/auth/hooks/useAuth.ts`
+```typescript
+// src/features/auth/hooks/useAuth.ts
+import { useEffect, useState, useCallback } from 'react';
+import { pb } from '@/lib/pocketbase';
+import { ClientResponseError } from 'pocketbase';// Atau 'pocketbase' sesuai import project Anda
+import type { UsersResponse } from '@/types/pocketbase-types';
+
+type AuthResult = { success: boolean; error?: string };
+
+// Fungsi penanganan error asinkron khusus untuk alur login
+async function extractLoginErrorMessage(error: unknown, username: string): Promise<string> {
+  if (error instanceof ClientResponseError) {
+    // 1. Jika server mati atau masalah jaringan
+    if (error.status === 0) {
+      return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+    }
+
+    // 2. Jika kredensial salah (Username/Password tidak cocok)
+    if (error.status === 400) {
+      try {
+        // Cari data user secara anonim berdasarkan input username/email
+        // Pastikan API Rule "View" atau "List" koleksi users di PocketBase mengizinkan pencarian field 'role'
+        const userCheck = await pb.collection('users').getFirstListItem(
+          `username = "${username}" || email = "${username}"`,
+          { fields: 'role' } // Optimasi: Hanya ambil field role saja
+        );
+
+        // Kondisi pesan error berdasarkan tingkat hierarki role
+        if (userCheck.role === 'super_admin' || userCheck.role === 'superadmin') {
+          return 'Password salah. Jika Anda lupa password Utama, silakan hubungi Tim Pengembang Sistem.';
+        }
+
+        if (userCheck.role === 'admin') {
+          return 'Password salah. Jika Anda lupa password Admin, silakan hubungi Super Admin.';
+        }
+
+        // Default untuk user biasa
+        return 'Username atau password salah. Jika Anda lupa, silakan hubungi Admin.';
+      } catch {
+        // Fallback jika username memang tidak terdaftar atau API Rule PocketBase dikunci total
+        return 'Username atau password salah. Jika Anda lupa kredensial, silakan hubungi Admin.';
+      }
+    }
+
+    return error.response?.message || error.message || 'Gagal masuk ke sistem.';
+  }
+
+  if (error instanceof Error) return error.message;
+  return 'Terjadi kesalahan pada sistem.';
+}
+
+// Fungsi penanganan error umum (untuk sync & refresh session)
+function extractGeneralErrorMessage(error: unknown): string {
+  if (error instanceof ClientResponseError) {
+    if (error.status === 0) return 'Koneksi ke server terputus.';
+    return error.message;
+  }
+  return 'Sesi tidak valid.';
+}
+
+export function useAuth() {
+  const [user, setUser] = useState<UsersResponse | null>(pb.authStore.model as UsersResponse | null);
+  const [isValid, setIsValid] = useState<boolean>(pb.authStore.isValid);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  const syncAuthState = useCallback(() => {
+    const model = pb.authStore.model as UsersResponse | null;
+    if (model && model.status === false) {
+      pb.authStore.clear();
+    } else {
+      setUser(model);
+      setIsValid(pb.authStore.isValid);
+    }
+  }, []);
+
+  const validateSession = useCallback(async () => {
+    if (!pb.authStore.isValid) {
+      syncAuthState();
+      setIsLoading(false);
+      return;
+    }
+
+    try {
+      const refreshData = await pb.collection('users').authRefresh();
+      if (refreshData.record && (refreshData.record as unknown as UsersResponse).status === false) {
+        console.warn('Sesi dibatalkan otomatis karena akun dinonaktifkan.');
+        pb.authStore.clear();
+      }
+    } catch (error) {
+      console.warn('Session refresh failed:', extractGeneralErrorMessage(error));
+      pb.authStore.clear();
+    } finally {
+      setIsLoading(false);
+    }
+  }, [syncAuthState]);
+
+  useEffect(() => {
+    const unsubscribe = pb.authStore.onChange((_token, model) => {
+      const userModel = model as UsersResponse | null;
+      if (userModel && userModel.status === false) {
+        pb.authStore.clear();
+        setUser(null);
+        setIsValid(false);
+        return;
+      }
+      setUser(userModel);
+      setIsValid(pb.authStore.isValid);
+    });
+
+    validateSession();
+
+    return () => {
+      unsubscribe();
+    };
+  }, [validateSession]);
+
+  const login = useCallback(async (username: string, password: string): Promise<AuthResult> => {
+    setIsLoading(true);
+    try {
+      const authData = await pb.collection('users').authWithPassword(username, password);
+      const userModel = authData.record as unknown as UsersResponse;
+
+      if (userModel && userModel.status === false) {
+        pb.authStore.clear();
+        return {
+          success: false,
+          error: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator sistem.'
+        };
+      }
+
+      return { success: true };
+    } catch (error) {
+      // Menggunakan penanganan error kustom yang dinamis berdasarkan input username
+      const dynamicError = await extractLoginErrorMessage(error, username);
+      return { success: false, error: dynamicError };
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const logout = useCallback((): void => {
+    pb.authStore.clear();
+  }, []);
+
+  return {
+    user,
+    isValid,
+    isLoading,
+    login,
+    logout,
+  };
+}
+```
+
+### `src/features/auth/index.ts`
+```typescript
+// 🚪 Public API Gerbang Modul Auth
+export { default as LoginPage } from "./pages/Login";
+export { ProtectedRoute } from "./components/ProtectedRoute";
+export { useAuth } from "./hooks/useAuth";
+```
+
+### `src/features/auth/pages/Login.tsx`
+```tsx
+// src/pages/Login.tsx
+import { useState, useEffect, type FormEvent } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  User,
+  Lock,
+  Loader2,
+  ArrowRight,
+  Eye,
+  EyeOff,
+  ShieldCheck,
+} from "lucide-react";
+import { useAuth } from "../hooks/useAuth";
+import NotificationToast, {
+  type ToastMessage,
+} from "@/components/shared/NotificationToast";
+
+const Login = () => {
+  // --- Router ---
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  // --- Auth Hook ---
+  const { login, isLoading, isValid } = useAuth();
+
+  // --- Form State ---
+  const [username, setUsername] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  // --- Derive redirect destination ---
+  const from = (location.state as { from?: string })?.from || "/dashboard";
+
+  // --- Auto-redirect if already authenticated ---
+  useEffect(() => {
+    if (isValid) {
+      navigate(from, { replace: true });
+    }
+  }, [isValid, navigate, from]);
+
+  // --- Submit Handler ---
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setToast(null);
+
+    const res = await login(username, password);
+
+    if (res.success) {
+      navigate(from, { replace: true });
+    } else {
+      setToast({
+        title: "Otentikasi Gagal",
+        message:
+          res.error ?? "Terjadi kesalahan kredensial. Silakan coba lagi.",
+        type: "error",
+      });
+    }
+  };
+
+  return (
+    <div className="relative min-h-screen w-full flex items-center justify-center bg-gray-950 p-4 sm:p-6 overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
+      {/* 🛡️ Floating Notification Toast */}
+      <NotificationToast toast={toast} onClose={() => setToast(null)} />
+
+      {/* 🔮 Ambient Glow Mesh Background */}
+      <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />
+
+      {/* 🚀 Glassmorphic Card Container */}
+      <div className="relative w-full max-w-md z-10">
+        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-6 sm:p-8 shadow-2xl backdrop-blur-2xl transition-all duration-300">
+          {/* 🔮 Garis Aksen Top Highlight */}
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent" />
+
+          {/* Header Branding */}
+          <div className="text-center mb-6 flex flex-col items-center justify-center">
+            {/* 🎯 Logo SVG Diperbesar (w-56 h-56) & Diberi Negative Margin untuk Memotong Spasi Kosong */}
+            <div className="inline-flex items-center justify-center -mb-6">
+              <img
+                src="/logo_tibkam_1745.svg"
+                alt="Logo TIBKAM 1745"
+                draggable="false"
+                className="w-60 h-50 object-contain"
+                loading="eager"
+                select-none
+              />
+            </div>
+
+            <p className="select-none text-sm font-mono text-gray-400 tracking-wide">
+              Portal Otentikasi & Sistem Terpadu
+            </p>
+          </div>
+
+          {/* Form Login */}
+          <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+            {/* Field Username */}
+            <div>
+              <label
+                htmlFor="username"
+                className="select-none block text-xs font-mono font-medium text-gray-300 mb-1.5"
+              >
+                Username
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                  <User className="w-4 h-4" />
+                </div>
+                <input
+                  id="username"
+                  type="text"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Masukkan username"
+                  required
+                  autoComplete="username"
+                  className="w-full pl-11 pr-4 py-3 bg-gray-950/60 border border-gray-800/80 rounded-2xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-inner transition-all duration-200"
+                />
+              </div>
+            </div>
+
+            {/* Field Password dengan Fitur Toggle Eye */}
+            <div>
+              <label
+                htmlFor="password"
+                className="select-none block text-xs font-mono font-medium text-gray-300 mb-1.5"
+              >
+                Password
+              </label>
+              <div className="relative group">
+                <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+                  <Lock className="w-4 h-4" />
+                </div>
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                  autoComplete="current-password"
+                  className="w-full pl-11 pr-11 py-3 bg-gray-950/60 border border-gray-800/80 rounded-2xl text-white placeholder-gray-500 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-inner transition-all duration-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-gray-500 hover:text-gray-300 transition-colors"
+                  title={
+                    showPassword
+                      ? "Sembunyikan kata sandi"
+                      : "Tampilkan kata sandi"
+                  }
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-4 h-4" />
+                  ) : (
+                    <Eye className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
+            </div>
+
+            {/* 🎯 Tombol Submit Bergradien (Sudah Dihapus class pt-1 yang Merusak Posisi Center Vertikal) */}
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="group w-full flex items-center justify-center gap-2 py-3.5 px-5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-mono font-semibold text-xs rounded-2xl shadow-lg shadow-indigo-600/25 border border-indigo-400/30 transition-all duration-200 active:scale-95"
+            >
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span>Memverifikasi Sesi...</span>
+                </>
+              ) : (
+                <>
+                  <span>Masuk Sistem</span>
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform duration-200" />
+                </>
+              )}
+            </button>
+          </form>
+
+          {/* Footer Security Badge */}
+          <div className="select-none mt-6 pt-4 border-t border-gray-800/80 flex items-center justify-center gap-1.5 text-[11px] font-mono text-gray-500">
+            <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Sistem Otentikasi Enkripsi Terproteksi Active</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Login;
+```

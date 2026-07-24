@@ -1,0 +1,1328 @@
+# CONTEXT: FEATURE-KALENDER
+
+## Included Files:
+- `src/features/kalender/components/GenerateKalenderModal.tsx`
+- `src/features/kalender/components/KalenderGridPreview.tsx`
+- `src/features/kalender/components/KalenderHeader.tsx`
+- `src/features/kalender/components/KalenderPagination.tsx`
+- `src/features/kalender/components/KalenderTable.tsx`
+- `src/features/kalender/hooks/useKalenderHijriyah.ts`
+- `src/features/kalender/index.ts`
+- `src/features/kalender/pages/Kalender.tsx`
+
+---
+
+### `src/features/kalender/components/GenerateKalenderModal.tsx`
+```tsx
+// src/components/kalender/GenerateKalenderModal.tsx
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
+// ✨ Import dari CustomDatePicker (nama file asli di folder shared)
+import { CustomDatePickerMasehi } from "@/components/shared/CustomDatePickerMasehi";
+import { useAdminKalender, GenerateBulanPayload } from "../hooks/useKalenderHijriyah";
+import { useToast } from "../../../context/ToastContext";
+import { KalenderHijriyahBulanHijriNamaOptions } from "@/types/pocketbase-types";
+import {
+  CalendarDays,
+  Settings2,
+  Loader2,
+  ChevronDown,
+  Check,
+  Minus,
+  Plus,
+  Calendar,
+  AlertTriangle,
+  CheckCircle2,
+  Info,
+} from "lucide-react";
+
+interface GenerateKalenderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
+
+const BULAN_OPTIONS: { angka: number; nama: KalenderHijriyahBulanHijriNamaOptions }[] = [
+  { angka: 1, nama: "Muharram" },
+  { angka: 2, nama: "Safar" },
+  { angka: 3, nama: "Rabi'ul Awal" },
+  { angka: 4, nama: "Rabi'ul Akhir" },
+  { angka: 5, nama: "Jumadil Ula" },
+  { angka: 6, nama: "Jumadil Akhir" },
+  { angka: 7, nama: "Rajab" },
+  { angka: 8, nama: "Sya'ban" },
+  { angka: 9, nama: "Ramadhan" },
+  { angka: 10, nama: "Syawwal" },
+  { angka: 11, nama: "Dzulqa'dah" },
+  { angka: 12, nama: "Dzulhijjah" },
+];
+
+export const GenerateKalenderModal: React.FC<GenerateKalenderModalProps> = ({
+  isOpen,
+  onClose,
+}) => {
+  const { showSuccess, showError } = useToast();
+  const { useGenerateBulan, useLatestKalender } = useAdminKalender();
+
+  const { data: latestRecord } = useLatestKalender();
+
+  const [bulanSelect, setBulanSelect] = useState(BULAN_OPTIONS[0]);
+  const [tahun, setTahun] = useState<number>(1448);
+  const [tglAwal, setTglAwal] = useState("");
+  const [tglAkhir, setTglAkhir] = useState("");
+
+  const [isBulanDropdownOpen, setIsBulanDropdownOpen] = useState(false);
+  const bulanDropdownRef = useRef<HTMLDivElement>(null);
+
+  const generateMutation = useGenerateBulan();
+
+  // Auto-Suggest Bulan, Tahun, & Tanggal Awal saat modal dibuka
+  useEffect(() => {
+    if (isOpen) {
+      if (latestRecord) {
+        const lastMonthAngka = latestRecord.bulan_hijri_angka || 1;
+        const lastTahun = latestRecord.tahun_hijri || 1448;
+
+        const nextMonthAngka = lastMonthAngka === 12 ? 1 : lastMonthAngka + 1;
+        const nextTahun = lastMonthAngka === 12 ? lastTahun + 1 : lastTahun;
+        const nextBulanObj =
+          BULAN_OPTIONS.find((b) => b.angka === nextMonthAngka) || BULAN_OPTIONS[0];
+
+        setBulanSelect(nextBulanObj);
+        setTahun(nextTahun);
+
+        if (latestRecord.tanggal_masehi) {
+          const lastDate = new Date(latestRecord.tanggal_masehi);
+          lastDate.setDate(lastDate.getDate() + 1);
+
+          const yyyy = lastDate.getFullYear();
+          const mm = String(lastDate.getMonth() + 1).padStart(2, "0");
+          const dd = String(lastDate.getDate()).padStart(2, "0");
+          setTglAwal(`${yyyy}-${mm}-${dd}`);
+        } else {
+          setTglAwal("");
+        }
+      } else {
+        setBulanSelect(BULAN_OPTIONS[0]);
+        setTahun(1448);
+        setTglAwal("");
+      }
+      setTglAkhir("");
+      setIsBulanDropdownOpen(false);
+    }
+  }, [isOpen, latestRecord]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        bulanDropdownRef.current &&
+        !bulanDropdownRef.current.contains(event.target as Node)
+      ) {
+        setIsBulanDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Live Calculation Selisih Hari
+  const calculatedDays = useMemo(() => {
+    if (!tglAwal || !tglAkhir) return 0;
+    const start = new Date(tglAwal);
+    const end = new Date(tglAkhir);
+    start.setHours(12, 0, 0, 0);
+    end.setHours(12, 0, 0, 0);
+    const diffTime = end.getTime() - start.getTime();
+    if (diffTime < 0) return -1;
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+  }, [tglAwal, tglAkhir]);
+
+  const isValidDays = calculatedDays === 29 || calculatedDays === 30;
+
+  const handleGenerate = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!tglAwal || !tglAkhir || !tahun) {
+      showError("Mohon lengkapi semua isian titik jepit tanggal.");
+      return;
+    }
+
+    if (!isValidDays) {
+      showError("Jumlah hari harus 29 atau 30 hari!");
+      return;
+    }
+
+    const payload: GenerateBulanPayload = {
+      bulan_angka: bulanSelect.angka,
+      bulan_nama: bulanSelect.nama,
+      tahun: tahun,
+      tanggal_awal_masehi: tglAwal,
+      tanggal_akhir_masehi: tglAkhir,
+    };
+
+    generateMutation.mutate(payload, {
+      onSuccess: (totalHari) => {
+        showSuccess(
+          `Berhasil memetakan ${totalHari} hari untuk bulan ${payload.bulan_nama} ${payload.tahun} H!`,
+          "Mapping Sukses"
+        );
+      },
+      onError: (err: any) => {
+        showError(err.message || "Gagal menggenerate kalender.");
+      },
+      onSettled: () => {
+        onClose();
+      },
+    });
+  };
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Generate Kalender Hijriyah"
+      icon={<CalendarDays className="w-5 h-5 text-indigo-400" />}
+      maxWidth="max-w-md"
+    >
+      <form onSubmit={handleGenerate} className="space-y-4 pt-1">
+
+        {/* BANNER SARAN OTOMATIS */}
+        {latestRecord && (
+          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs">
+            <Info className="w-4 h-4 flex-shrink-0 text-indigo-400" />
+            <span>
+              Terakhir tercatat:{" "}
+              <strong className="text-white font-mono">{latestRecord.string_hijri}</strong>. Form otomatis disesuaikan.
+            </span>
+          </div>
+        )}
+
+        {/* BULAN & TAHUN */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div ref={bulanDropdownRef} className="relative">
+            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              Bulan Hijriyah Target
+            </label>
+            <button
+              type="button"
+              onClick={() => setIsBulanDropdownOpen(!isBulanDropdownOpen)}
+              className={`w-full flex items-center justify-between px-3.5 py-2.5 bg-gray-950/60 backdrop-blur-xl border rounded-2xl text-white text-xs font-mono transition-all duration-200 shadow-inner ${
+                isBulanDropdownOpen
+                  ? "border-indigo-500/60 ring-2 ring-indigo-500/20 text-indigo-200"
+                  : "border-gray-800 hover:border-gray-700"
+              }`}
+            >
+              <span className="truncate font-bold">
+                {bulanSelect.angka}. {bulanSelect.nama}
+              </span>
+              <ChevronDown
+                className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform duration-200 ${
+                  isBulanDropdownOpen ? "rotate-180 text-indigo-400" : ""
+                }`}
+              />
+            </button>
+
+            {isBulanDropdownOpen && (
+              <div className="absolute left-0 z-30 mt-2 w-full max-h-48 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar animate-in fade-in slide-in-from-top-2 duration-150">
+                {BULAN_OPTIONS.map((b) => {
+                  const isSelected = bulanSelect.angka === b.angka;
+                  return (
+                    <button
+                      key={b.angka}
+                      type="button"
+                      onClick={() => {
+                        setBulanSelect(b);
+                        setIsBulanDropdownOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                        isSelected
+                          ? "bg-indigo-600/20 text-indigo-300 font-semibold border border-indigo-500/30"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span>
+                        {b.angka}. {b.nama}
+                      </span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              Tahun Hijriyah
+            </label>
+            <div className="relative flex items-center">
+              <button
+                type="button"
+                onClick={() => setTahun((prev) => Math.max(1300, prev - 1))}
+                className="absolute left-1.5 p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+
+              <input
+                type="number"
+                value={tahun}
+                onChange={(e) => setTahun(Number(e.target.value))}
+                placeholder="1448"
+                className="w-full px-10 py-2.5 bg-gray-950/60 border border-gray-800 rounded-2xl text-white font-mono text-xs text-center font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500/40 shadow-inner transition-all [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+              />
+
+              <button
+                type="button"
+                onClick={() => setTahun((prev) => prev + 1)}
+                className="absolute right-1.5 p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* BOX TITIK JEPIT MASEHI */}
+        <div className="relative overflow-hidden rounded-2xl border border-amber-500/30 bg-gradient-to-b from-amber-500/10 via-amber-950/20 to-gray-950/80 p-4 shadow-xl backdrop-blur-md space-y-3.5">
+          <div className="flex items-center justify-between border-b border-amber-500/20 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-400">
+                <Calendar className="w-3.5 h-3.5" />
+              </div>
+              <h4 className="text-[11px] font-mono font-bold text-amber-300 uppercase tracking-wider">
+                Penentuan Titik Jepit Masehi
+              </h4>
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            {/* BARIS 1: GRID TEKS LABEL */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 items-end">
+              <label className="block text-[11px] font-mono text-amber-200/90 leading-tight">
+                Tgl Awal (1 Hijriyah)
+              </label>
+              <label className="block text-[11px] font-mono text-amber-200/90 leading-tight">
+                Tgl Akhir (29/30 Hijriyah)
+              </label>
+            </div>
+
+            {/* BARIS 2: GRID INPUT DATEPICKER MASEHI */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+              <CustomDatePickerMasehi
+                value={tglAwal}
+                onChange={setTglAwal}
+                placeholder="Pilih Tanggal Awal Masehi"
+              />
+              <CustomDatePickerMasehi
+                value={tglAkhir}
+                onChange={setTglAkhir}
+                placeholder="Pilih Tanggal Akhir Masehi"
+              />
+            </div>
+          </div>
+
+          {/* SLOT INDIKATOR DURASI */}
+          <div className="pt-2 border-t border-amber-500/20 flex items-center justify-between text-xs font-mono min-h-[30px]">
+            <span className="text-gray-400">Total Durasi:</span>
+            {!tglAwal || !tglAkhir ? (
+              <span className="inline-flex items-center gap-1 text-gray-500 font-medium bg-gray-900/60 px-2.5 py-0.5 rounded-lg border border-gray-800/80">
+                Belum Lengkap
+              </span>
+            ) : isValidDays ? (
+              <span className="inline-flex items-center gap-1 text-emerald-400 font-bold bg-emerald-500/10 px-2.5 py-0.5 rounded-lg border border-emerald-500/20">
+                <CheckCircle2 className="w-3.5 h-3.5" /> {calculatedDays} Hari (Valid Syariat)
+              </span>
+            ) : calculatedDays < 0 ? (
+              <span className="inline-flex items-center gap-1 text-rose-400 font-bold bg-rose-500/10 px-2.5 py-0.5 rounded-lg border border-rose-500/20">
+                <AlertTriangle className="w-3.5 h-3.5" /> Tanggal Tidak Valid
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 text-amber-300 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20">
+                <AlertTriangle className="w-3.5 h-3.5" /> {calculatedDays} Hari (Wajib 29/30 Hari)
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* RINGKASAN VERIFIKASI */}
+        <div className="p-3 rounded-2xl bg-indigo-950/60 border border-indigo-500/30 flex items-center justify-between text-xs font-mono">
+          <span className="text-gray-400">Target Mapping:</span>
+          <span className="text-indigo-200 font-bold text-sm bg-indigo-500/20 px-2.5 py-0.5 rounded-lg border border-indigo-500/30">
+            {bulanSelect.nama} {tahun} H
+          </span>
+        </div>
+
+        {/* MODAL ACTIONS FOOTER */}
+        <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800/80">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold transition-all active:scale-95"
+          >
+            Batal
+          </button>
+          <button
+            type="submit"
+            disabled={generateMutation.isPending || !isValidDays}
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-mono text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
+          >
+            {generateMutation.isPending ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memproses Mapping...</span>
+              </>
+            ) : (
+              <>
+                <Settings2 className="w-4 h-4" />
+                <span>Eksekusi Mapping</span>
+              </>
+            )}
+          </button>
+        </div>
+      </form>
+    </BaseModal>
+  );
+};
+```
+
+### `src/features/kalender/components/KalenderGridPreview.tsx`
+```tsx
+// src/components/kalender/KalenderGridPreview.tsx
+import React, { useState, useEffect } from "react";
+import { useAdminKalender, useTodayHijri } from "../hooks/useKalenderHijriyah";
+import type { KalenderHijriyahBulanHijriNamaOptions } from "@/types/pocketbase-types";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Loader2,
+  Calendar,
+  Sparkles,
+  Moon,
+  AlertCircle,
+  RotateCcw,
+} from "lucide-react";
+
+const NAMA_HARI_HEADER = [
+  { id: "Ahad", label: "Ahad", isJumat: false },
+  { id: "Senin", label: "Senin", isJumat: false },
+  { id: "Selasa", label: "Selasa", isJumat: false },
+  { id: "Rabu", label: "Rabu", isJumat: false },
+  { id: "Kamis", label: "Kamis", isJumat: false },
+  { id: "Jumat", label: "Jum'at", isJumat: true },
+  { id: "Sabtu", label: "Sabtu", isJumat: false },
+];
+
+const BULAN_LIST: { angka: number; nama: KalenderHijriyahBulanHijriNamaOptions }[] = [
+  { angka: 1, nama: "Muharram" },
+  { angka: 2, nama: "Safar" },
+  { angka: 3, nama: "Rabi'ul Awal" },
+  { angka: 4, nama: "Rabi'ul Akhir" },
+  { angka: 5, nama: "Jumadil Ula" },
+  { angka: 6, nama: "Jumadil Akhir" },
+  { angka: 7, nama: "Rajab" },
+  { angka: 8, nama: "Sya'ban" },
+  { angka: 9, nama: "Ramadhan" },
+  { angka: 10, nama: "Syawwal" },
+  { angka: 11, nama: "Dzulqa'dah" },
+  { angka: 12, nama: "Dzulhijjah" },
+];
+
+export const KalenderGridPreview: React.FC = () => {
+  const { useKalenderBulan, useLatestKalender } = useAdminKalender();
+  const { data: todayHijri } = useTodayHijri(); // ✨ Fetch data Hijriyah hari ini
+  const { data: latestRecord } = useLatestKalender();
+
+  const [selectedBulan, setSelectedBulan] = useState(1);
+  const [selectedTahun, setSelectedTahun] = useState(1448);
+
+  // ✨ UTAMA: Defaultkan ke TANGGAL HARI INI dari Database jika tersedia!
+  useEffect(() => {
+    if (todayHijri) {
+      if (todayHijri.bulan_hijri_angka) setSelectedBulan(todayHijri.bulan_hijri_angka);
+      if (todayHijri.tahun_hijri) setSelectedTahun(todayHijri.tahun_hijri);
+    } else if (latestRecord) {
+      if (latestRecord.bulan_hijri_angka) setSelectedBulan(latestRecord.bulan_hijri_angka);
+      if (latestRecord.tahun_hijri) setSelectedTahun(latestRecord.tahun_hijri);
+    }
+  }, [todayHijri, latestRecord]);
+
+  const { data: daysData, isLoading } = useKalenderBulan(selectedTahun, selectedBulan);
+
+  // Fungsi Lompat Cepat ke Bulan Hari Ini
+  const handleJumpToToday = () => {
+    if (todayHijri) {
+      if (todayHijri.bulan_hijri_angka) setSelectedBulan(todayHijri.bulan_hijri_angka);
+      if (todayHijri.tahun_hijri) setSelectedTahun(todayHijri.tahun_hijri);
+    }
+  };
+
+  // Navigasi Bulan
+  const handlePrevMonth = () => {
+    if (selectedBulan === 1) {
+      setSelectedBulan(12);
+      setSelectedTahun((prev) => prev - 1);
+    } else {
+      setSelectedBulan((prev) => prev - 1);
+    }
+  };
+
+  const handleNextMonth = () => {
+    if (selectedBulan === 12) {
+      setSelectedBulan(1);
+      setSelectedTahun((prev) => prev + 1);
+    } else {
+      setSelectedBulan((prev) => prev + 1);
+    }
+  };
+
+  const namaBulanAktif = BULAN_LIST.find((b) => b.angka === selectedBulan)?.nama || "Muharram";
+
+  // Hitung offset hari pertama
+  const firstRecord = daysData && daysData.length > 0 ? daysData[0] : null;
+  const firstDayOffset = firstRecord
+    ? new Date(firstRecord.tanggal_masehi).getDay()
+    : 0;
+
+  // Helper Pembanding Tanggal Lokal (Format YYYY-MM-DD)
+  const getLocalDateStr = (dateInput: Date | string) => {
+    const d = new Date(dateInput);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
+  const todayStr = getLocalDateStr(new Date());
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-7 shadow-2xl backdrop-blur-xl space-y-6">
+      {/* 🔮 Garis Kilau Top-Border */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
+
+      {/* 1. HEADER KALENDER GRID */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shadow-inner">
+            <Moon className="w-5 h-5" />
+          </div>
+          <div>
+            <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
+              Kalender Hijriyah
+            </span>
+            <h2 className="text-xl sm:text-2xl font-extrabold text-white font-mono flex items-center gap-2">
+              <span>{namaBulanAktif}</span>
+              <span className="text-amber-300">{selectedTahun} H</span>
+            </h2>
+          </div>
+        </div>
+
+        {/* Tombol Navigasi & Pintasan Hari Ini */}
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          {todayHijri && (
+            <button
+              type="button"
+              onClick={handleJumpToToday}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold transition-all active:scale-95 shadow-sm mr-1"
+              title="Kembali ke Bulan Hari Ini"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Hari Ini</span>
+            </button>
+          )}
+
+          <button
+            type="button"
+            onClick={handlePrevMonth}
+            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 text-gray-300 hover:text-white hover:border-amber-500/40 hover:bg-amber-500/10 active:scale-95 transition-all shadow-md"
+            title="Bulan Sebelumnya"
+          >
+            <ChevronLeft className="w-4 h-4" />
+          </button>
+
+          <span className="px-3.5 py-1.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs font-mono font-bold text-gray-300">
+            {selectedBulan} / 12
+          </span>
+
+          <button
+            type="button"
+            onClick={handleNextMonth}
+            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 text-gray-300 hover:text-white hover:border-amber-500/40 hover:bg-amber-500/10 active:scale-95 transition-all shadow-md"
+            title="Bulan Selanjutnya"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+
+      {/* 2. GRID KALENDER DINDING */}
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
+          <span className="text-gray-400 font-mono text-xs">Menyusun kisi kalender...</span>
+        </div>
+      ) : !daysData || daysData.length === 0 ? (
+        <div className="p-12 text-center space-y-2.5 rounded-2xl bg-gray-950/40 border border-gray-800/80">
+          <AlertCircle className="w-8 h-8 text-amber-400/60 mx-auto" />
+          <p className="text-sm font-semibold text-gray-300">
+            Bulan {namaBulanAktif} {selectedTahun} H Belum Dipetakan
+          </p>
+          <p className="text-xs text-gray-500 max-w-sm mx-auto">
+            Gunakan tombol "Generate Bulan Baru" di atas untuk memetakan tanggal Masehi ke Hijriyah.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {/* Header Nama Hari (7 Kolom) */}
+          <div className="grid grid-cols-7 gap-1.5 text-center">
+            {NAMA_HARI_HEADER.map((hari) => (
+              <div
+                key={hari.id}
+                className={`py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider ${
+                  hari.isJumat
+                    ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+                    : "bg-gray-950/60 border border-gray-800/60 text-gray-400"
+                }`}
+              >
+                {hari.label}
+              </div>
+            ))}
+          </div>
+
+          {/* Body Grid Kotak Tanggal */}
+          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
+            {/* Blank Offset Hari Kosong */}
+            {Array.from({ length: firstDayOffset }).map((_, idx) => (
+              <div
+                key={`offset-${idx}`}
+                className="min-h-[75px] sm:min-h-[90px] rounded-2xl bg-gray-950/20 border border-gray-900/40"
+              />
+            ))}
+
+            {/* Sel Hari Hijriyah */}
+            {daysData.map((item) => {
+              const dateMasehiObj = new Date(item.tanggal_masehi);
+              const isJumat = dateMasehiObj.getDay() === 5;
+              const isToday = getLocalDateStr(item.tanggal_masehi) === todayStr;
+
+              const formatMasehiSmall = dateMasehiObj.toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+              });
+
+              return (
+                <div
+                  key={item.id}
+                  className={`group relative min-h-[75px] sm:min-h-[90px] p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
+                    isToday
+                      ? "bg-gradient-to-br from-amber-500/20 via-amber-950/40 to-gray-950 border-amber-400 ring-2 ring-amber-500/40 shadow-xl shadow-amber-500/10 scale-[1.02]"
+                      : isJumat
+                      ? "bg-emerald-950/30 border-emerald-500/30 hover:border-emerald-500/60"
+                      : "bg-gray-950/60 border-gray-800/80 hover:border-indigo-500/40 hover:bg-gray-900/80"
+                  }`}
+                >
+                  {/* ✨ PENANDA KHUSUS HARI INI (BADGE & PULSING DOT) */}
+                  {isToday && (
+                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
+                      <span className="text-[8px] font-mono font-black uppercase tracking-wider text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40 shadow-sm hidden sm:inline-block">
+                        Hari Ini
+                      </span>
+                      <span className="relative flex h-2.5 w-2.5">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 border border-gray-950" />
+                      </span>
+                    </div>
+                  )}
+
+                  {/* 🟢 ANGKAH UTAMA: TANGGAL HIJRIYAH */}
+                  <div className="flex items-baseline justify-between">
+                    <span
+                      className={`font-mono text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                        isToday
+                          ? "text-amber-300 drop-shadow-md"
+                          : isJumat
+                          ? "text-emerald-300"
+                          : "text-white group-hover:text-indigo-300"
+                      }`}
+                    >
+                      {item.tanggal_hijri}
+                    </span>
+                    {isJumat && !isToday && (
+                      <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-1 rounded border border-emerald-500/20 hidden sm:inline-block">
+                        Jum'at
+                      </span>
+                    )}
+                  </div>
+
+                  {/* ⚪ ANGKAH SUB: TANGGAL MASEHI */}
+                  <div className="mt-1 flex items-center justify-between border-t border-gray-800/60 pt-1 text-[10px] font-mono">
+                    <span
+                      className={
+                        isToday
+                          ? "text-amber-200 font-bold"
+                          : "text-gray-400 group-hover:text-gray-300 transition-colors"
+                      }
+                    >
+                      {formatMasehiSmall}
+                    </span>
+                    <Calendar
+                      className={`w-3 h-3 ${
+                        isToday ? "text-amber-400" : "text-gray-500 group-hover:text-indigo-400"
+                      } transition-colors`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+```
+
+### `src/features/kalender/components/KalenderHeader.tsx`
+```tsx
+// src/components/kalender/KalenderHeader.tsx
+import React from "react";
+import { CalendarDays, PlusCircle } from "lucide-react";
+
+interface KalenderHeaderProps {
+  onOpenGenerateModal: () => void;
+  isAdmin?: boolean; // ✨ 1. Tambahkan prop penanda role admin
+}
+
+export const KalenderHeader: React.FC<KalenderHeaderProps> = ({
+  onOpenGenerateModal,
+  isAdmin = false,
+}) => {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+      {/* 🔮 EFEK AMBIENT GLOW MESH */}
+      <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-indigo-600/15 blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-24 -right-20 w-80 h-80 rounded-full bg-purple-600/15 blur-[100px] pointer-events-none" />
+
+      {/* Garis Kilau Top-Border */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+
+      <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+        {/* Sisi Kiri: Deskripsi & Badge */}
+        <div className="space-y-2.5">
+          <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
+            <CalendarDays className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Kalender Pesantren</span>
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
+            Kalender{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
+              Hijriyah
+            </span>
+          </h1>
+
+          <p className="max-w-xl text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Sistem pemetaan konversi Kalender berbasis keputusan resmi Pondok Pesantren Sidogiri.
+          </p>
+        </div>
+
+        {/* Sisi Kanan: Tombol Generate Bulan Baru (HANYA MUNCUL UNTUK ADMIN) */}
+        {isAdmin && (
+          <div className="flex-shrink-0 self-start md:self-center">
+            <button
+              type="button"
+              onClick={onOpenGenerateModal}
+              className="relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30"
+            >
+              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+              <div className="relative flex items-center gap-2">
+                <PlusCircle className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
+                <span>Generate Bulan Baru</span>
+              </div>
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### `src/features/kalender/components/KalenderPagination.tsx`
+```tsx
+// src/components/kalender/KalenderPagination.tsx
+import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
+
+interface KalenderPaginationProps {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  perPage: number;
+  onPageChange: (newPage: number) => void;
+}
+
+export const KalenderPagination: React.FC<KalenderPaginationProps> = ({
+  page,
+  totalPages,
+  totalItems,
+  perPage,
+  onPageChange,
+}) => {
+  if (totalItems === 0) return null;
+
+  const startItem = Math.min((page - 1) * perPage + 1, totalItems);
+  const endItem = Math.min(page * perPage, totalItems);
+
+  return (
+    <div className="relative overflow-hidden mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-4 sm:px-6 shadow-2xl backdrop-blur-xl">
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+
+      {/* Info Status Data */}
+      <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-gray-400">
+        <Layers className="w-4 h-4 text-indigo-400 hidden sm:inline-block" />
+        <span>
+          Menampilkan{" "}
+          <span className="font-bold text-gray-200 bg-gray-800/80 px-2 py-0.5 rounded-lg border border-gray-700/50">
+            {startItem} – {endItem}
+          </span>{" "}
+          dari{" "}
+          <span className="font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+            {totalItems}
+          </span>{" "}
+          hari
+        </span>
+      </div>
+
+      {/* Kontrol Navigasi */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span>Sebelumnya</span>
+        </button>
+
+        <span className="px-3 text-xs font-mono font-bold text-indigo-300">
+          {page} / {totalPages || 1}
+        </span>
+
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+        >
+          <span>Selanjutnya</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+};
+```
+
+### `src/features/kalender/components/KalenderTable.tsx`
+```tsx
+// src/components/kalender/KalenderTable.tsx
+import React from "react";
+import type { KalenderHijriyahResponse } from "../../../types/pocketbase-types";
+import { CheckCircle2, Calendar, CalendarDays } from "lucide-react";
+
+interface KalenderTableProps {
+  items: KalenderHijriyahResponse[];
+  isLoading: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+export const KalenderTable: React.FC<KalenderTableProps> = ({
+  items,
+  isLoading,
+  page = 1,
+  perPage = 15,
+}) => {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
+      {/* 🔮 Garis Kilau Top-Border */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left border-collapse table-auto">
+          <thead>
+            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md">
+              <th className="px-6 py-4 w-16 text-center">No</th>
+              <th className="px-6 py-4 min-w-[200px]">Tanggal Masehi</th>
+              <th className="px-6 py-4 min-w-[220px]">Format Hijriyah Resmi</th>
+              <th className="px-6 py-4 w-36 text-center">Tgl Hijri</th>
+              <th className="px-6 py-4 w-44 text-center">Bulan & Tahun</th>
+              <th className="px-6 py-4 w-40 text-center">Status Pemetaan</th>
+            </tr>
+          </thead>
+
+          <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
+            {isLoading ? (
+              Array.from({ length: 8 }).map((_, idx) => (
+                <tr key={`skeleton-${idx}`} className="animate-pulse border-b border-gray-800/40">
+                  {Array.from({ length: 6 }).map((_, cellIdx) => (
+                    <td key={cellIdx} className="px-6 py-4">
+                      <div className="h-4 bg-gray-800/60 rounded-lg w-24 mx-auto" />
+                    </td>
+                  ))}
+                </tr>
+              ))
+            ) : items.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="px-6 py-20 text-center">
+                  <div className="flex flex-col items-center justify-center space-y-3">
+                    <div className="p-4 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400 shadow-inner">
+                      <CalendarDays className="w-8 h-8 text-gray-400" />
+                    </div>
+                    <div className="space-y-1">
+                      <p className="text-sm font-semibold text-gray-300">
+                        Belum Ada Data Kalender Terdaftar
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        Klik tombol "Generate Bulan Baru" untuk membuat penanggalan.
+                      </p>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            ) : (
+              items.map((row, index) => {
+                const rowNo = (page - 1) * perPage + index + 1;
+                const dateMasehi = new Date(row.tanggal_masehi).toLocaleDateString("id-ID", {
+                  weekday: "long",
+                  day: "numeric",
+                  month: "long",
+                  year: "numeric",
+                });
+
+                return (
+                  <tr
+                    key={row.id}
+                    className="group transition-colors duration-200 hover:bg-indigo-500/[0.03]"
+                  >
+                    {/* No */}
+                    <td className="px-6 py-3.5 text-center text-gray-500 font-mono text-xs">
+                      {rowNo}
+                    </td>
+
+                    {/* Tanggal Masehi */}
+                    <td className="px-6 py-3.5 font-medium text-gray-200 whitespace-nowrap">
+                      <div className="flex items-center gap-2">
+                        <Calendar className="w-4 h-4 text-indigo-400/80" />
+                        <span>{dateMasehi}</span>
+                      </div>
+                    </td>
+
+                    {/* Format Hijriyah Resmi */}
+                    <td className="px-6 py-3.5 whitespace-nowrap">
+                      <span className="inline-block px-3 py-1 rounded-xl font-mono text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 shadow-sm">
+                        {row.string_hijri}
+                      </span>
+                    </td>
+
+                    {/* Angka Tanggal Hijri */}
+                    <td className="px-6 py-3.5 text-center font-mono font-bold text-white text-sm">
+                      {row.tanggal_hijri || "-"}
+                    </td>
+
+                    {/* Bulan & Tahun */}
+                    <td className="px-6 py-3.5 text-center text-xs font-mono text-indigo-300">
+                      {row.bulan_hijri_nama} {row.tahun_hijri} H
+                    </td>
+
+                    {/* Status Pemetaan */}
+                    <td className="px-6 py-3.5 text-center whitespace-nowrap">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 shadow-sm">
+                        <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                        Valid
+                      </span>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+```
+
+### `src/features/kalender/hooks/useKalenderHijriyah.ts`
+```typescript
+// src/hooks/useKalenderHijriyah.ts
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
+import { pb } from '@/lib/pocketbase';
+import { parsePocketBaseError } from '@/utils/errorHandler';
+import type {
+  KalenderHijriyahResponse,
+  KalenderHijriyahBulanHijriNamaOptions
+} from '@/types/pocketbase-types';
+
+/**
+ * 💡 HELPER ASYNC: Bisa dipanggil langsung di fungsi event handler / onClick (non-hook)
+ */
+export async function fetchHijriByDate(dateInput?: string | Date | null): Promise<KalenderHijriyahResponse | null> {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+
+  const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+  try {
+    return await pb.collection('kalender_hijriyah').getFirstListItem<KalenderHijriyahResponse>(
+      `tanggal_masehi >= "${dateStr} 00:00:00" && tanggal_masehi <= "${dateStr} 23:59:59"`
+    );
+  } catch {
+    return null;
+  }
+}
+
+export function useTodayHijri() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  const todayStr = `${year}-${month}-${day}`;
+
+  return useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ['kalender-hijriyah-today', todayStr],
+    queryFn: async () => {
+      try {
+        return await pb.collection('kalender_hijriyah').getFirstListItem<KalenderHijriyahResponse>(
+          `tanggal_masehi >= "${todayStr} 00:00:00" && tanggal_masehi <= "${todayStr} 23:59:59"`
+        );
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 60,
+  });
+}
+
+export interface GenerateBulanPayload {
+  bulan_angka: number;
+  bulan_nama: KalenderHijriyahBulanHijriNamaOptions;
+  tahun: number;
+  tanggal_awal_masehi: string;
+  tanggal_akhir_masehi: string;
+}
+
+export function useHijriByDate(dateInput?: string | Date | null) {
+  const d = dateInput ? new Date(dateInput) : null;
+  const validDate = d && !isNaN(d.getTime()) ? d : null;
+
+  const dateStr = validDate
+    ? `${validDate.getFullYear()}-${String(validDate.getMonth() + 1).padStart(2, '0')}-${String(validDate.getDate()).padStart(2, '0')}`
+    : '';
+
+  return useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ['kalender-hijriyah-by-date', dateStr],
+    queryFn: () => fetchHijriByDate(validDate), // Menggunakan helper di atas
+    enabled: !!dateStr,
+    staleTime: 1000 * 60 * 60 * 24,
+  });
+}
+
+export function useAdminKalender() {
+  const queryClient = useQueryClient();
+
+  const useKalenderList = (params: { page: number; perPage: number; tahun?: number; bulanAngka?: number }) => {
+    return useQuery({
+      queryKey: ['kalender-list', params.page, params.perPage, params.tahun, params.bulanAngka],
+      queryFn: async () => {
+        const filters: string[] = [];
+        if (params.tahun) filters.push(`tahun_hijri = ${params.tahun}`);
+        if (params.bulanAngka) filters.push(`bulan_hijri_angka = ${params.bulanAngka}`);
+
+        return pb.collection('kalender_hijriyah').getList<KalenderHijriyahResponse>(
+          params.page,
+          params.perPage,
+          {
+            filter: filters.length > 0 ? filters.join(' && ') : '',
+            sort: '-tanggal_masehi',
+          }
+        );
+      },
+      placeholderData: keepPreviousData,
+    });
+  };
+
+  const useKalenderBulan = (tahun: number, bulanAngka: number) => {
+    return useQuery<KalenderHijriyahResponse[]>({
+      queryKey: ['kalender-bulan-full', tahun, bulanAngka],
+      queryFn: async () => {
+        if (!tahun || !bulanAngka) return [];
+        return await pb.collection('kalender_hijriyah').getFullList<KalenderHijriyahResponse>({
+          filter: `tahun_hijri = ${tahun} && bulan_hijri_angka = ${bulanAngka}`,
+          sort: 'tanggal_hijri',
+        });
+      },
+      enabled: !!tahun && !!bulanAngka,
+    });
+  };
+
+  const useLatestKalender = () => {
+    return useQuery<KalenderHijriyahResponse | null>({
+      queryKey: ['latest-kalender-record'],
+      queryFn: async () => {
+        try {
+          const list = await pb.collection('kalender_hijriyah').getList<KalenderHijriyahResponse>(1, 1, {
+            sort: '-tanggal_masehi',
+          });
+          return list.items[0] || null;
+        } catch {
+          return null;
+        }
+      },
+    });
+  };
+
+  const useGenerateBulan = () => {
+    return useMutation({
+      mutationFn: async (payload: GenerateBulanPayload) => {
+        try {
+          const checkExistMonth = await pb.collection('kalender_hijriyah').getList(1, 1, {
+            filter: `bulan_hijri_angka = ${payload.bulan_angka} && tahun_hijri = ${payload.tahun}`,
+          });
+
+          if (checkExistMonth.totalItems > 0) {
+            throw new Error(`Bulan ${payload.bulan_nama} ${payload.tahun} H sudah pernah dipetakan sebelumnya!`);
+          }
+
+          const checkOverlap = await pb.collection('kalender_hijriyah').getList(1, 1, {
+            filter: `tanggal_masehi >= "${payload.tanggal_awal_masehi} 00:00:00" && tanggal_masehi <= "${payload.tanggal_akhir_masehi} 23:59:59"`,
+          });
+
+          if (checkOverlap.totalItems > 0) {
+            const sample = checkOverlap.items[0] as KalenderHijriyahResponse;
+            throw new Error(`Rentang Masehi yang Anda pilih bentrok dengan data terdaftar (${sample.string_hijri}).`);
+          }
+
+          const start = new Date(payload.tanggal_awal_masehi);
+          const end = new Date(payload.tanggal_akhir_masehi);
+          start.setHours(12, 0, 0, 0);
+          end.setHours(12, 0, 0, 0);
+
+          const diffTime = end.getTime() - start.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+
+          if (diffDays !== 29 && diffDays !== 30) {
+            throw new Error(`Jumlah hari terhitung ${diffDays} hari. Bulan Hijriyah wajib 29 atau 30 hari!`);
+          }
+
+          const batch = pb.createBatch();
+          for (let i = 0; i < diffDays; i++) {
+            const currentDate = new Date(start);
+            currentDate.setDate(currentDate.getDate() + i);
+
+            const tglMasehiFormat = currentDate.toISOString();
+            const tglHijriAngka = i + 1;
+            const stringHijri = `${tglHijriAngka} ${payload.bulan_nama} ${payload.tahun} H`;
+
+            batch.collection('kalender_hijriyah').create({
+              tanggal_masehi: tglMasehiFormat,
+              tanggal_hijri: tglHijriAngka,
+              bulan_hijri_angka: payload.bulan_angka,
+              bulan_hijri_nama: payload.bulan_nama,
+              tahun_hijri: payload.tahun,
+              string_hijri: stringHijri,
+            });
+          }
+
+          await batch.send();
+          return diffDays;
+        } catch (error) {
+          throw new Error(parsePocketBaseError(error));
+        }
+      },
+      onSuccess: () => {
+        queryClient.invalidateQueries({ queryKey: ['kalender-list'] });
+        queryClient.invalidateQueries({ queryKey: ['kalender-bulan-full'] });
+        queryClient.invalidateQueries({ queryKey: ['kalender-hijriyah-today'] });
+        queryClient.invalidateQueries({ queryKey: ['latest-kalender-record'] });
+      },
+    });
+  };
+
+  return { useKalenderList, useKalenderBulan, useLatestKalender, useGenerateBulan };
+}
+```
+
+### `src/features/kalender/index.ts`
+```typescript
+// 🚪 Public API Gerbang Modul Kalender
+export { default as KalenderPage } from "./pages/Kalender";
+export { useTodayHijri, useHijriByDate, fetchHijriByDate } from "./hooks/useKalenderHijriyah";
+```
+
+### `src/features/kalender/pages/Kalender.tsx`
+```tsx
+// src/pages/Kalender.tsx
+import { useState } from "react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
+import { useAuth } from "@/features/auth";
+import { useAdminKalender } from "../hooks/useKalenderHijriyah";
+import type { UsersResponse } from "../../../types/pocketbase-types";
+import { KalenderHeader } from "../components/KalenderHeader";
+import { KalenderGridPreview } from "../components/KalenderGridPreview";
+import { KalenderTable } from "../components/KalenderTable";
+import { KalenderPagination } from "../components/KalenderPagination";
+import { GenerateKalenderModal } from "../components/GenerateKalenderModal";
+import { LayoutGrid, Table } from "lucide-react";
+
+const PER_PAGE = 15;
+
+// ✨ 2. Beri tipe data ': Variants' agar TypeScript mengenalinya secara presisi
+const transitionVariants: Variants = {
+  initial: { opacity: 0, y: 8, scale: 0.995 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    scale: 0.995,
+    transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] }
+  },
+};
+
+export default function KalenderPage() {
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdmin = currentUser?.role === "admin";
+
+  // Mode Tampilan: 'grid' (Visual Kalender Dinding) | 'table' (Daftar Tabel)
+  const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
+
+  const [page, setPage] = useState(1);
+  const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
+
+  const { useKalenderList } = useAdminKalender();
+  const { data: kalenderData, isLoading } = useKalenderList({
+    page,
+    perPage: PER_PAGE,
+  });
+
+  const items = kalenderData?.items ?? [];
+  const totalItems = kalenderData?.totalItems ?? 0;
+  const totalPages = kalenderData?.totalPages ?? 0;
+
+  return (
+    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+      {/* 1. Hero Header Banner */}
+      <KalenderHeader
+        isAdmin={isAdmin}
+        onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
+      />
+
+      {/* 2. TAB VIEW SWITCHER DENGAN ANIMASI PILL */}
+      <div className="flex items-center justify-between border-b border-gray-800/80 pb-3">
+        <div className="flex items-center gap-1.5 bg-gray-900/80 p-1.5 rounded-2xl border border-gray-800/80 shadow-lg backdrop-blur-xl">
+          {/* Tombol Grid Kalender */}
+          <button
+            type="button"
+            onClick={() => setViewMode("grid")}
+            className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-colors duration-200 active:scale-95 ${
+              viewMode === "grid" ? "text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {viewMode === "grid" && (
+              <motion.div
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-gradient-to-r from-amber-600 to-amber-500 rounded-xl shadow-md shadow-amber-600/20"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <LayoutGrid className="w-4 h-4" />
+              <span>Tampilan Kalender</span>
+            </span>
+          </button>
+
+          {/* Tombol Tabel Data */}
+          <button
+            type="button"
+            onClick={() => setViewMode("table")}
+            className={`relative inline-flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-mono font-bold transition-colors duration-200 active:scale-95 ${
+              viewMode === "table" ? "text-white" : "text-gray-400 hover:text-white"
+            }`}
+          >
+            {viewMode === "table" && (
+              <motion.div
+                layoutId="activeTabPill"
+                className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-indigo-500 rounded-xl shadow-md shadow-indigo-600/20"
+                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              />
+            )}
+            <span className="relative z-10 flex items-center gap-2">
+              <Table className="w-4 h-4" />
+              <span>Daftar Tabel Data</span>
+            </span>
+          </button>
+        </div>
+
+        <span className="hidden sm:inline-block text-xs font-mono text-gray-500">
+          Pesantren Integrated Calendar System
+        </span>
+      </div>
+
+      {/* 3. RENDER KONTEN BERTRANSISI HALUS DENGAN ANIMATE PRESENCE */}
+      <AnimatePresence mode="wait">
+        {viewMode === "grid" ? (
+          <motion.div
+            key="grid-view"
+            variants={transitionVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="transform-gpu"
+          >
+            <KalenderGridPreview />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="table-view"
+            variants={transitionVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            className="space-y-6 transform-gpu"
+          >
+            <KalenderTable
+              items={items}
+              isLoading={isLoading}
+              page={page}
+              perPage={PER_PAGE}
+            />
+            <KalenderPagination
+              page={page}
+              totalPages={totalPages}
+              totalItems={totalItems}
+              perPage={PER_PAGE}
+              onPageChange={setPage}
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* 4. Modal Generate Titik Jepit */}
+      {isAdmin && (
+        <GenerateKalenderModal
+          isOpen={isGenerateModalOpen}
+          onClose={() => setIsGenerateModalOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+```

@@ -1,0 +1,1429 @@
+# CONTEXT: FEATURE-LAPORAN
+
+## Included Files:
+- `src/features/laporan/components/LaporanHeader.tsx`
+- `src/features/laporan/components/LaporanTable.tsx`
+- `src/features/laporan/components/LaporanToolbar.tsx`
+- `src/features/laporan/components/RambutReportPrint.tsx`
+- `src/features/laporan/hooks/useLaporanRambut.ts`
+- `src/features/laporan/index.ts`
+- `src/features/laporan/pages/LaporanRambutPage.tsx`
+- `src/features/laporan/utils/exportRambutExcel.ts`
+
+---
+
+### `src/features/laporan/components/LaporanHeader.tsx`
+```tsx
+// src/features/laporan/components/LaporanHeader.tsx
+import React from "react";
+import { Link } from "react-router-dom";
+import { ArrowLeft, FileSpreadsheet, Printer, FileText } from "lucide-react";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+
+interface LaporanHeaderProps {
+  selectedPeriode: PeriodeRambutResponse | null;
+  onExportExcel: () => void;
+  onPrintPDF: () => void;
+}
+
+export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
+  selectedPeriode,
+  onExportExcel,
+  onPrintPDF,
+}) => {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+      {/* 🔮 AMBIENT GLOW MESH */}
+      <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-indigo-600/15 blur-[100px] pointer-events-none" />
+      <div className="absolute -bottom-24 -right-20 w-80 h-80 rounded-full bg-purple-600/15 blur-[100px] pointer-events-none" />
+
+      {/* Garis Kilau Top-Border */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+
+      <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+        {/* Sisi Kiri: Deskripsi & Badge */}
+        <div className="space-y-3">
+
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
+              <FileText className="w-3.5 h-3.5 text-indigo-400" />
+              <span>Modul Laporan Khusus</span>
+            </div>
+
+            {selectedPeriode ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-emerald-400 border border-emerald-500/20 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                Periode Ditinjau: {selectedPeriode.nama_periode}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-rose-400 border border-rose-500/20 shadow-sm">
+                <span className="w-1.5 h-1.5 rounded-full bg-rose-400" />
+                Belum Ada Periode
+              </span>
+            )}
+          </div>
+
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
+            Laporan & Export{" "}
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
+              Rambut Santri
+            </span>
+          </h1>
+
+          <p className="max-w-xl text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
+            Pusat rekapitulasi data setoran cukur rambut santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri.
+          </p>
+        </div>
+
+        {/* Sisi Kanan: Action Buttons */}
+        <div className="flex flex-wrap items-center gap-3 self-start lg:self-center flex-shrink-0">
+          <button
+            type="button"
+            onClick={onExportExcel}
+            className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30"
+          >
+            <FileSpreadsheet className="w-4 h-4" />
+            <span>Export Excel (.xlsx)</span>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+### `src/features/laporan/components/LaporanTable.tsx`
+```tsx
+// src/features/laporan/components/LaporanTable.tsx
+import React from "react";
+import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut";
+import type { ReportType } from "../hooks/useLaporanRambut";
+import { CheckCircle2, Clock, ShieldAlert, FileText, User } from "lucide-react";
+
+interface LaporanTableProps {
+  reportType: ReportType;
+  items: any[];
+  isLoading: boolean;
+  page?: number;
+  perPage?: number;
+}
+
+export const LaporanTable: React.FC<LaporanTableProps> = ({
+  reportType,
+  items,
+  isLoading,
+  page = 1,
+  perPage = 15,
+}) => {
+  const isRiwayat = reportType === "riwayat";
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+
+      <div className="overflow-x-auto">
+        {!isRiwayat ? (
+          <table className="w-full text-xs text-left border-collapse table-auto font-mono">
+            <thead>
+              <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
+                <th className="px-5 py-4 w-12 text-center">No</th>
+                <th className="px-5 py-4 w-28">ID PPS</th>
+                <th className="px-5 py-4 min-w-[200px] font-sans">Nama Santri</th>
+                <th className="px-5 py-4 w-36 text-center">Kategori</th>
+                <th className="px-5 py-4 w-32 font-sans">Domisili</th>
+                <th className="px-5 py-4 w-32 text-center">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
+              {isLoading ? (
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={`skel-q-${idx}`} className="animate-pulse border-b border-gray-800/40">
+                    {Array.from({ length: 6 }).map((_, c) => (
+                      <td key={c} className="px-5 py-3.5">
+                        <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center font-sans">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
+                        <FileText className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-300">
+                        Tidak Ada Data Terkait Filter Laporan
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((row: WajibSetorExpanded, index) => {
+                  const rowNo = (page - 1) * perPage + index + 1;
+                  const santriData = row.expand?.santri;
+
+                  return (
+                    <tr key={row.id} className="group transition-colors duration-150 hover:bg-indigo-500/[0.04]">
+                      <td className="px-5 py-3.5 text-center text-gray-500">{rowNo}</td>
+                      <td className="px-5 py-3.5 font-bold text-indigo-400">
+                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+                          {row.id_pps}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-sans whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                          <span className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">
+                            {santriData?.nama || "Santri"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="px-5 py-3.5 text-center uppercase text-[10px] font-bold text-gray-400">
+                        {row.kategori_wajib?.replace("_", " ")}
+                      </td>
+                      <td className="px-5 py-3.5 font-sans text-gray-300">
+                        {santriData?.domisili || santriData?.status_domisili || "-"}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-sans">
+                        {row.status_setor === "sudah" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                            <CheckCircle2 className="w-3 h-3" /> Sudah
+                          </span>
+                        ) : row.status_setor === "dispensasi" ? (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                            <ShieldAlert className="w-3 h-3" /> Izin
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
+                            <Clock className="w-3 h-3" /> Belum
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        ) : (
+          <table className="w-full text-xs text-left border-collapse table-auto font-mono">
+            <thead>
+              <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
+                <th className="px-5 py-4 w-12 text-center">No</th>
+                <th className="px-5 py-4 w-28">ID PPS</th>
+                <th className="px-5 py-4 min-w-[200px] font-sans">Nama Santri</th>
+                <th className="px-5 py-4 min-w-[160px] font-sans">Petugas Eksekutor</th>
+                <th className="px-5 py-4 w-36 text-center">Waktu WIS</th>
+                <th className="px-5 py-4 min-w-[180px]">Catatan Operasional</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
+              {isLoading ? (
+                Array.from({ length: 8 }).map((_, idx) => (
+                  <tr key={`skel-a-${idx}`} className="animate-pulse border-b border-gray-800/40">
+                    {Array.from({ length: 6 }).map((_, c) => (
+                      <td key={c} className="px-5 py-3.5">
+                        <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+              ) : items.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-16 text-center font-sans">
+                    <div className="flex flex-col items-center justify-center space-y-2">
+                      <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
+                        <FileText className="w-6 h-6 text-gray-400" />
+                      </div>
+                      <p className="text-xs font-semibold text-gray-300">
+                        Tidak Ada Data Riwayat Transaksi Ditemukan
+                      </p>
+                    </div>
+                  </td>
+                </tr>
+              ) : (
+                items.map((row: RiwayatSetorExpanded, index) => {
+                  const rowNo = (page - 1) * perPage + index + 1;
+                  const santriData = row.expand?.santri;
+                  const petugasData = row.expand?.petugas_eksekutor;
+
+                  return (
+                    <tr key={row.id} className="group transition-colors duration-150 hover:bg-amber-500/[0.04]">
+                      <td className="px-5 py-3.5 text-center text-gray-500">{rowNo}</td>
+                      <td className="px-5 py-3.5 font-bold text-amber-400">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                          {row.id_pps}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-sans whitespace-nowrap">
+                        <span className="font-semibold text-gray-200 group-hover:text-amber-300 transition-colors">
+                          {santriData?.nama || "Santri"}
+                        </span>
+                      </td>
+                      <td className="px-5 py-3.5 font-sans text-gray-300">
+                        {petugasData?.name || petugasData?.username || "-"}
+                      </td>
+                      <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+                        {row.waktu_wis || "-"}
+                      </td>
+                      <td className="px-5 py-3.5 text-gray-400 italic">
+                        {row.catatan || "-"}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  );
+};
+```
+
+### `src/features/laporan/components/LaporanToolbar.tsx`
+```tsx
+// src/features/laporan/components/LaporanToolbar.tsx
+import React, { useState, useRef, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  ChevronDown,
+  Check,
+  CalendarDays,
+  FileText,
+  Layers,
+} from "lucide-react";
+import { BaseToolbar } from "@/components/shared/BaseToolbar";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+import type { ReportType } from "../hooks/useLaporanRambut";
+
+interface LaporanToolbarProps {
+  periodeList: PeriodeRambutResponse[];
+  selectedPeriode: PeriodeRambutResponse | null;
+  onSelectPeriode: (periode: PeriodeRambutResponse) => void;
+  reportType: ReportType;
+  onChangeReportType: (type: ReportType) => void;
+  filterKategori: string;
+  onChangeFilterKategori: (kat: string) => void;
+  searchQuery: string;
+  onChangeSearchQuery: (query: string) => void;
+  onRefresh: () => void;
+  isLoading: boolean;
+}
+
+export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
+  periodeList,
+  selectedPeriode,
+  onSelectPeriode,
+  reportType,
+  onChangeReportType,
+  filterKategori,
+  onChangeFilterKategori,
+  searchQuery,
+  onChangeSearchQuery,
+  onRefresh,
+  isLoading,
+}) => {
+  // State untuk melacak dropdown mana yang sedang terbuka
+  const [openDropdown, setOpenDropdown] = useState<"periode" | "report" | "kategori" | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // 🛡️ Auto Close Dropdown jika mengklik di luar area toolbar
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setOpenDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const toggleDropdown = (key: "periode" | "report" | "kategori") => {
+    setOpenDropdown((prev) => (prev === key ? null : key));
+  };
+
+  // Opsi Jenis Rekapitulasi Laporan
+  const reportOptions: { value: ReportType; label: string }[] = [
+    { value: "all", label: "Semua Target Wajib Setor" },
+    { value: "belum_setor", label: "Daftar Belum Setor" },
+    { value: "sudah_setor", label: "Daftar Sudah Setor" },
+    { value: "riwayat", label: "Log Riwayat Transaksi" },
+  ];
+
+  // Opsi Kategori Wajib Setor
+  const kategoriOptions: { value: string; label: string }[] = [
+    { value: "all", label: "Semua Kategori" },
+    { value: "aliyah", label: "Aliyah" },
+    { value: "kuliah_syariah", label: "Kuliah Syariah" },
+    { value: "pengurus_petugas", label: "Pengurus / Petugas" },
+  ];
+
+  const currentReportLabel =
+    reportOptions.find((r) => r.value === reportType)?.label || "Semua Target Wajib Setor";
+
+  const currentKategoriLabel =
+    kategoriOptions.find((k) => k.value === filterKategori)?.label || "Semua Kategori";
+
+  return (
+    <div ref={containerRef} className="space-y-4 select-none">
+      <BaseToolbar
+        search={searchQuery}
+        onSearchChange={onChangeSearchQuery}
+        placeholder="Cari santri berdasarkan Nama atau ID PPS..."
+        onRefresh={onRefresh}
+        isLoading={isLoading}
+        searchIconColorClass="text-indigo-400"
+      >
+        {/* ========================================================= */}
+        {/* 1. CUSTOM GLASS DROPDOWN: PILIH PERIODE                    */}
+        {/* ========================================================= */}
+        <div className="relative min-w-[210px] flex-1 sm:flex-initial">
+          <button
+            type="button"
+            onClick={() => toggleDropdown("periode")}
+            className={`w-full h-12 px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg flex items-center justify-between gap-2.5 ${
+              openDropdown === "periode" || selectedPeriode
+                ? "border-indigo-500/60 ring-2 ring-indigo-500/20 text-white"
+                : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate min-w-0">
+              <CalendarDays className="w-4 h-4 text-indigo-400 shrink-0" />
+              <span className="truncate">
+                {selectedPeriode ? selectedPeriode.nama_periode : "Pilih Periode"}
+              </span>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
+                openDropdown === "periode" ? "rotate-180 text-indigo-400" : ""
+              }`}
+            />
+          </button>
+
+          <AnimatePresence>
+            {openDropdown === "periode" && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute left-0 sm:right-0 z-30 mt-2 w-full min-w-[240px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
+                  Pilih Periode Ditinjau
+                </div>
+                {periodeList.map((p) => {
+                  const isSelected = selectedPeriode?.id === p.id;
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => {
+                        onSelectPeriode(p);
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                        isSelected
+                          ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 truncate min-w-0">
+                        <span className="truncate">{p.nama_periode}</span>
+                        <span
+                          className={`text-[9px] px-1.5 py-0.5 rounded border uppercase shrink-0 ${
+                            p.status_periode === "aktif"
+                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                              : "bg-gray-800 text-gray-400 border-gray-700"
+                          }`}
+                        >
+                          {p.status_periode}
+                        </span>
+                      </div>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ========================================================= */}
+        {/* 2. CUSTOM GLASS DROPDOWN: JENIS REKAPITULASI            */}
+        {/* ========================================================= */}
+        <div className="relative min-w-[210px] flex-1 sm:flex-initial">
+          <button
+            type="button"
+            onClick={() => toggleDropdown("report")}
+            className={`w-full h-12 px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg flex items-center justify-between gap-2.5 ${
+              openDropdown === "report" || reportType !== "all"
+                ? "border-purple-500/60 ring-2 ring-purple-500/20 text-white"
+                : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate min-w-0">
+              <FileText className="w-4 h-4 text-purple-400 shrink-0" />
+              <span className="truncate">{currentReportLabel}</span>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
+                openDropdown === "report" ? "rotate-180 text-purple-400" : ""
+              }`}
+            />
+          </button>
+
+          <AnimatePresence>
+            {openDropdown === "report" && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute left-0 sm:right-0 z-30 mt-2 w-full min-w-[230px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
+                  Jenis Rekapitulasi Laporan
+                </div>
+                {reportOptions.map((opt) => {
+                  const isSelected = reportType === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChangeReportType(opt.value);
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                        isSelected
+                          ? "bg-purple-600/20 text-purple-300 font-bold border border-purple-500/30"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-purple-400 shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* ========================================================= */}
+        {/* 3. CUSTOM GLASS DROPDOWN: KATEGORI WAJIB                */}
+        {/* ========================================================= */}
+        <div className="relative min-w-[190px] flex-1 sm:flex-initial">
+          <button
+            type="button"
+            onClick={() => toggleDropdown("kategori")}
+            className={`w-full h-12 px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg flex items-center justify-between gap-2.5 ${
+              openDropdown === "kategori" || filterKategori !== "all"
+                ? "border-amber-500/60 ring-2 ring-amber-500/20 text-amber-200"
+                : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+            }`}
+          >
+            <div className="flex items-center gap-2 truncate min-w-0">
+              <Layers className="w-4 h-4 text-amber-400 shrink-0" />
+              <span className="truncate">{currentKategoriLabel}</span>
+            </div>
+            <ChevronDown
+              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
+                openDropdown === "kategori" ? "rotate-180 text-amber-400" : ""
+              }`}
+            />
+          </button>
+
+          <AnimatePresence>
+            {openDropdown === "kategori" && (
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="absolute right-0 z-30 mt-2 w-full min-w-[210px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
+              >
+                <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
+                  Filter Kategori Wajib
+                </div>
+                {kategoriOptions.map((opt) => {
+                  const isSelected = filterKategori === opt.value;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => {
+                        onChangeFilterKategori(opt.value);
+                        setOpenDropdown(null);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                        isSelected
+                          ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{opt.label}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1.5" />}
+                    </button>
+                  );
+                })}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </BaseToolbar>
+    </div>
+  );
+};
+```
+
+### `src/features/laporan/components/RambutReportPrint.tsx`
+```tsx
+// src/features/laporan/components/RambutReportPrint.tsx
+import React from "react";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut";
+
+interface RambutReportPrintProps {
+  periode: PeriodeRambutResponse | null;
+  queueData: WajibSetorExpanded[];
+  riwayatData: RiwayatSetorExpanded[];
+  stats: { total: number; sudah: number; belum: number; dispensasi: number };
+  reportType: "all" | "belum_setor" | "sudah_setor" | "riwayat";
+  filterKategori: string;
+}
+
+export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPrintProps>(
+  ({ periode, queueData, riwayatData, stats, reportType, filterKategori }, ref) => {
+    const todayStr = new Date().toLocaleDateString("id-ID", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    });
+
+    const getJudulLaporan = () => {
+      switch (reportType) {
+        case "belum_setor": return "LAPORAN DAFTAR SANTRI BELUM SETOR CUKUR RAMBUT";
+        case "sudah_setor": return "LAPORAN DAFTAR SANTRI SUDAH SETOR CUKUR RAMBUT";
+        case "riwayat": return "LAPORAN LOG RIWAYAT TRANSAKSI SETOR RAMBUT";
+        default: return "LAPORAN REKAPITULASI PENERTIBAN CUKUR RAMBUT SANTRI";
+      }
+    };
+
+    return (
+      <div className="hidden">
+        <div ref={ref} className="p-8 bg-white text-black font-sans text-xs leading-normal">
+          {/* KOP SURAT RESMI */}
+          <div className="text-center border-b-2 border-black pb-4 mb-4">
+            <h2 className="text-base font-bold uppercase tracking-wider">PONDOK PESANTREN SIDOGIRI</h2>
+            <h1 className="text-lg font-black uppercase tracking-tight text-indigo-950">
+              KETERTIBAN DAN KEAMANAN (TIBKAM 1745)
+            </h1>
+            <p className="text-[10px] text-gray-600">
+              Sidogiri Krakatau Probolinggo Jawa Timur | Modul Laporan Rambut Santri
+            </p>
+          </div>
+
+          {/* HEADER METAINFO */}
+          <div className="mb-4">
+            <h3 className="text-sm font-bold text-center underline uppercase mb-3">
+              {getJudulLaporan()}
+            </h3>
+            <table className="w-full text-xs mb-3 border-collapse">
+              <tbody>
+                <tr>
+                  <td className="w-28 font-bold py-0.5">Periode Ditinjau</td>
+                  <td className="w-3 py-0.5">:</td>
+                  <td className="py-0.5">{periode?.nama_periode || "Semua Periode"}</td>
+                  <td className="w-28 font-bold py-0.5">Filter Kategori</td>
+                  <td className="w-3 py-0.5">:</td>
+                  <td className="py-0.5 uppercase">{filterKategori}</td>
+                </tr>
+                <tr>
+                  <td className="font-bold py-0.5">Tanggal Cetak</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5">{todayStr}</td>
+                  <td className="font-bold py-0.5">Total Target</td>
+                  <td className="py-0.5">:</td>
+                  <td className="py-0.5">{stats.total} Santri</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          {/* TABEL DATA CETAK */}
+          {reportType !== "riwayat" ? (
+            <table className="w-full border-collapse border border-black text-[11px] mb-6">
+              <thead>
+                <tr className="bg-gray-200 text-black border-b border-black">
+                  <th className="border border-black p-1.5 text-center w-8">NO</th>
+                  <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
+                  <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
+                  <th className="border border-black p-1.5 text-center w-24">KATEGORI</th>
+                  <th className="border border-black p-1.5 text-center w-28">DOMISILI</th>
+                  <th className="border border-black p-1.5 text-center w-24">STATUS</th>
+                </tr>
+              </thead>
+              <tbody>
+                {queueData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-4 italic border border-black">Data kosong.</td>
+                  </tr>
+                ) : (
+                  queueData.map((item, idx) => (
+                    <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
+                      <td className="border border-black p-1 uppercase">{item.expand?.santri?.nama || "-"}</td>
+                      <td className="border border-black p-1 text-center capitalize">{item.kategori_wajib?.replace("_", " ")}</td>
+                      <td className="border border-black p-1 text-center">{item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "-"}</td>
+                      <td className="border border-black p-1 text-center font-bold uppercase">{item.status_setor}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          ) : (
+            <table className="w-full border-collapse border border-black text-[11px] mb-6">
+              <thead>
+                <tr className="bg-gray-200 text-black border-b border-black">
+                  <th className="border border-black p-1.5 text-center w-8">NO</th>
+                  <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
+                  <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
+                  <th className="border border-black p-1.5 text-left">PETUGAS</th>
+                  <th className="border border-black p-1.5 text-center w-28">WAKTU ISTIWA</th>
+                  <th className="border border-black p-1.5 text-left">CATATAN</th>
+                </tr>
+              </thead>
+              <tbody>
+                {riwayatData.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="text-center p-4 italic border border-black">Data riwayat kosong.</td>
+                  </tr>
+                ) : (
+                  riwayatData.map((item, idx) => (
+                    <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
+                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
+                      <td className="border border-black p-1 uppercase">{item.expand?.santri?.nama || "-"}</td>
+                      <td className="border border-black p-1">{item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "-"}</td>
+                      <td className="border border-black p-1 text-center font-mono">{item.waktu_wis || "-"}</td>
+                      <td className="border border-black p-1">{item.catatan || "-"}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          )}
+
+          {/* AREA TANDA TANGAN */}
+          <div className="mt-8 flex justify-between items-end text-center">
+            <div className="w-48">
+              <p className="mb-12">Mengetahui,<br /><strong>Kepala Ketertiban</strong></p>
+              <p className="font-bold underline">( .................................... )</p>
+            </div>
+            <div className="w-48">
+              <p className="mb-12">Sidogiri, {todayStr.split(",")[1]?.trim() || todayStr}<br /><strong>Petugas Eksekutor</strong></p>
+              <p className="font-bold underline">( .................................... )</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+);
+
+RambutReportPrint.displayName = "RambutReportPrint";
+```
+
+### `src/features/laporan/hooks/useLaporanRambut.ts`
+```typescript
+// src/features/laporan/hooks/useLaporanRambut.ts
+import { useState, useEffect, useMemo } from "react";
+import { useRambut, useRambutStats } from "@/features/rambut";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+
+export type ReportType = "all" | "belum_setor" | "sudah_setor" | "riwayat";
+
+export function useLaporanRambut() {
+  const {
+    useActivePeriode,
+    usePeriodeList,
+    useWajibSetorFullList,
+    useRiwayatSetorList,
+  } = useRambut();
+
+  const { data: activePeriode } = useActivePeriode();
+  const { data: periodeList = [], isLoading: isPeriodeLoading } = usePeriodeList();
+
+  const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
+  const [reportType, setReportType] = useState<ReportType>("all");
+  const [filterKategori, setFilterKategori] = useState<string>("all");
+  const [searchQuery, setSearchQuery] = useState<string>("");
+  const [page, setPage] = useState(1);
+  const PER_PAGE = 15;
+
+  // 1. Auto-select periode aktif/terbaru saat pertama dimuat
+  useEffect(() => {
+    if (!selectedPeriode) {
+      if (activePeriode) {
+        setSelectedPeriode(activePeriode);
+      } else if (periodeList.length > 0) {
+        setSelectedPeriode(periodeList[0]);
+      }
+    }
+  }, [activePeriode, periodeList, selectedPeriode]);
+
+  const currentPeriodeId = selectedPeriode?.id || activePeriode?.id || "";
+
+  // 2. Query data antrean & riwayat berdasarkan periode terpilih
+  const { data: fullQueueData = [], isLoading: isQueueLoading, refetch: refetchQueue } = useWajibSetorFullList(currentPeriodeId);
+  const { data: fullRiwayatData = [], isLoading: isRiwayatLoading, refetch: refetchRiwayat } = useRiwayatSetorList(currentPeriodeId);
+  const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
+
+  const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
+
+  // 3. Filter Queue Data
+  const filteredQueueData = useMemo(() => {
+    return fullQueueData.filter((item) => {
+      if (reportType === "belum_setor" && item.status_setor !== "belum") return false;
+      if (reportType === "sudah_setor" && item.status_setor !== "sudah") return false;
+      if (filterKategori !== "all" && item.kategori_wajib !== filterKategori) return false;
+
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const nama = (item.expand?.santri?.nama || "").toLowerCase();
+        const idPps = (item.id_pps || "").toLowerCase();
+        return nama.includes(query) || idPps.includes(query);
+      }
+
+      return true;
+    });
+  }, [fullQueueData, reportType, filterKategori, searchQuery]);
+
+  // 4. Filter Audit Data
+  const filteredAuditData = useMemo(() => {
+    return fullRiwayatData.filter((item) => {
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const nama = (item.expand?.santri?.nama || "").toLowerCase();
+        const idPps = (item.id_pps || "").toLowerCase();
+        const petugas = (item.expand?.petugas_eksekutor?.name || "").toLowerCase();
+        return nama.includes(query) || idPps.includes(query) || petugas.includes(query);
+      }
+      return true;
+    });
+  }, [fullRiwayatData, searchQuery]);
+
+  // 5. Pagination Data
+  const activeDataset = reportType === "riwayat" ? filteredAuditData : filteredQueueData;
+  const totalItems = activeDataset.length;
+  const totalPages = Math.ceil(totalItems / PER_PAGE);
+
+  const paginatedData = useMemo(() => {
+    const start = (page - 1) * PER_PAGE;
+    return activeDataset.slice(start, start + PER_PAGE);
+  }, [activeDataset, page, PER_PAGE]);
+
+  return {
+    periodeList,
+    selectedPeriode,
+    setSelectedPeriode: (p: PeriodeRambutResponse | null) => {
+      setSelectedPeriode(p);
+      setPage(1);
+    },
+    reportType,
+    setReportType: (t: ReportType) => {
+      setReportType(t);
+      setPage(1);
+    },
+    filterKategori,
+    setFilterKategori: (k: string) => {
+      setFilterKategori(k);
+      setPage(1);
+    },
+    searchQuery,
+    setSearchQuery: (q: string) => {
+      setSearchQuery(q);
+      setPage(1);
+    },
+    page,
+    setPage,
+    PER_PAGE,
+    totalItems,
+    totalPages,
+    stats,
+    filteredQueueData,
+    filteredAuditData,
+    paginatedData,
+    isLoading: isPeriodeLoading || isQueueLoading || isRiwayatLoading || isStatsLoading,
+    onRefresh: () => {
+      refetchQueue();
+      refetchRiwayat();
+    },
+  };
+}
+```
+
+### `src/features/laporan/index.ts`
+```typescript
+// src/features/laporan/index.ts
+export * from "./pages/LaporanRambutPage";
+```
+
+### `src/features/laporan/pages/LaporanRambutPage.tsx`
+```tsx
+// src/features/laporan/pages/LaporanRambutPage.tsx
+import React, { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
+import { useToast } from "@/context/ToastContext";
+
+// ✨ REUSE KONTROLS & COMPONENTS DARI PUBLIC API INDEX.TS
+import { RambutStats } from "@/features/rambut";
+import { MasterPagination } from "@/features/master";
+
+import { useLaporanRambut } from "../hooks/useLaporanRambut";
+import { exportRambutToExcel } from "../utils/exportRambutExcel";
+import { LaporanHeader } from "../components/LaporanHeader";
+import { LaporanToolbar } from "../components/LaporanToolbar";
+import { LaporanTable } from "../components/LaporanTable";
+import { RambutReportPrint } from "../components/RambutReportPrint";
+
+export const LaporanRambutPage: React.FC = () => {
+  const { showSuccess, showError } = useToast();
+  const printableRef = useRef<HTMLDivElement>(null);
+
+  const {
+    periodeList,
+    selectedPeriode,
+    setSelectedPeriode,
+    reportType,
+    setReportType,
+    filterKategori,
+    setFilterKategori,
+    searchQuery,
+    setSearchQuery,
+    page,
+    setPage,
+    PER_PAGE,
+    totalItems,
+    totalPages,
+    stats,
+    filteredQueueData,
+    filteredAuditData,
+    paginatedData,
+    isLoading,
+    onRefresh,
+  } = useLaporanRambut();
+
+  const handlePrint = useReactToPrint({
+    contentRef: printableRef,
+    documentTitle: `Laporan_Rambut_${selectedPeriode?.nama_periode || "PP_Sidogiri"}`,
+    onAfterPrint: () => showSuccess("Laporan berhasil dicetak ke PDF!", "Cetak PDF"),
+  });
+
+  const handleExportExcel = () => {
+    try {
+      exportRambutToExcel({
+        periode: selectedPeriode,
+        queueData: filteredQueueData,
+        riwayatData: filteredAuditData,
+        stats,
+      });
+      showSuccess("File Excel laporan berhasil diunduh!", "Export Sukses");
+    } catch (err: any) {
+      showError("Gagal mengunduh Excel: " + err.message, "Export Gagal");
+    }
+  };
+
+  return (
+    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+      {/* 1. Header Banner Glassmorphism */}
+      <LaporanHeader
+        selectedPeriode={selectedPeriode}
+        onExportExcel={handleExportExcel}
+        onPrintPDF={() => handlePrint()}
+      />
+
+      {/* 2. REUSE: Kartu Statistik Presisi (100% Identik dengan Halaman Rambut) */}
+      <RambutStats stats={stats} isLoading={isLoading} />
+
+      {/* 3. Toolbar Filter Glassmorphism */}
+      <LaporanToolbar
+        periodeList={periodeList}
+        selectedPeriode={selectedPeriode}
+        onSelectPeriode={setSelectedPeriode}
+        reportType={reportType}
+        onChangeReportType={setReportType}
+        filterKategori={filterKategori}
+        onChangeFilterKategori={setFilterKategori}
+        searchQuery={searchQuery}
+        onChangeSearchQuery={setSearchQuery}
+        onRefresh={onRefresh}
+        isLoading={isLoading}
+      />
+
+      {/* 4. Tabel Preview Data */}
+      <LaporanTable
+        reportType={reportType}
+        items={paginatedData}
+        isLoading={isLoading}
+        page={page}
+        perPage={PER_PAGE}
+      />
+
+      {/* 5. REUSE: Pagination Global */}
+      {totalItems > 0 && (
+        <MasterPagination
+          page={page}
+          totalPages={totalPages}
+          totalItems={totalItems}
+          perPage={PER_PAGE}
+          onPageChange={setPage}
+        />
+      )}
+
+      {/* 6. Layout Cetak Hidden */}
+      <RambutReportPrint
+        ref={printableRef}
+        periode={selectedPeriode}
+        queueData={filteredQueueData}
+        riwayatData={filteredAuditData}
+        stats={stats}
+        reportType={reportType}
+        filterKategori={filterKategori}
+      />
+    </div>
+  );
+};
+```
+
+### `src/features/laporan/utils/exportRambutExcel.ts`
+```typescript
+// src/features/laporan/utils/exportRambutExcel.ts
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { fetchHijriByDate } from "@/features/kalender";
+import type {
+  PeriodeRambutResponse,
+  WajibSetorRambutKategoriWajibOptions,
+  WajibSetorRambutStatusSetorOptions,
+} from "@/types/pocketbase-types";
+import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
+
+// 1. PALET WARNA & STYLES (Tema Sidogiri Emerald)
+
+const COLOR_HEADER_FILL = "1B4D3E"; // Dark Emerald Green
+const COLOR_ZEBRA_FILL = "F8FAFC";  // Slate-50 Soft Gray
+const COLOR_BORDER = "E2E8F0";      // Gray-200
+
+// Warna Badge Status (Background Soft + Teks Bold)
+const STATUS_STYLES = {
+  sudah: { fill: "DCFCE7", color: "15803D" },     // Soft Green
+  belum: { fill: "FEE2E2", color: "B91C1C" },     // Soft Red
+  dispensasi: { fill: "FEF3C7", color: "B45309" },// Soft Yellow/Amber
+} as const;
+
+// Border Tipis Abu-abu
+const THIN_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: "thin", color: { argb: COLOR_BORDER } },
+  left: { style: "thin", color: { argb: COLOR_BORDER } },
+  bottom: { style: "thin", color: { argb: COLOR_BORDER } },
+  right: { style: "thin", color: { argb: COLOR_BORDER } },
+};
+
+// 2. HELPER UTILITIES & CACHING HIJRIYAH
+
+const KATEGORI_LABEL_MAP: Record<string, string> = {
+  aliyah: "Aliyah",
+  kuliah_syariah: "Kuliah Syariah",
+  pengurus_petugas: "Pengurus / Petugas",
+};
+
+const STATUS_LABEL_MAP: Record<string, string> = {
+  sudah: "SUDAH SETOR",
+  belum: "BELUM SETOR",
+  dispensasi: "DISPENSASI",
+};
+
+const capitalizeText = (str?: string | null): string => {
+  if (!str) return "-";
+  return str.charAt(0).toUpperCase() + str.slice(1);
+};
+
+const formatKategoriLabel = (kat?: WajibSetorRambutKategoriWajibOptions): string =>
+  kat ? KATEGORI_LABEL_MAP[kat] ?? capitalizeText(kat) : "-";
+
+const formatStatusLabel = (status?: WajibSetorRambutStatusSetorOptions | string): string =>
+  status ? STATUS_LABEL_MAP[status] ?? String(status).toUpperCase() : "-";
+
+const formatDateClean = (dateStr?: string | null): string => {
+  if (!dateStr) return "-";
+  const date = new Date(dateStr);
+  if (isNaN(date.getTime())) return "-";
+
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const day = pad(date.getDate());
+  const month = pad(date.getMonth() + 1);
+  const year = date.getFullYear();
+  const hours = pad(date.getHours());
+  const minutes = pad(date.getMinutes());
+
+  return `${day}/${month}/${year} ${hours}:${minutes}`;
+};
+
+// Cache internal agar query PocketBase tidak berulang untuk tanggal yang sama
+const hijriCache = new Map<string, string | null>();
+
+const getHijriDateString = async (dateInput?: string | Date | null): Promise<string | null> => {
+  if (!dateInput) return null;
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return null;
+
+  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+
+  if (!hijriCache.has(dateKey)) {
+    const res = await fetchHijriByDate(d);
+    hijriCache.set(dateKey, res?.string_hijri || null);
+  }
+
+  return hijriCache.get(dateKey) || null;
+};
+
+/**
+ * Formatter tanggal ke Hijriyah (+ waktu Masehi)
+ * Contoh: "22 Safar 1448 H (17:45)"
+ */
+const formatDateHijri = async (
+  dateStr?: string | null,
+  includeTime: boolean = true
+): Promise<string> => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "-";
+
+  const stringHijri = await getHijriDateString(d);
+  const hours = String(d.getHours()).padStart(2, "0");
+  const minutes = String(d.getMinutes()).padStart(2, "0");
+  const timeStr = `${hours}:${minutes}`;
+
+  if (stringHijri) {
+    return includeTime ? `${stringHijri} (${timeStr})` : stringHijri;
+  }
+
+  // Fallback ke Masehi jika record di database kalender_hijriyah belum diset
+  return formatDateClean(dateStr);
+};
+
+/**
+ * Mengonversi nilai ID PPS agar tidak memicu peringatan Segitiga Hijau di Excel
+ */
+const parseIdPps = (val?: string | number | null): string | number => {
+  if (!val) return "-";
+  const num = Number(val);
+  return !isNaN(num) ? num : String(val);
+};
+
+const sanitizeFileName = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+// 3. MAIN EXPORT FUNCTION
+
+export interface ExportRambutParams {
+  periode: PeriodeRambutResponse | null;
+  queueData: WajibSetorExpanded[];
+  riwayatData: RiwayatSetorExpanded[];
+  stats: {
+    total: number;
+    sudah: number;
+    belum: number;
+    dispensasi: number;
+  };
+}
+
+export const exportRambutToExcel = async ({
+  periode,
+  queueData,
+  riwayatData,
+  stats,
+}: ExportRambutParams): Promise<void> => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Pondok Pesantren Sidogiri";
+  workbook.created = new Date();
+
+  const namaPeriode = capitalizeText(periode?.nama_periode || "Semua Periode");
+
+  // Tanggal Cetak menggunakan Format Hijriyah
+  const todayHijri = await getHijriDateString(new Date());
+  const todayMasehi = new Date().toLocaleDateString("id-ID", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  const tanggalExport = todayHijri ? `${todayHijri} (${todayMasehi})` : todayMasehi;
+
+  const applyHeaderStyle = (row: ExcelJS.Row) => {
+    row.height = 28;
+    row.eachCell((cell) => {
+      cell.fill = {
+        type: "pattern",
+        pattern: "solid",
+        fgColor: { argb: COLOR_HEADER_FILL },
+      };
+      cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFF" } };
+      cell.alignment = { horizontal: "center", vertical: "middle" };
+      cell.border = THIN_BORDER;
+    });
+  };
+
+  // SHEET 1: RINGKASAN REKAPITULASI
+
+  const wsSummary = workbook.addWorksheet("Ringkasan Rekap", {
+    views: [{ showGridLines: true }],
+  });
+
+  wsSummary.addRow(["LAPORAN REKAPITULASI PENERTIBAN CUKUR RAMBUT SANTRI"]).font = {
+    name: "Segoe UI", size: 14, bold: true, color: { argb: COLOR_HEADER_FILL },
+  };
+  wsSummary.addRow(["PONDOK PESANTREN SIDOGIRI"]).font = {
+    name: "Segoe UI", size: 11, bold: true, color: { argb: "475569" },
+  };
+  wsSummary.addRow([]);
+
+  wsSummary.addRow(["Periode Ditinjau:", namaPeriode]).font = { name: "Segoe UI", size: 10 };
+  wsSummary.addRow(["Tanggal Cetak:", tanggalExport]).font = { name: "Segoe UI", size: 10 };
+  wsSummary.addRow([]);
+
+  wsSummary.addRow(["INDIKATOR KINERJA / METRIK UTAMA"]).font = {
+    name: "Segoe UI", size: 11, bold: true, color: { argb: COLOR_HEADER_FILL },
+  };
+
+  const headerRowSummary = wsSummary.addRow(["Indikator / Metrik", "Jumlah (Santri)", "Persentase (%)"]);
+  applyHeaderStyle(headerRowSummary);
+
+  const capaian = stats.total > 0 ? stats.sudah / stats.total : 0;
+  const summaryRows = [
+    ["Total Target Wajib Setor", stats.total, 1],
+    ["Jumlah Sudah Setor", stats.sudah, capaian],
+    ["Jumlah Belum Setor", stats.belum, stats.total > 0 ? stats.belum / stats.total : 0],
+    ["Jumlah Dispensasi", stats.dispensasi, stats.total > 0 ? stats.dispensasi / stats.total : 0],
+  ];
+
+  summaryRows.forEach((r, idx) => {
+    const row = wsSummary.addRow(r);
+    row.height = 24;
+
+    row.getCell(1).font = { name: "Segoe UI", size: 10, bold: idx === 0 };
+    row.getCell(2).font = { name: "Segoe UI", size: 10, bold: idx === 0 };
+    row.getCell(3).font = { name: "Segoe UI", size: 10, bold: idx === 0 };
+
+    row.getCell(1).alignment = { horizontal: "left", vertical: "middle" };
+    row.getCell(2).alignment = { horizontal: "right", vertical: "middle" };
+    row.getCell(3).alignment = { horizontal: "right", vertical: "middle" };
+
+    row.getCell(2).numFmt = "#,##0";
+    row.getCell(3).numFmt = "0.0%";
+
+    row.eachCell((cell) => {
+      cell.border = THIN_BORDER;
+      if (idx % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      }
+    });
+  });
+
+  wsSummary.getColumn(1).width = 34;
+  wsSummary.getColumn(2).width = 20;
+  wsSummary.getColumn(3).width = 18;
+
+  // SHEET 2: DAFTAR WAJIB SETOR (QUEUE)
+
+  const wsQueue = workbook.addWorksheet("Daftar Wajib Setor", {
+    views: [{ showGridLines: true, state: "frozen", ySplit: 4 }],
+  });
+
+  wsQueue.addRow(["DAFTAR TARGET WAJIB SETOR CUKUR RAMBUT"]).font = {
+    name: "Segoe UI", size: 26, bold: true, color: { argb: COLOR_HEADER_FILL },
+  };
+  wsQueue.addRow([`Periode: ${namaPeriode}`]).font = {
+    name: "Segoe UI", size: 14, italic: true, color: { argb: "64748B" },
+  };
+  wsQueue.addRow([]);
+
+  const headersQueue = [
+    "No",
+    "ID PPS",
+    "Nama Santri",
+    "Kategori Wajib Setor",
+    "Tingkatan",
+    "Kelas",
+    "Domisili",
+    "Status Setor",
+    "Keterangan",
+    "Tanggal Setor",
+  ];
+  const headerRowQueue = wsQueue.addRow(headersQueue);
+  applyHeaderStyle(headerRowQueue);
+
+  // Pre-fetch format tanggal Hijriyah secara async
+  const queueExportData = await Promise.all(
+    queueData.map(async (item) => {
+      const santri = item.expand?.santri;
+      const statusKey = item.status_setor as keyof typeof STATUS_STYLES;
+      const statusStyle = STATUS_STYLES[statusKey];
+      const keteranganText = (item as any).keterangan || (item as any).catatan || "-";
+      const tglSetorHijri = await formatDateHijri(item.tanggal_setor);
+
+      return {
+        idPps: parseIdPps(item.id_pps),
+        nama: santri?.nama || "-",
+        kategori: formatKategoriLabel(item.kategori_wajib),
+        tingkatan: santri?.tingkatan || "-",
+        kelas: santri?.kelas || "-",
+        domisili: santri?.domisili || santri?.status_domisili || "-",
+        statusSetorText: formatStatusLabel(item.status_setor),
+        statusStyle,
+        keterangan: keteranganText,
+        tanggalSetor: tglSetorHijri,
+      };
+    })
+  );
+
+  queueExportData.forEach((item, index) => {
+    const row = wsQueue.addRow([
+      index + 1,
+      item.idPps,
+      item.nama,
+      item.kategori,
+      item.tingkatan,
+      item.kelas,
+      item.domisili,
+      item.statusSetorText,
+      item.keterangan,
+      item.tanggalSetor,
+    ]);
+
+    row.height = 24;
+
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: "Segoe UI", size: 10, color: { argb: "1E293B" } };
+      cell.border = THIN_BORDER;
+
+      if (index % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      }
+
+      if ([1, 2, 5, 6, 10].includes(colNum)) {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      } else if (colNum === 8) {
+        // Status Setor Badge
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        if (item.statusStyle) {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.statusStyle.fill } };
+          cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: item.statusStyle.color } };
+        }
+      } else {
+        cell.alignment = { horizontal: "left", vertical: "middle" };
+      }
+    });
+  });
+
+  // Lebar Kolom Presisi Sheet 2
+  wsQueue.getColumn(1).width = 8;   // No
+  wsQueue.getColumn(2).width = 16;  // ID PPS
+  wsQueue.getColumn(3).width = 32;  // Nama Santri
+  wsQueue.getColumn(4).width = 22;  // Kategori Wajib Setor
+  wsQueue.getColumn(5).width = 18;  // Tingkatan
+  wsQueue.getColumn(6).width = 14;  // Kelas
+  wsQueue.getColumn(7).width = 22;  // Domisili
+  wsQueue.getColumn(8).width = 18;  // Status Setor
+  wsQueue.getColumn(9).width = 32;  // Keterangan
+  wsQueue.getColumn(10).width = 28; // Tanggal Setor (Diperlebar untuk format Hijriyah)
+
+  // SHEET 3: LOG RIWAYAT TRANSAKSI
+
+  const wsRiwayat = workbook.addWorksheet("Riwayat Setor Rambut", {
+    views: [{ showGridLines: true, state: "frozen", ySplit: 4 }],
+  });
+
+  wsRiwayat.addRow(["LOG RIWAYAT SETOR RAMBUT"]).font = {
+    name: "Segoe UI", size: 26, bold: true, color: { argb: COLOR_HEADER_FILL },
+  };
+  wsRiwayat.addRow(["Pencatatan real-time petugas eksekutor dan waktu Istiwa"]).font = {
+    name: "Segoe UI", size: 14, italic: true, color: { argb: "64748B" },
+  };
+  wsRiwayat.addRow([]);
+
+  const headersRiwayat = [
+    "No", "ID PPS", "Nama Santri", "Petugas Eksekutor", "tanggal", "Waktu", "Catatan",
+  ];
+  const headerRowRiwayat = wsRiwayat.addRow(headersRiwayat);
+  applyHeaderStyle(headerRowRiwayat);
+
+  const riwayatExportData = await Promise.all(
+    riwayatData.map(async (item) => {
+      const santri = item.expand?.santri;
+      const eksekutor = item.expand?.petugas_eksekutor;
+      const namaEksekutor = capitalizeText(eksekutor?.name || eksekutor?.username || "-");
+      const tglHijri = await formatDateHijri(item.tanggal_setor, false); // Format Tanggal Hijriyah saja
+
+      return {
+        idPps: parseIdPps(item.id_pps),
+        namaSantri: santri?.nama || "-",
+        eksekutor: namaEksekutor,
+        tanggalHijri: tglHijri,
+        waktuWis: item.waktu_wis || "-",
+        catatan: item.catatan || "-",
+      };
+    })
+  );
+
+  riwayatExportData.forEach((item, index) => {
+    const row = wsRiwayat.addRow([
+      index + 1,
+      item.idPps,
+      item.namaSantri,
+      item.eksekutor,
+      item.tanggalHijri,
+      item.waktuWis,
+      item.catatan,
+    ]);
+
+    row.height = 24;
+
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: "Segoe UI", size: 10, color: { argb: "1E293B" } };
+      cell.border = THIN_BORDER;
+
+      if (index % 2 === 1) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      }
+
+      if ([1, 2, 5, 6].includes(colNum)) {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      } else {
+        cell.alignment = { horizontal: "left", vertical: "middle" };
+      }
+    });
+  });
+
+  wsRiwayat.getColumn(1).width = 8;
+  wsRiwayat.getColumn(2).width = 16;
+  wsRiwayat.getColumn(3).width = 32;
+  wsRiwayat.getColumn(4).width = 22;
+  wsRiwayat.getColumn(5).width = 24; // Tanggal Hijriyah
+  wsRiwayat.getColumn(6).width = 18; // Waktu WIS
+  wsRiwayat.getColumn(7).width = 38; // Catatan
+
+  // DOWNLOAD FILE
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const cleanFileName = `Laporan_Rambut_${sanitizeFileName(namaPeriode)}.xlsx`;
+  saveAs(new Blob([buffer]), cleanFileName);
+};
+```

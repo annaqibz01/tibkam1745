@@ -1,5 +1,4 @@
-// src/App.tsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from '@/features/auth';
 import DashboardLayout from '@/layouts/DashboardLayout/DashboardLayout';
@@ -15,7 +14,7 @@ import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
 export default function App() {
   return (
     <ToastProvider>
-      <BrowserRouter>
+      <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route
@@ -36,7 +35,7 @@ export default function App() {
           <Route path="/" element={<Navigate to="/dashboard" replace />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
-      </BrowserRouter>
+      </HashRouter>
     </ToastProvider>
   );
 }

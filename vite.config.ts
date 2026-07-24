@@ -17,19 +17,7 @@ export default defineConfig(() => {
         ? path.resolve(__dirname, './dist') 
         : path.resolve(__dirname, '../backend/pb_public'),
       emptyOutDir: true,
-      rollupOptions: {
-        output: {
-          manualChunks(id) {
-            if (id.includes('node_modules')) {
-              if (id.includes('xlsx')) {
-                return 'vendor-excel';
-              }
-              return 'vendor';
-            }
-          },
-        },
-      },
-      chunkWarningLimit: 1000,
+      chunkWarningLimit: 1600, // Biarkan Rollup mengatur chunking secara otomatis
     },
     server: {
       port: 5173,

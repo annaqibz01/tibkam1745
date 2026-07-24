@@ -1,9 +1,12 @@
-// src/utils/printer.ts
 import { toPng } from 'html-to-image';
 import { invoke } from '@tauri-apps/api/core';
 import type { PrintJobOptions } from '@/types/printer';
 
 export const LOCAL_STORAGE_PRINTER_KEY = 'selected_pos_printer';
+
+const isTauriEnvironment = () => {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+};
 
 export const executeAutoPrintDialog = (htmlContent: string) => {
   const existingIframe = document.getElementById('global-print-iframe');
@@ -34,14 +37,10 @@ export const executeAutoPrintDialog = (htmlContent: string) => {
   }, 150);
 };
 
-/**
- * 📸 Helper Pixel-Perfect dengan Isolasi Iframe Total
- */
 const convertHtmlToImageBase64 = async (
   elementOrHtml: HTMLElement | string
 ): Promise<string> => {
   return new Promise((resolve, reject) => {
-    // Gunakan iframe terisolasi agar CSS TIDAK BOCOR ke UI utama
     const iframe = document.createElement('iframe');
     iframe.style.position = 'fixed';
     iframe.style.left = '-9999px';
@@ -73,7 +72,6 @@ const convertHtmlToImageBase64 = async (
           await iframe.contentWindow.document.fonts.ready;
         }
 
-        // Snapshot isi iframe document.body
         const dataUrl = await toPng(doc.body, {
           pixelRatio: 8,
           backgroundColor: '#ffffff',
@@ -95,16 +93,18 @@ export const executeSilentPrintTauri = async (
   elementOrHtml: HTMLElement | string,
   printerName?: string
 ) => {
+  if (!isTauriEnvironment()) {
+    console.warn('⚠️ [Global Printer] Silent Print disimulasikan (bukan di lingkungan Tauri).');
+    return;
+  }
+
   const targetPrinter =
     printerName ||
     localStorage.getItem(LOCAL_STORAGE_PRINTER_KEY) ||
     '';
 
-  console.log(`📸 [Global Printer] Merender HTML via iframe (Pixel-Perfect)...`);
   const base64Image = await convertHtmlToImageBase64(elementOrHtml);
 
-  console.log(`🚀 [Global Printer] Mengirim gambar piksel ke Python Sidecar via Rust...`);
-  
   await invoke('print_image_silently', {
     printerName: targetPrinter,
     imageBase64: base64Image,
@@ -116,7 +116,6 @@ export const executePrint = async (
   options: PrintJobOptions
 ) => {
   if (options.mode === 'off') {
-    console.log('ℹ️ [Global Printer] Mode Off - Diabaikan.');
     return;
   }
 

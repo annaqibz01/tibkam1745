@@ -1,9 +1,9 @@
-use tauri::Manager;
+use serde::Serialize;
 use std::fs;
 use std::io::Write;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
-use serde::Serialize;
+use tauri::Manager;
 
 struct PocketbaseChild(Mutex<Option<std::process::Child>>);
 
@@ -22,26 +22,37 @@ struct PythonPayload<'a> {
 
 #[tauri::command]
 fn get_available_printers() -> Vec<String> {
-    let output = Command::new("powershell")
-        .arg("-Command")
-        .arg("Get-Printer | Select-Object -ExpandProperty Name")
-        .creation_flags(CREATE_NO_WINDOW)
-        .output();
+    let mut cmd = Command::new("powershell");
+    cmd.arg("-Command")
+        .arg("Get-Printer | Select-Object -ExpandProperty Name");
 
-    match output {
+    #[cfg(target_os = "windows")]
+    cmd.creation_flags(CREATE_NO_WINDOW);
+
+    match cmd.output() {
         Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout);
-            stdout.lines().map(|s| s.trim().to_string()).filter(|s| !s.is_empty()).collect()
+            stdout
+                .lines()
+                .map(|s| s.trim().to_string())
+                .filter(|s| !s.is_empty())
+                .collect()
         }
         Err(_) => vec![],
     }
 }
 
 #[tauri::command]
-fn print_image_silently(app_handle: tauri::AppHandle, printer_name: String, image_base64: String) -> Result<(), String> {
+fn print_image_silently(
+    app_handle: tauri::AppHandle,
+    printer_name: String,
+    image_base64: String,
+) -> Result<(), String> {
     println!("🖨️ [Rust] Mengirim Gambar Base64 via STDIN ke Python Service...");
 
-    let resource_dir = app_handle.path().resource_dir()
+    let resource_dir = app_handle
+        .path()
+        .resource_dir()
         .map_err(|e| format!("Gagal mendapatkan jalur resource: {}", e))?;
     let printer_exe = resource_dir.join("bin/printer_service.exe");
 
@@ -51,23 +62,27 @@ fn print_image_silently(app_handle: tauri::AppHandle, printer_name: String, imag
     };
     let json_str = serde_json::to_string(&python_payload).map_err(|e| e.to_string())?;
 
-    // 💡 Siapkan Command dengan Piped STDIN
     let mut cmd = Command::new(printer_exe);
     cmd.stdin(Stdio::piped())
-       .stdout(Stdio::piped())
-       .stderr(Stdio::piped());
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
 
     #[cfg(target_os = "windows")]
     cmd.creation_flags(CREATE_NO_WINDOW);
 
-    let mut child = cmd.spawn().map_err(|e| format!("Gagal mengeksekusi printer_service.exe: {}", e))?;
+    let mut child = cmd
+        .spawn()
+        .map_err(|e| format!("Gagal mengeksekusi printer_service.exe: {}", e))?;
 
-    // Tulis JSON string langsung ke STDIN Python
     if let Some(mut stdin) = child.stdin.take() {
-        stdin.write_all(json_str.as_bytes()).map_err(|e| format!("Gagal menulis data ke STDIN: {}", e))?;
+        stdin
+            .write_all(json_str.as_bytes())
+            .map_err(|e| format!("Gagal menulis data ke STDIN: {}", e))?;
     }
 
-    let output = child.wait_with_output().map_err(|e| format!("Gagal menunggu respon printer: {}", e))?;
+    let output = child
+        .wait_with_output()
+        .map_err(|e| format!("Gagal menunggu respon printer: {}", e))?;
 
     let stdout_str = String::from_utf8_lossy(&output.stdout);
     if stdout_str.contains("SUCCESS") || output.status.success() {
@@ -75,13 +90,24 @@ fn print_image_silently(app_handle: tauri::AppHandle, printer_name: String, imag
         Ok(())
     } else {
         let stderr_str = String::from_utf8_lossy(&output.stderr);
-        Err(format!("Printer Service Error: {} | {}", stdout_str, stderr_str))
+        Err(format!(
+            "Printer Service Error: {} | {}",
+            stdout_str, stderr_str
+        ))
     }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        // 🎯 SINGLE INSTANCE CONFIGURATION
+        .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
+        }))
         .invoke_handler(tauri::generate_handler![
             get_available_printers,
             print_image_silently
@@ -105,25 +131,28 @@ pub fn run() {
                 )?;
             }
 
-            let app_local_data = app.path().app_local_data_dir()
+            let app_local_data = app
+                .path()
+                .app_local_data_dir()
                 .expect("Gagal mendapatkan jalur AppData Local");
-            
+
             let pb_data_dir = app_local_data.join("pb_data");
             let target_db_file = pb_data_dir.join("data.db");
 
             if !pb_data_dir.exists() {
-                fs::create_dir_all(&pb_data_dir)
-                    .expect("Gagal membuat folder pb_data di AppData");
+                fs::create_dir_all(&pb_data_dir).expect("Gagal membuat folder pb_data di AppData");
             }
 
-            let resource_dir = app.path().resource_dir()
+            let resource_dir = app
+                .path()
+                .resource_dir()
                 .expect("Gagal mendapatkan jalur Resource folder");
-                
+
             let pocketbase_exe = resource_dir.join("bin/pocketbase.exe");
             let template_db_file = resource_dir.join("bin/koleksi_awal.db");
 
             let pb_migrations_dir = if cfg!(debug_assertions) {
-                std::path::PathBuf::from("../../backend/pb_migrations")
+                std::path::PathBuf::from("../backend/pb_migrations")
             } else {
                 resource_dir.join("pb_migrations")
             };
@@ -135,10 +164,10 @@ pub fn run() {
 
             let mut cmd = Command::new(pocketbase_exe);
             cmd.arg("serve")
-               .arg("--dir")
-               .arg(pb_data_dir.to_str().unwrap())
-               .arg("--migrationsDir")
-               .arg(pb_migrations_dir.to_str().unwrap());
+                .arg("--dir")
+                .arg(pb_data_dir.to_string_lossy().as_ref())
+                .arg("--migrationsDir")
+                .arg(pb_migrations_dir.to_string_lossy().as_ref());
 
             #[cfg(target_os = "windows")]
             cmd.creation_flags(CREATE_NO_WINDOW);

@@ -1,7 +1,7 @@
 // src/features/rambut/components/RapidScanPosModal.tsx
 import React from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { Zap, QrCode, ScanBarcode } from "lucide-react";
+import { QrCode, ScanBarcode } from "lucide-react";
 
 import { useRapidScanPos } from "../hooks/useRapidScanPos";
 import { PosHeader } from "./pos/PosHeader";
@@ -74,6 +74,7 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 onKeyDown={handleKeyDown}
+                onFocus={(e) => e.target.select()} // 🎯 Otomatis seleksi isi input saat mendapat fokus
                 onBlur={focusInput}
                 placeholder="READY SCAN BARCODE / KETIK ID PPS..."
                 disabled={isProcessing}

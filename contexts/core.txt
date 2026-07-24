@@ -1,0 +1,2968 @@
+# CONTEXT: CORE
+
+## Included Files:
+- `generate-tree.js`
+- `generate-types.js`
+- `index.html`
+- `package.json`
+- `postcss.config.js`
+- `src/App.tsx`
+- `src/components/shared/BaseModal.tsx`
+- `src/components/shared/BaseToolbar.tsx`
+- `src/components/shared/CustomDatePickerHijriyah.tsx`
+- `src/components/shared/CustomDatePickerMasehi.tsx`
+- `src/components/shared/HijriText.tsx`
+- `src/components/shared/NotificationToast.tsx`
+- `src/components/shared/PageTransition.tsx`
+- `src/context/ToastContext.tsx`
+- `src/hooks/usePrinter.ts`
+- `src/hooks/useWaktuIstiwa.ts`
+- `src/index.css`
+- `src/layouts/DashboardLayout/components/Sidebar.tsx`
+- `src/layouts/DashboardLayout/DashboardLayout.tsx`
+- `src/lib/pocketbase.ts`
+- `src/main.tsx`
+- `src/types/pocketbase-types.ts`
+- `src/types/printer.ts`
+- `src/utils/errorHandler.ts`
+- `src/utils/printer.ts`
+- `src/utils/syncExcelToPocketBase.ts`
+- `src/utils/userHelpers.ts`
+- `src/utils/waktuIstiwa.ts`
+- `src/vite-env.d.ts`
+- `tailwind.config.js`
+- `tsconfig.json`
+- `tsconfig.node.json`
+- `vite.config.ts`
+
+---
+
+### `generate-tree.js`
+```javascript
+import fs from 'fs';
+import path from 'path';
+
+const IGNORE_LIST = [
+  'node_modules',
+  '.git',
+  '.vscode',
+  'dist',
+  'build',
+  '.env',
+  'package-lock.json',
+  'directory-tree.txt',
+  'generate-tree.js',
+  'target',
+  'gen',
+  'icons'
+];
+
+function generateTree(dir, prefix = '') {
+  let tree = '';
+  const files = fs.readdirSync(dir);
+
+  files.forEach((file, index) => {
+    if (IGNORE_LIST.includes(file)) return;
+
+    const isLast = index === files.length - 1;
+    const fullPath = path.join(dir, file);
+    const stats = fs.statSync(fullPath);
+
+    tree += `${prefix}${isLast ? '└── ' : '├── '}${file}\n`;
+
+    if (stats.isDirectory()) {
+      tree += generateTree(fullPath, prefix + (isLast ? '    ' : '│   '));
+    }
+  });
+
+  return tree;
+}
+
+const rootDir = process.cwd();
+const output = `Proyek: tibkam1745\nRoot: ${rootDir}\n\n${generateTree(rootDir)}`;
+
+fs.writeFileSync('directory-tree.txt', output);
+console.log('✅ Berhasil membuat directory-tree.txt');
+```
+
+### `generate-types.js`
+```javascript
+import { execSync } from 'child_process';
+
+const { PB_URL, PB_EMAIL, PB_PASSWORD } = process.env;
+
+if (!PB_URL || !PB_EMAIL || !PB_PASSWORD) {
+  console.error("❌ Pastikan PB_URL, PB_EMAIL, dan PB_PASSWORD sudah diisi di file .env");
+  process.exit(1);
+}
+
+const cmd = `npx pocketbase-typegen --url ${PB_URL} --email ${PB_EMAIL} --password ${PB_PASSWORD} --out src/types/pocketbase-types.ts`;
+
+execSync(cmd, { stdio: 'inherit' });
+```
+
+### `index.html`
+```html
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/x-icon" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>tibkam1745</title>
+  </head>
+  <body>
+    <!-- React akan memasukkan seluruh aplikasinya ke dalam div root ini -->
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+```
+
+### `package.json`
+```json
+{
+  "name": "tibkam1745",
+  "private": true,
+  "version": "1.0.2",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "clean": "rimraf dist src-tauri/target",
+    "typegen": "node --env-file=.env generate-types.js"
+  },
+  "dependencies": {
+    "@hookform/resolvers": "^5.4.0",
+    "@tanstack/react-query": "^5.101.2",
+    "exceljs": "^4.4.0",
+    "file-saver": "^2.0.5",
+    "framer-motion": "^12.42.2",
+    "html-to-image": "^1.11.13",
+    "html2canvas": "^1.4.1",
+    "lucide-react": "^1.23.0",
+    "pocketbase": "^0.27.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
+    "react-error-boundary": "^6.1.2",
+    "react-hook-form": "^7.82.0",
+    "react-router-dom": "^7.18.1",
+    "react-to-print": "^3.3.0",
+    "sonner": "^2.0.7",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.2",
+    "@tauri-apps/api": "^2.11.1",
+    "@tauri-apps/cli": "^2.11.4",
+    "@types/file-saver": "^2.0.7",
+    "@types/node": "^26.1.1",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "autoprefixer": "^10.5.2",
+    "cross-var": "^1.1.0",
+    "dotenv-cli": "^11.0.0",
+    "env-cmd": "^11.0.0",
+    "pocketbase-typegen": "^1.5.0",
+    "postcss": "^8.5.16",
+    "rimraf": "^6.1.3",
+    "tailwindcss": "^4.3.2",
+    "typescript": "^6.0.3",
+    "vite": "^8.1.3"
+  }
+}
+```
+
+### `postcss.config.js`
+```javascript
+export default {
+  plugins: {
+    '@tailwindcss/postcss': {},
+    autoprefixer: {},
+  },
+}
+```
+
+### `src/App.tsx`
+```tsx
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastProvider } from './context/ToastContext';
+import { ProtectedRoute } from '@/features/auth';
+import DashboardLayout from '@/layouts/DashboardLayout/DashboardLayout';
+import { LoginPage as Login } from '@/features/auth';
+import { DashboardPage as Dashboard } from '@/features/dashboard';
+import { ProfilePage as Profile } from '@/features/profile';
+import { UsersPage as Users } from '@/features/users';
+import { MasterPage as Master } from '@/features/master';
+import { KalenderPage as Kalender } from '@/features/kalender';
+import { RambutPage as Rambut } from '@/features/rambut';
+import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
+
+export default function App() {
+  return (
+    <ToastProvider>
+      <HashRouter>
+        <Routes>
+          <Route path="/login" element={<Login />} />
+          <Route
+            element={
+              <ProtectedRoute>
+                <DashboardLayout />
+              </ProtectedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="/users" element={<Users />} />
+            <Route path="/master" element={<Master />} />
+            <Route path="/kalender" element={<Kalender />} />
+            <Route path="/rambut" element={<Rambut />} />
+            <Route path="/laporan/rambut" element={<LaporanRambut />} />
+          </Route>
+          <Route path="/" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </HashRouter>
+    </ToastProvider>
+  );
+}
+```
+
+### `src/components/shared/BaseModal.tsx`
+```tsx
+// src/components/shared/BaseModal.tsx
+import React, { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { X } from "lucide-react";
+
+interface BaseModalProps {
+  isOpen?: boolean;
+  onClose?: () => void;
+  title?: string;
+  icon?: React.ReactNode;
+  children: React.ReactNode;
+  maxWidth?: string;
+}
+
+export const BaseModal: React.FC<BaseModalProps> = ({
+  isOpen = true,
+  onClose = () => {},
+  title,
+  icon,
+  children,
+  maxWidth = "max-w-lg",
+}) => {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isOpen) {
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose]);
+
+  if (!mounted) return null;
+
+  return createPortal(
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-4 sm:p-6">
+
+          {/* 1. Backdrop Gelap */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15, ease: "linear" }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/75 backdrop-blur-sm"
+          />
+
+          {/* 2. Modal Box dengan Max Height (Tinggi Maksimal 85vh) */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{
+              duration: 0.15,
+              ease: [0.16, 1, 0.3, 1]
+            }}
+            className={`relative z-10 w-full ${maxWidth} max-h-[85vh] bg-gray-900 border border-gray-800 rounded-3xl p-5 sm:p-6 shadow-2xl flex flex-col overflow-hidden my-auto`}
+          >
+            {/* Header Modal (Kunci: flex-shrink-0 agar tidak terdorong) */}
+            {title && (
+              <div className="flex-shrink-0 flex items-center justify-between border-b border-gray-800/80 pb-3.5 mb-4">
+                <div className="flex items-center gap-2.5">
+                  {icon && (
+                    <div className="p-2 bg-indigo-500/10 text-indigo-400 rounded-xl border border-indigo-500/20">
+                      {icon}
+                    </div>
+                  )}
+                  <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                    {title}
+                  </h3>
+                </div>
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="p-1.5 text-gray-400 hover:text-white rounded-xl hover:bg-gray-800 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            )}
+
+            {/* Content Body (Kunci: flex-1 overflow-y-auto agar bisa discroll internal) */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2, delay: 0.05 }}
+              className="flex-1 overflow-y-auto pr-1 space-y-4 text-left custom-scrollbar"
+            >
+              {children}
+            </motion.div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>,
+    document.body
+  );
+};
+```
+
+### `src/components/shared/BaseToolbar.tsx`
+```tsx
+// src/components/shared/BaseToolbar.tsx
+import React, { useState, useEffect, useRef } from "react";
+import { Search, X, RefreshCw } from "lucide-react";
+
+interface BaseToolbarProps {
+  search: string;
+  onSearchChange: (val: string) => void;
+  placeholder: string;
+  onRefresh: () => void;
+  isLoading: boolean;
+  searchIconColorClass?: string;
+  children?: React.ReactNode; // Slot khusus tempat masuknya filter unik per tab
+}
+
+export const BaseToolbar: React.FC<BaseToolbarProps> = ({
+  search,
+  onSearchChange,
+  placeholder,
+  onRefresh,
+  isLoading,
+  searchIconColorClass = "text-indigo-400",
+  children,
+}) => {
+  // 1. State lokal agar ketikan huruf demi huruf tidak langsung dikirim ke parent/server
+  const [localSearch, setLocalSearch] = useState(search);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Sinkronisasi jika prop 'search' diubah dari luar (misal dipicu reset dari parent)
+  useEffect(() => {
+    setLocalSearch(search);
+  }, [search]);
+
+  // 2. Fungsi saat menekan tombol Enter
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      onSearchChange(localSearch); // Tembak fungsi pencarian ke server/parent
+
+      // Auto-select teks di dalam pencarian agar bisa langsung ditimpa ketikan baru
+      setTimeout(() => {
+        inputRef.current?.select();
+      }, 0);
+    }
+  };
+
+  // 3. Fungsi hapus pencarian (Clear Button)
+  const handleClear = () => {
+    setLocalSearch("");
+    onSearchChange(""); // Langsung kosongkan filter di server tanpa nunggu Enter
+    inputRef.current?.focus();
+  };
+
+  return (
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 w-full">
+      {/* 🔍 Input Pencarian Universal */}
+      <div className="relative flex-1 group min-w-[200px]">
+        <div className={`absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:${searchIconColorClass} transition-colors`}>
+          <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${searchIconColorClass}`} />
+        </div>
+        <input
+          ref={inputRef}
+          type="text"
+          value={localSearch}
+          onChange={(e) => setLocalSearch(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder={placeholder}
+          className="w-full h-12 pl-11 pr-10 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 shadow-lg font-mono transition-all duration-200"
+        />
+        {localSearch && (
+          <button
+            type="button"
+            onClick={handleClear}
+            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        )}
+      </div>
+
+      {/* 🧩 SLOT FILTER DINAMIS */}
+      {children}
+
+      {/* 🔄 Tombol Refresh Universal */}
+      <button
+        type="button"
+        onClick={onRefresh}
+        disabled={isLoading}
+        className="w-12 h-12 flex items-center justify-center flex-shrink-0 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-gray-300 hover:text-white transition-all shadow-lg disabled:opacity-50"
+      >
+        <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+      </button>
+    </div>
+  );
+};
+```
+
+### `src/components/shared/CustomDatePickerHijriyah.tsx`
+```tsx
+// src/components/shared/CustomDatePickerHijriyah.tsx
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
+import { pb } from "../../lib/pocketbase";
+import type { KalenderHijriyahResponse, KalenderHijriyahBulanHijriNamaOptions } from "../../types/pocketbase-types";
+import {
+  Moon,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Loader2,
+} from "lucide-react";
+
+interface CustomDatePickerHijriyahProps {
+  value: string; // Format ISO YYYY-MM-DD
+  onChange: (val: string) => void;
+  placeholder?: string;
+}
+
+const NAMA_HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const BULAN_HIJRI_LIST: { angka: number; nama: KalenderHijriyahBulanHijriNamaOptions }[] = [
+  { angka: 1, nama: "Muharram" },
+  { angka: 2, nama: "Safar" },
+  { angka: 3, nama: "Rabi'ul Awal" },
+  { angka: 4, nama: "Rabi'ul Akhir" },
+  { angka: 5, nama: "Jumadil Ula" },
+  { angka: 6, nama: "Jumadil Akhir" },
+  { angka: 7, nama: "Rajab" },
+  { angka: 8, nama: "Sya'ban" },
+  { angka: 9, nama: "Ramadhan" },
+  { angka: 10, nama: "Syawwal" },
+  { angka: 11, nama: "Dzulqa'dah" },
+  { angka: 12, nama: "Dzulhijjah" },
+];
+
+// 🛠️ Pindahkan fungsi helper ke luar agar bisa dipakai di level root komponen
+const getLocalDateStr = (dInput: string | Date) => {
+  const d = new Date(dInput);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+};
+
+export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> = ({
+  value,
+  onChange,
+  placeholder = "Pilih Tanggal Hijriyah",
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  // String masehi hari ini untuk pencarian fallback
+  const todayDateStr = useMemo(() => getLocalDateStr(new Date()), []);
+
+  // State tampilan bulan & tahun (default aman sebelum data termuat)
+  const [viewTahunHijri, setViewTahunHijri] = useState<number>(1448);
+  const [viewBulanHijri, setViewBulanHijri] = useState<number>(2); // Safar sebagai cadangan terdekat
+
+  // 1. 🔍 QUERY BARU: Ambil data Hijriyah hari ini dari database untuk acuan default buka calendar
+  const { data: todayRecord } = useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ["datepicker-hijri-today-record", todayDateStr],
+    queryFn: async () => {
+      try {
+        return await pb.collection("kalender_hijriyah").getFirstListItem<KalenderHijriyahResponse>(
+          `tanggal_masehi >= "${todayDateStr} 00:00:00" && tanggal_masehi <= "${todayDateStr} 23:59:59"`
+        );
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 60 * 12, // Tahan 12 jam karena tanggal hari ini awet
+  });
+
+  // Query record Hijriyah dari nilai terpilih
+  const { data: selectedRecord, isLoading: isSelectedLoading } = useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ["datepicker-hijri-selected-record", value],
+    queryFn: async () => {
+      if (!value) return null;
+      try {
+        return await pb.collection("kalender_hijriyah").getFirstListItem<KalenderHijriyahResponse>(
+          `tanggal_masehi >= "${value} 00:00:00" && tanggal_masehi <= "${value} 23:59:59"`
+        );
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!value,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // 2. 🔄 FIX SYNC EFFECT: Cek record terpilih, jika kosong langsung pakai hari ini (Safar)
+  useEffect(() => {
+    if (selectedRecord) {
+      if (selectedRecord.tahun_hijri) setViewTahunHijri(selectedRecord.tahun_hijri);
+      if (selectedRecord.bulan_hijri_angka) setViewBulanHijri(selectedRecord.bulan_hijri_angka);
+    } else if (!value && todayRecord) {
+      // Jika user belum memilih tanggal apapun, langsung sinkronkan ke bulan sekarang
+      if (todayRecord.tahun_hijri) setViewTahunHijri(todayRecord.tahun_hijri);
+      if (todayRecord.bulan_hijri_angka) setViewBulanHijri(todayRecord.bulan_hijri_angka);
+    }
+  }, [selectedRecord, todayRecord, value]);
+
+  // Query hari dalam bulan Hijriyah aktif
+  const { data: hijriMonthDays, isLoading: isMonthLoading } = useQuery<KalenderHijriyahResponse[]>({
+    queryKey: ["datepicker-hijri-grid-days", viewTahunHijri, viewBulanHijri],
+    queryFn: async () => {
+      if (!viewTahunHijri || !viewBulanHijri) return [];
+      try {
+        return await pb.collection("kalender_hijriyah").getFullList<KalenderHijriyahResponse>({
+          filter: `tahun_hijri = ${viewTahunHijri} && bulan_hijri_angka = ${viewBulanHijri}`,
+          sort: "tanggal_hijri",
+        });
+      } catch {
+        return [];
+      }
+    },
+    enabled: isOpen,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  const activeBulanObj = useMemo(() => {
+    return BULAN_HIJRI_LIST.find((b) => b.angka === viewBulanHijri) || BULAN_HIJRI_LIST[0];
+  }, [viewBulanHijri]);
+
+  const firstDayOffset = useMemo(() => {
+    if (!hijriMonthDays || hijriMonthDays.length === 0) return 0;
+    const firstRecordDate = new Date(hijriMonthDays[0].tanggal_masehi);
+    return firstRecordDate.getDay();
+  }, [hijriMonthDays]);
+
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popoverWidth = 288;
+      let left = rect.left;
+
+      if (left + popoverWidth > window.innerWidth - 16) {
+        left = window.innerWidth - popoverWidth - 16;
+      }
+
+      let top = rect.bottom + 6;
+      if (top + 320 > window.innerHeight) {
+        top = Math.max(16, rect.top - 320 - 6);
+      }
+
+      setPopoverPos({ top, left });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+    }
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handlePrevHijriMonth = () => {
+    if (viewBulanHijri === 1) {
+      setViewBulanHijri(12);
+      setViewTahunHijri((prev) => prev - 1);
+    } else {
+      setViewBulanHijri((prev) => prev - 1);
+    }
+  };
+
+  const handleNextHijriMonth = () => {
+    if (viewBulanHijri === 12) {
+      setViewBulanHijri(1);
+      setViewTahunHijri((prev) => prev + 1);
+    } else {
+      setViewBulanHijri((prev) => prev + 1);
+    }
+  };
+
+  const selectedDateStr = value ? getLocalDateStr(value) : "";
+
+  const displayText = selectedRecord
+    ? `${selectedRecord.tanggal_hijri} ${selectedRecord.bulan_hijri_nama} ${selectedRecord.tahun_hijri} H`
+    : placeholder;
+
+  return (
+    <div className="w-full">
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => {
+          updatePosition();
+          setIsOpen(!isOpen);
+        }}
+        className={`w-full h-[42px] flex items-center justify-between px-3.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner shrink-0 overflow-hidden ${
+          isOpen
+            ? "border-amber-400 ring-2 ring-amber-500/20 text-white"
+            : value
+            ? "border-amber-500/50 text-amber-200 hover:border-amber-400"
+            : "border-amber-500/25 text-gray-400 hover:border-amber-500/40"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0">
+          <Moon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+          {isSelectedLoading ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
+          ) : (
+            <span className="truncate font-bold text-xs">{displayText}</span>
+          )}
+        </div>
+
+        {value ? (
+          <X
+            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors shrink-0 ml-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+          />
+        ) : (
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 shrink-0 ml-1.5 ${
+              isOpen ? "rotate-180 text-amber-400" : ""
+            }`}
+          />
+        )}
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: "fixed",
+              top: `${popoverPos.top}px`,
+              left: `${popoverPos.left}px`,
+              zIndex: 99999,
+            }}
+            className="w-72 bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150 select-none"
+          >
+            <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
+              <button
+                type="button"
+                onClick={handlePrevHijriMonth}
+                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="font-mono text-xs font-extrabold text-amber-300">
+                {activeBulanObj.nama} {viewTahunHijri} H
+              </span>
+
+              <button
+                type="button"
+                onClick={handleNextHijriMonth}
+                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-gray-500 font-semibold">
+              {NAMA_HARI.map((h) => (
+                <div key={h}>{h}</div>
+              ))}
+            </div>
+
+            {isMonthLoading ? (
+              <div className="py-8 text-center font-mono text-xs text-amber-400/80 animate-pulse">
+                Memuat Kalender Hijriyah...
+              </div>
+            ) : !hijriMonthDays || hijriMonthDays.length === 0 ? (
+              <div className="py-6 text-center font-mono text-[11px] text-gray-500 p-2 bg-gray-950/40 rounded-2xl border border-gray-800">
+                Bulan {activeBulanObj.nama} {viewTahunHijri} H Belum Dipetakan di Database.
+              </div>
+            ) : (
+              <div className="grid grid-cols-7 gap-1 text-center font-mono">
+                {Array.from({ length: firstDayOffset }).map((_, i) => (
+                  <div key={`blank-${i}`} />
+                ))}
+
+                {hijriMonthDays.map((rec) => {
+                  const masehiDateObj = new Date(rec.tanggal_masehi);
+                  const masehiDayNum = masehiDateObj.getDate();
+                  const recDateStr = getLocalDateStr(rec.tanggal_masehi);
+
+                  const isSelected = selectedDateStr === recDateStr;
+                  const isToday = todayDateStr === recDateStr;
+
+                  return (
+                    <button
+                      key={rec.id}
+                      type="button"
+                      onClick={() => {
+                        onChange(recDateStr);
+                        setIsOpen(false);
+                      }}
+                      title={`${rec.string_hijri} (${masehiDateObj.toLocaleDateString("id-ID", {
+                        day: "numeric",
+                        month: "short",
+                        year: "numeric",
+                      })})`}
+                      className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                        isSelected
+                          ? "bg-amber-500 text-gray-950 font-bold shadow-md shadow-amber-500/30 scale-105"
+                          : isToday
+                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                      }`}
+                    >
+                      <span className="text-xs font-bold leading-none">{rec.tanggal_hijri}</span>
+                      <span
+                        className={`text-[8px] font-mono leading-none mt-0.5 ${
+                          isSelected ? "text-gray-900 font-black" : "text-gray-500"
+                        }`}
+                      >
+                        {masehiDayNum}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+```
+
+### `src/components/shared/CustomDatePickerMasehi.tsx`
+```tsx
+// src/components/shared/CustomDatePickerMasehi.tsx
+import React, { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { createPortal } from "react-dom";
+import { useQuery } from "@tanstack/react-query";
+import { pb } from "../../lib/pocketbase";
+import type { KalenderHijriyahResponse } from "../../types/pocketbase-types";
+import {
+  Calendar,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown,
+  X,
+  Moon,
+} from "lucide-react";
+
+interface CustomDatePickerMasehiProps {
+  value: string; // Format YYYY-MM-DD
+  onChange: (val: string) => void;
+  placeholder?: string;
+}
+
+const NAMA_HARI = ["Min", "Sen", "Sel", "Rab", "Kam", "Jum", "Sab"];
+const NAMA_BULAN_MASEHI = [
+  "Januari", "Februari", "Maret", "April", "Mei", "Juni",
+  "Juli", "Agustus", "September", "Oktober", "November", "Desember"
+];
+
+// ✨ Helper parsing aman zona waktu (Local Midnight)
+const parseLocalYMD = (ymd: string): Date | null => {
+  if (!ymd) return null;
+  const parts = ymd.split("-").map(Number);
+  if (parts.length !== 3 || parts.some(isNaN)) return null;
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+};
+
+export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
+  value,
+  onChange,
+  placeholder = "Pilih Tanggal Masehi",
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [popoverPos, setPopoverPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const selectedDate = useMemo(() => parseLocalYMD(value), [value]);
+  const [viewDate, setViewDate] = useState<Date>(selectedDate || new Date());
+
+  // 1. 🔄 FIX SYNC EFFECT: Menjamin kalender otomatis reset ke bulan sekarang jika nilainya kosong (saat buat periode baru)
+  useEffect(() => {
+    if (selectedDate) {
+      setViewDate(selectedDate);
+    } else if (!value) {
+      setViewDate(new Date());
+    }
+  }, [selectedDate, value]);
+
+  const year = viewDate.getFullYear();
+  const month = viewDate.getMonth();
+  const monthPadded = String(month + 1).padStart(2, "0");
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+
+  const handlePrevMonth = () => {
+    setViewDate(new Date(year, month - 1, 1));
+  };
+
+  const handleNextMonth = () => {
+    setViewDate(new Date(year, month + 1, 1));
+  };
+
+  // 🔍 Query 1: Ambil record Hijriyah untuk bulan Masehi aktif
+  const { data: monthHijriRecords } = useQuery<KalenderHijriyahResponse[]>({
+    queryKey: ["datepicker-masehi-hijri-month", year, monthPadded],
+    queryFn: async () => {
+      try {
+        return await pb.collection("kalender_hijriyah").getFullList<KalenderHijriyahResponse>({
+          filter: `tanggal_masehi ~ "${year}-${monthPadded}-"`,
+        });
+      } catch {
+        return [];
+      }
+    },
+    enabled: isOpen,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // 🔍 Query 2: Ambil record Hijriyah untuk tanggal terpilih di Trigger Button
+  const { data: selectedHijriRecord } = useQuery<KalenderHijriyahResponse | null>({
+    queryKey: ["datepicker-masehi-selected-hijri", value],
+    queryFn: async () => {
+      if (!value) return null;
+      try {
+        return await pb.collection("kalender_hijriyah").getFirstListItem<KalenderHijriyahResponse>(
+          `tanggal_masehi ~ "${value}"`
+        );
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!value,
+    staleTime: 1000 * 60 * 30,
+  });
+
+  // 2. 🛡️ FIX MAP DAY ANTI-SHIFT: Ekstraksi string murni YYYY-MM-DD tanpa melalui engine Date JavaScript agar tidak bergeser hari
+  const hijriDayMap = useMemo(() => {
+    const map = new Map<number, KalenderHijriyahResponse>();
+    if (!monthHijriRecords) return map;
+    monthHijriRecords.forEach((rec) => {
+      const cleanStr = rec.tanggal_masehi.split(" ")[0].split("T")[0]; // "YYYY-MM-DD"
+      const parts = cleanStr.split("-").map(Number);
+      if (parts.length === 3) {
+        const dayNum = parts[2]; // Ambil porsi tanggalnya saja
+        map.set(dayNum, rec);
+      }
+    });
+    return map;
+  }, [monthHijriRecords]);
+
+  // Kalkulasi Posisi Popover
+  const updatePosition = useCallback(() => {
+    if (triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      const popoverWidth = 288;
+      let left = rect.left;
+
+      if (left + popoverWidth > window.innerWidth - 16) {
+        left = window.innerWidth - popoverWidth - 16;
+      }
+
+      let top = rect.bottom + 6;
+      if (top + 300 > window.innerHeight) {
+        top = Math.max(16, rect.top - 300 - 6);
+      }
+
+      setPopoverPos({ top, left });
+    }
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      updatePosition();
+      window.addEventListener("resize", updatePosition);
+      window.addEventListener("scroll", updatePosition, true);
+    }
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      window.removeEventListener("scroll", updatePosition, true);
+    };
+  }, [isOpen, updatePosition]);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        popoverRef.current &&
+        !popoverRef.current.contains(e.target as Node) &&
+        triggerRef.current &&
+        !triggerRef.current.contains(e.target as Node)
+      ) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const formattedMasehiDisplay = selectedDate
+    ? selectedDate.toLocaleDateString("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      })
+    : placeholder;
+
+  return (
+    <div className="w-full">
+      {/* TRIGGER BUTTON - [UBAH]: Disetarakan tinggi h-[42px] & layout shrink-0 agar sejajar sempurna */}
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={() => {
+          if (!isOpen && selectedDate) setViewDate(selectedDate);
+          setIsOpen(!isOpen);
+        }}
+        className={`w-full h-[42px] flex items-center justify-between px-3.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner shrink-0 overflow-hidden ${
+          isOpen
+            ? "border-amber-400 ring-2 ring-amber-500/20 text-white"
+            : value
+            ? "border-amber-500/50 text-amber-200 hover:border-amber-400"
+            : "border-amber-500/25 text-gray-400 hover:border-amber-500/40"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0 flex-1">
+          <Calendar className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+          <span className="truncate font-bold text-xs">{formattedMasehiDisplay}</span>
+
+          {selectedHijriRecord && (
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex-shrink-0 max-w-[120px] truncate">
+              <Moon className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+              <span className="truncate">{selectedHijriRecord.string_hijri}</span>
+            </span>
+          )}
+        </div>
+
+        {value ? (
+          <X
+            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors flex-shrink-0 ml-1.5"
+            onClick={(e) => {
+              e.stopPropagation();
+              onChange("");
+            }}
+          />
+        ) : (
+          <ChevronDown
+            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 flex-shrink-0 ml-1.5 ${
+              isOpen ? "rotate-180 text-amber-400" : ""
+            }`}
+          />
+        )}
+      </button>
+
+      {isOpen &&
+        createPortal(
+          <div
+            ref={popoverRef}
+            style={{
+              position: "fixed",
+              top: `${popoverPos.top}px`,
+              left: `${popoverPos.left}px`,
+              zIndex: 99999,
+            }}
+            className="w-72 bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150 select-none"
+          >
+            <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
+              <button
+                type="button"
+                onClick={handlePrevMonth}
+                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+
+              <span className="font-mono text-xs font-bold text-amber-300">
+                {NAMA_BULAN_MASEHI[month]} {year}
+              </span>
+
+              <button
+                type="button"
+                onClick={handleNextMonth}
+                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-gray-500 font-semibold">
+              {NAMA_HARI.map((h) => (
+                <div key={h}>{h}</div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-7 gap-1 text-center font-mono">
+              {Array.from({ length: firstDayOfMonth }).map((_, i) => (
+                <div key={`blank-${i}`} />
+              ))}
+
+              {Array.from({ length: daysInMonth }).map((_, i) => {
+                const dayNum = i + 1;
+                const hijriRecord = hijriDayMap.get(dayNum);
+
+                const isSelected =
+                  selectedDate &&
+                  selectedDate.getDate() === dayNum &&
+                  selectedDate.getMonth() === month &&
+                  selectedDate.getFullYear() === year;
+
+                const isToday =
+                  new Date().getDate() === dayNum &&
+                  new Date().getMonth() === month &&
+                  new Date().getFullYear() === year;
+
+                // Format string YYYY-MM-DD lokal untuk fungsi onChange
+                const currentMasehiStr = `${year}-${monthPadded}-${String(dayNum).padStart(2, "0")}`;
+
+                return (
+                  <button
+                    key={dayNum}
+                    type="button"
+                    onClick={() => {
+                      onChange(currentMasehiStr);
+                      setIsOpen(false);
+                    }}
+                    title={hijriRecord ? hijriRecord.string_hijri : undefined}
+                    className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                      isSelected
+                        ? "bg-amber-500 text-gray-950 font-bold shadow-md shadow-amber-500/30 scale-105"
+                        : isToday
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                    }`}
+                  >
+                    <span className="text-xs font-bold leading-none">{dayNum}</span>
+                    {hijriRecord && (
+                      <span
+                        className={`text-[8px] font-mono leading-none mt-0.5 ${
+                          isSelected ? "text-gray-900 font-black" : "text-amber-400/80"
+                        }`}
+                      >
+                        {hijriRecord.tanggal_hijri}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </div>,
+          document.body
+        )}
+    </div>
+  );
+};
+
+export { CustomDatePickerMasehi as CustomDatePicker };
+```
+
+### `src/components/shared/HijriText.tsx`
+```tsx
+// src/components/shared/HijriText.tsx
+import React from 'react';
+import { useHijriByDate } from '../../features/kalender/hooks/useKalenderHijriyah';
+
+interface HijriTextProps {
+  date: string | Date | null | undefined;
+  fallback?: string;
+}
+
+export const HijriText: React.FC<HijriTextProps> = ({ date, fallback = "-" }) => {
+  const { data, isLoading } = useHijriByDate(date);
+
+  if (!date) return <>{fallback}</>;
+
+  if (isLoading) {
+    return <span className="text-gray-500 animate-pulse">Memuat...</span>;
+  }
+
+  // Jika sukses, render string_hijri dari database internal ("1 Muharram 1448 H")
+  return <>{data?.string_hijri || fallback}</>;
+};
+```
+
+### `src/components/shared/NotificationToast.tsx`
+```tsx
+// src/components/shared/NotificationToast.tsx
+import { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom"; // 👈 Kita pakai Portal dari React DOM
+import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+
+export type ToastType = "success" | "error" | "warning" | "info";
+
+export interface ToastMessage {
+  title?: string;
+  message: string;
+  type?: ToastType;
+}
+
+interface NotificationToastProps {
+  toast: ToastMessage | null;
+  onClose: () => void;
+  duration?: number;
+}
+
+export default function NotificationToast({
+  toast,
+  onClose,
+  duration = 4000,
+}: NotificationToastProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [displayToast, setDisplayToast] = useState<ToastMessage | null>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClose = useCallback(() => {
+    setIsVisible(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+
+    timerRef.current = setTimeout(() => {
+      setDisplayToast(null);
+      onClose();
+    }, 300);
+  }, [onClose]);
+
+  useEffect(() => {
+    if (toast) {
+      setDisplayToast(toast);
+      const animTimeout = setTimeout(() => setIsVisible(true), 20);
+
+      const autoDismissTimeout = setTimeout(() => {
+        handleClose();
+      }, duration);
+
+      return () => {
+        clearTimeout(animTimeout);
+        clearTimeout(autoDismissTimeout);
+      };
+    } else {
+      setIsVisible(false);
+      const clearDelay = setTimeout(() => setDisplayToast(null), 300);
+      return () => clearTimeout(clearDelay);
+    }
+  }, [toast, duration, handleClose]);
+
+  if (!displayToast) return null;
+
+  const currentType = displayToast.type || "success";
+
+  const toastConfig = {
+    success: {
+      border: "border-emerald-500/30",
+      bgShadow: "shadow-emerald-950/50",
+      icon: <CheckCircle2 size={20} className="text-emerald-400" />,
+      titleColor: "text-emerald-300",
+    },
+    error: {
+      border: "border-rose-500/30",
+      bgShadow: "shadow-rose-950/50",
+      icon: <AlertCircle size={20} className="text-rose-400" />,
+      titleColor: "text-rose-300",
+    },
+    warning: {
+      border: "border-amber-500/30",
+      bgShadow: "shadow-amber-950/50",
+      icon: <AlertTriangle size={20} className="text-amber-400" />,
+      titleColor: "text-amber-300",
+    },
+    info: {
+      border: "border-indigo-500/30",
+      bgShadow: "shadow-indigo-950/50",
+      icon: <Info size={20} className="text-indigo-400" />,
+      titleColor: "text-indigo-300",
+    },
+  }[currentType];
+
+  // 💡 Menggunakan createPortal untuk merender komponen langsung di bawah <body>
+  return createPortal(
+    <div className="fixed top-6 inset-x-0 z-[9999] flex justify-center px-4 pointer-events-none">
+      <div
+        className={`pointer-events-auto max-w-md w-full rounded-2xl border bg-gray-900/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
+          toastConfig.border
+        } ${toastConfig.bgShadow} ${
+          isVisible
+            ? "translate-y-0 opacity-100 scale-100"
+            : "-translate-y-8 opacity-0 scale-95"
+        }`}
+      >
+        {/* Ikon Kiri */}
+        <div className="flex-shrink-0 mt-0.5">{toastConfig.icon}</div>
+
+        {/* Isi Teks / Pesan */}
+        <div className="flex-1 space-y-0.5">
+          {displayToast.title && (
+            <h4 className={`font-semibold text-sm ${toastConfig.titleColor}`}>
+              {displayToast.title}
+            </h4>
+          )}
+          {displayToast.message && (
+            <p className="text-xs text-gray-300 leading-relaxed">
+              {displayToast.message}
+            </p>
+          )}
+        </div>
+
+        {/* Tombol Close Manual */}
+        <div className="flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-800 hover:text-gray-300 focus:outline-none"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body // 👈 Target injeksi portal
+  );
+}
+```
+
+### `src/components/shared/PageTransition.tsx`
+```tsx
+// src/components/shared/PageTransition.tsx
+import React from 'react';
+import { motion, type Variants, useReducedMotion } from 'framer-motion';
+
+interface PageTransitionProps {
+  children: React.ReactNode;
+  /** Class CSS opsional jika ingin menambahkan styling kustom pada wrapper */
+  className?: string;
+}
+
+// ✨ Premium Fluid Curve (Emphasized Decelerate - Gabungan Vercel & Apple iOS)
+const EASING_CURVE = [0.16, 1, 0.3, 1] as const;
+
+/**
+ * Varian Animasi Premium (Ultra-Smooth & Fluid)
+ */
+const pageVariants: Variants = {
+  initial: {
+    opacity: 0,
+    y: 10,       // Pergeseran sedikit dinaikkan (10px) agar pergerakan kinetiknya terlihat anggun
+    scale: 0.99, // 🔮 KUNCI: Efek mikro-skala menciptakan ilusi transisi lapis kedalaman yang halus
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      duration: 0.35, // ⏱️ Sweet-spot baru (350ms) agar kurva akselerasi terlihat mengalir sempurna
+      ease: EASING_CURVE,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    scale: 0.99,   // Mikro-skala mengecil halus saat halaman memudar keluar
+    transition: {
+      duration: 0.25,
+      ease: EASING_CURVE,
+    },
+  },
+};
+
+/**
+ * Varian Khusus Aksesibilitas (Fade Murni tanpa Pergeseran Fisik)
+ */
+const reducedMotionVariants: Variants = {
+  initial: { opacity: 0 },
+  animate: {
+    opacity: 1,
+    transition: { duration: 0.25 },
+  },
+  exit: {
+    opacity: 0,
+    transition: { duration: 0.15 },
+  },
+};
+
+export const PageTransition: React.FC<PageTransitionProps> = ({
+  children,
+  className = '',
+}) => {
+  // Detector Preferensi Sistem OS (Aksesibilitas "Reduce Motion")
+  const shouldReduceMotion = useReducedMotion();
+  const activeVariants = shouldReduceMotion ? reducedMotionVariants : pageVariants;
+
+  return (
+    <motion.div
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      variants={activeVariants}
+      style={{ willChange: 'transform, opacity' }} // Memaksa browser menyiapkan layer komposisi GPU
+      className={`w-full transform-gpu ${className}`.trim()}
+    >
+      {children}
+    </motion.div>
+  );
+};
+```
+
+### `src/context/ToastContext.tsx`
+```tsx
+// src/context/ToastContext.tsx
+import React, { createContext, useContext, useState, ReactNode } from "react";
+import NotificationToast, { ToastMessage, ToastType } from "@/components/shared/NotificationToast";
+
+interface ToastContextType {
+  showToast: (toast: ToastMessage) => void;
+  showSuccess: (message: string, title?: string) => void;
+  showError: (message: string, title?: string) => void;
+  showWarning: (message: string, title?: string) => void;
+  showInfo: (message: string, title?: string) => void;
+}
+
+const ToastContext = createContext<ToastContextType | undefined>(undefined);
+
+export const ToastProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [toast, setToast] = useState<ToastMessage | null>(null);
+
+  const showToast = (toastData: ToastMessage) => {
+    setToast(toastData);
+  };
+
+  // Helper cepat untuk Notifikasi Sukses
+  const showSuccess = (message: string, title: string = "Berhasil!") => {
+    setToast({ message, title, type: "success" });
+  };
+
+  // Helper cepat untuk Notifikasi Eror
+  const showError = (message: string, title: string = "Terjadi Kesalahan") => {
+    setToast({ message, title, type: "error" });
+  };
+
+  // Helper cepat untuk Notifikasi Peringatan
+  const showWarning = (message: string, title: string = "Peringatan") => {
+    setToast({ message, title, type: "warning" });
+  };
+
+  // Helper cepat untuk Notifikasi Informasi
+  const showInfo = (message: string, title: string = "Informasi") => {
+    setToast({ message, title, type: "info" });
+  };
+
+  return (
+    <ToastContext.Provider value={{ showToast, showSuccess, showError, showWarning, showInfo }}>
+      {children}
+
+      {/* Pop Up Toast Render Otomatis di Level Teratas Aplikasi */}
+      <NotificationToast toast={toast} onClose={() => setToast(null)} />
+    </ToastContext.Provider>
+  );
+};
+
+// Custom Hook agar mudah dipanggil di seluruh komponen
+export const useToast = () => {
+  const context = useContext(ToastContext);
+  if (!context) {
+    throw new Error("useToast harus digunakan di dalam <ToastProvider>");
+  }
+  return context;
+};
+```
+
+### `src/hooks/usePrinter.ts`
+```typescript
+// src/hooks/usePrinter.ts
+import { useState, useEffect, useCallback } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import type { PrintMode } from '@/types/printer';
+import { executePrint, LOCAL_STORAGE_PRINTER_KEY } from '@/utils/printer';
+
+export function usePrinter(defaultMode: PrintMode = 'auto') {
+  const [printMode, setPrintMode] = useState<PrintMode>(defaultMode);
+  const [selectedPrinter, setSelectedPrinter] = useState<string>(() => {
+    return localStorage.getItem(LOCAL_STORAGE_PRINTER_KEY) || '';
+  });
+  const [availablePrinters, setAvailablePrinters] = useState<string[]>([]);
+  const [isFetchingPrinters, setIsFetchingPrinters] = useState(false);
+
+  const changeSelectedPrinter = useCallback((printerName: string) => {
+    setSelectedPrinter(printerName);
+    localStorage.setItem(LOCAL_STORAGE_PRINTER_KEY, printerName);
+  }, []);
+
+  const fetchPrinters = useCallback(async () => {
+    setIsFetchingPrinters(true);
+    try {
+      const printers = await invoke<string[]>('get_available_printers');
+      setAvailablePrinters(printers);
+      if (printers.length > 0 && !selectedPrinter) {
+        changeSelectedPrinter(printers[0]);
+      }
+    } catch (err) {
+      console.warn('Gagal mengambil daftar printer dari OS:', err);
+    } finally {
+      setIsFetchingPrinters(false);
+    }
+  }, [selectedPrinter, changeSelectedPrinter]);
+
+  useEffect(() => {
+    fetchPrinters();
+  }, [fetchPrinters]);
+
+  // Fungsi cetak fleksibel: Menerima Ref elemen / HTML dari Feature
+  const print = useCallback(
+    async (elementOrHtml: HTMLElement | string, overrideMode?: PrintMode) => {
+      const activeMode = overrideMode || printMode;
+      await executePrint(elementOrHtml, {
+        mode: activeMode,
+        printerName: selectedPrinter,
+      });
+    },
+    [printMode, selectedPrinter]
+  );
+
+  return {
+    printMode,
+    setPrintMode,
+    selectedPrinter,
+    setSelectedPrinter: changeSelectedPrinter,
+    availablePrinters,
+    isFetchingPrinters,
+    refreshPrinters: fetchPrinters,
+    print,
+  };
+}
+```
+
+### `src/hooks/useWaktuIstiwa.ts`
+```typescript
+// src/hooks/useWaktuIstiwa.ts
+import { useState, useEffect } from 'react';
+import { dapatkanDetailWis, DetailWis } from '../utils/waktuIstiwa';
+
+export const useWaktuIstiwa = () => {
+  const [waktuWis, setWaktuWis] = useState<DetailWis>(dapatkanDetailWis());
+
+  useEffect(() => {
+    // Kita percepat intervalnya jadi 100ms (10x lipat lebih sensitif)
+    const interval = setInterval(() => {
+      const waktuBaru = dapatkanDetailWis();
+
+      // OPTIMASI: Gembok pintar agar React TIDAK re-render 10x per detik
+      setWaktuWis((waktuLama) => {
+        // Jika teks jam-nya masih sama persis (detiknya belum ganti), batalkan update!
+        if (waktuLama.stringLengkap === waktuBaru.stringLengkap) {
+          return waktuLama;
+        }
+        // Jika angkanya beda (detik ganti), baru suruh React perbarui layar
+        return waktuBaru;
+      });
+
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  return waktuWis;
+};
+```
+
+### `src/index.css`
+```css
+@import "tailwindcss";
+
+/* ==========================================================================
+   ✨ LUXURY DARK UI - NATIVE APP CLEAN LAYOUT
+   ========================================================================== */
+
+/* 🔮 System Defaults */
+html, body {
+  color-scheme: dark;
+  -webkit-tap-highlight-color: transparent;
+  scroll-behavior: smooth;
+  background-color: #090a0f; /* Samakan dengan warna background tergelap UI kamu */
+}
+
+/* 🔒 Lock selection global untuk feel Native App */
+body {
+  -webkit-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* --- Firefox Scrollbar --- */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+}
+
+/* --- Webkit Browsers (Chrome, Edge, Safari, Opera) --- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+/* Track transparan penuh agar tidak menyisakan kolom hitam mati */
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+/* ✨ Interactive Hover State: Indigo Glow */
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+}
+
+/* ⚡ Active Dragging State */
+::-webkit-scrollbar-thumb:active {
+  background: rgba(129, 140, 248, 0.95);
+}
+
+/* 🛡️ Prevent White Square on Corner Intersections */
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
+/* ==========================================================================
+   🛠️ UTILITY CLASSES
+   ========================================================================== */
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-mini::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+.scrollbar-mini::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+.scrollbar-mini::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+@layer utilities {
+  input::-ms-reveal,
+  input::-ms-clear {
+    display: none;
+  }
+}
+```
+
+### `src/layouts/DashboardLayout/components/Sidebar.tsx`
+```tsx
+// src/layouts/DashboardLayout/components/Sidebar.tsx
+import { useState, useEffect } from "react";
+import { NavLink } from "react-router-dom";
+import { motion } from "framer-motion";
+import { useAuth } from "@/features/auth";
+import { getAvatarUrl } from "@/features/users";
+import type {
+  UsersResponse,
+  UsersRoleOptions,
+} from "../../../types/pocketbase-types";
+import {
+  LayoutDashboard,
+  User,
+  LogOut,
+  Menu,
+  X,
+  Scissors,
+  Users,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Database,
+  Sparkles,
+  CalendarDays,
+  FileText,
+  type LucideIcon,
+} from "lucide-react";
+
+// Type definitions
+
+interface NavItem {
+  title: string;
+  path: string;
+  icon: LucideIcon;
+  allowedRoles: UsersRoleOptions[];
+}
+
+// Sidebar Component
+
+const Sidebar = () => {
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
+
+  // Initial collapsed state from localStorage (or false)
+  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
+    try {
+      const stored = localStorage.getItem("sidebar-collapsed");
+      if (stored !== null) return JSON.parse(stored);
+    } catch {}
+    return false;
+  });
+
+  const { user, logout } = useAuth();
+  const currentUser = user as UsersResponse | null;
+
+  // Persist collapsed state to localStorage
+  useEffect(() => {
+    localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
+  }, [isCollapsed]);
+
+  // ---- Menu item definitions ----
+  const menuItems: NavItem[] = [
+    {
+      title: "Dashboard",
+      path: "/dashboard",
+      icon: LayoutDashboard,
+      allowedRoles: ["admin", "umum", "rambut"],
+    },
+    {
+      title: "Kelola Pengguna",
+      path: "/users",
+      icon: Users,
+      allowedRoles: ["admin"],
+    },
+    {
+      title: "Data Master",
+      path: "/master",
+      icon: Database,
+      allowedRoles: ["admin", "umum", "rambut"],
+    },
+    {
+      title: "Layanan Rambut",
+      path: "/rambut",
+      icon: Scissors,
+      allowedRoles: ["admin", "rambut"],
+    },
+    {
+      title: "Laporan Rambut",
+      path: "/laporan/rambut",
+      icon: FileText,
+      allowedRoles: ["admin", "rambut"],
+    },
+    {
+      title: "Kalender",
+      path: "/kalender",
+      icon: CalendarDays,
+      allowedRoles: ["admin", "rambut"],
+    },
+    {
+      title: "Profil Saya",
+      path: "/profile",
+      icon: User,
+      allowedRoles: ["admin", "umum", "rambut"],
+    },
+  ];
+
+  // Filter menu berdasarkan role user
+  const filteredMenu = currentUser
+    ? menuItems.filter((item) =>
+        item.allowedRoles.includes(currentUser.role as UsersRoleOptions),
+      )
+    : [];
+
+  // ---- Avatar / Name handling ----
+  const nameInitial = currentUser?.name
+    ? currentUser.name.charAt(0).toUpperCase()
+    : currentUser?.username
+      ? currentUser.username.charAt(0).toUpperCase()
+      : "?";
+
+  const getRoleBadgeClass = () => {
+    switch (currentUser?.role) {
+      case "admin":
+        return "bg-purple-500/10 text-purple-300 border-purple-500/20";
+      case "rambut":
+        return "bg-indigo-500/10 text-indigo-300 border-indigo-500/20";
+      case "umum":
+        return "bg-emerald-500/10 text-emerald-300 border-emerald-500/20";
+      default:
+        return "bg-gray-800 text-gray-400 border-gray-700";
+    }
+  };
+
+  const toggleCollapse = () => setIsCollapsed((prev) => !prev);
+  const closeMobile = () => setIsMobileOpen(false);
+  const handleLogout = () => logout();
+
+  const avatarImage = getAvatarUrl(currentUser);
+
+  // JSX
+
+  return (
+    <>
+      {/* 📱 Mobile Menu Trigger Button */}
+      <button
+        onClick={() => setIsMobileOpen(true)}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-2xl bg-gray-900/90 border border-gray-800/80 text-gray-300 hover:text-white hover:bg-gray-800 backdrop-blur-xl shadow-xl transition-all duration-200 active:scale-95"
+        aria-label="Open menu"
+      >
+        <Menu className="w-5 h-5 text-indigo-400" />
+      </button>
+
+      {/* 🛡️ Mobile Overlay Backdrop */}
+      {isMobileOpen && (
+        <div
+          className="lg:hidden fixed inset-0 z-40 bg-gray-950/80 backdrop-blur-md transition-opacity duration-300"
+          onClick={closeMobile}
+        />
+      )}
+
+      {/* 🚀 ---- Sidebar Desktop & Mobile ---- */}
+      <aside
+        className={`
+          fixed top-0 left-0 z-50 h-screen overflow-hidden
+          bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
+          border-r border-gray-800/80 shadow-2xl
+          flex flex-col transform-gpu
+          transition-[width,transform] duration-300 ease-in-out
+          lg:translate-x-0 lg:static lg:z-auto
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+          ${isCollapsed ? "w-20" : "w-64"}
+        `}
+      >
+        {/* 🔮 Garis Kilau Top-Border */}
+        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />
+
+        {/* 🔮 Ambient Glow Mesh */}
+        <div className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-indigo-600/10 blur-[60px] pointer-events-none" />
+
+        {/* ----- Top Section: Header, Profile & Navigation ----- */}
+        <div className="relative z-10 flex flex-col flex-1 min-h-0">
+          {/* 1. Header Logo Area (Tinggi Terkunci Presisi h-[73px]) */}
+          <div className="flex items-center justify-between px-3 h-[73px] border-b border-gray-800/80 flex-shrink-0 overflow-hidden">
+            {/* Logo Brand Title */}
+            <div
+              className={`flex items-center gap-2.5 overflow-hidden transition-all duration-300 ease-in-out ${
+                isCollapsed
+                  ? "max-w-0 opacity-0"
+                  : "max-w-[200px] opacity-100 pl-1"
+              }`}
+            >
+              {/* Logo Sayap Saja menggantikan box Sparkles lama */}
+              <img
+                src="logo_tibkam_sayap_saja.svg"
+                alt="Logo Tibkam"
+                className="h-7 w-auto flex-shrink-0 object-contain"
+              />
+
+              <div className="min-w-0">
+                <h2 className="text-base font-extrabold tracking-wider text-white whitespace-nowrap font-mono leading-none">
+                  TIBKAM<span className="text-indigo-400">1745</span>
+                </h2>
+                <p className="text-[10px] font-mono text-gray-500 mt-1 truncate leading-none">
+                  System Portal
+                </p>
+              </div>
+            </div>
+
+            {/* Desktop Toggle Button */}
+            <button
+              type="button"
+              onClick={toggleCollapse}
+              className={`hidden lg:inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/80 border border-transparent hover:border-gray-700/60 transition-all duration-200 active:scale-95 flex-shrink-0 ${
+                isCollapsed ? "mx-auto" : "ml-auto"
+              }`}
+              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
+              title={isCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
+            >
+              {isCollapsed ? (
+                <PanelLeftOpen className="w-5 h-5 text-indigo-400" />
+              ) : (
+                <PanelLeftClose className="w-5 h-5" />
+              )}
+            </button>
+
+            {/* Mobile Close Button */}
+            <button
+              type="button"
+              onClick={closeMobile}
+              className="lg:hidden p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors flex-shrink-0 ml-auto"
+              aria-label="Close menu"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          {/* 2. User Profile Card (✨ TINGGI TERKUNCI PRESISE h-[76px] - NUL LAYOUT SHIFT) */}
+          {currentUser && (
+            <div className="px-3 h-[76px] border-b border-gray-800/80 flex-shrink-0 flex items-center">
+              <div
+                className={`flex items-center w-full h-[52px] rounded-2xl px-2.5 border transition-colors duration-200 ${
+                  isCollapsed
+                    ? "bg-transparent border-transparent shadow-none"
+                    : "bg-gray-950/40 border-gray-800/60 shadow-sm"
+                }`}
+              >
+                {/* Avatar Box (Presisi Center X = 38px Terkunci Garis Vertikal) */}
+                <div className="relative w-9 h-9 flex-shrink-0 flex items-center justify-center">
+                  {avatarImage ? (
+                    <img
+                      src={avatarImage}
+                      alt={currentUser.name ?? "User"}
+                      className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-500/20 border border-gray-700 shadow-md"
+                    />
+                  ) : (
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-950 to-gray-800 flex items-center justify-center text-indigo-300 font-mono font-bold text-sm ring-2 ring-indigo-500/20 border border-indigo-500/30 shadow-md">
+                      {nameInitial}
+                    </div>
+                  )}
+                  {/* Status Indicator */}
+                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-gray-900 animate-pulse" />
+                </div>
+
+                {/* User Details */}
+                <div
+                  className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
+                    isCollapsed
+                      ? "max-w-0 opacity-0 pointer-events-none ml-0"
+                      : "max-w-[180px] opacity-100 ml-3"
+                  }`}
+                >
+                  <p className="text-xs font-semibold text-gray-200 truncate whitespace-nowrap leading-tight">
+                    {currentUser.name || currentUser.username}
+                  </p>
+                  <span
+                    className={`inline-block mt-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md border uppercase whitespace-nowrap leading-none ${getRoleBadgeClass()}`}
+                  >
+                    {currentUser.role}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Navigation Links List */}
+          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 custom-scrollbar">
+            {filteredMenu.map((item) => {
+              const Icon = item.icon;
+
+              return (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  onClick={closeMobile}
+                  title={isCollapsed ? item.title : undefined}
+                  className={({ isActive: isLinkActive }) =>
+                    [
+                      "group relative flex items-center h-11 px-2 rounded-2xl text-xs font-medium transition-colors duration-200 w-full select-none",
+                      isLinkActive
+                        ? "text-indigo-300 font-semibold shadow-sm"
+                        : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200",
+                    ].join(" ")
+                  }
+                >
+                  {({ isActive: isLinkActive }) => (
+                    <>
+                      {/* Background & Garis Aksen Meluncur Satu Paket */}
+                      {isLinkActive && (
+                        <motion.div
+                          layoutId="sidebarActiveIndicator"
+                          className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent border-l-2 border-indigo-400 pointer-events-none"
+                          transition={{
+                            type: "spring",
+                            stiffness: 380,
+                            damping: 30,
+                          }}
+                        />
+                      )}
+
+                      {/* Icon Box (Center X = 38px Terkunci Garis Vertikal) */}
+                      <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 relative z-10">
+                        <Icon
+                          className={`w-5 h-5 transition-colors duration-200 ${
+                            isLinkActive
+                              ? "text-indigo-400"
+                              : "text-gray-400 group-hover:text-gray-200"
+                          }`}
+                        />
+                      </div>
+
+                      {/* Navigation Title */}
+                      <span
+                        className={`relative z-10 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
+                          isCollapsed
+                            ? "max-w-0 opacity-0 pointer-events-none ml-0"
+                            : "max-w-[180px] opacity-100 ml-3"
+                        }`}
+                      >
+                        {item.title}
+                      </span>
+                    </>
+                  )}
+                </NavLink>
+              );
+            })}
+          </nav>
+        </div>
+
+        {/* ----- Bottom Section: Logout Button ----- */}
+        <div className="relative z-10 px-3 py-3 h-[65px] border-t border-gray-800/80 mt-auto flex-shrink-0 flex items-center">
+          <button
+            type="button"
+            onClick={handleLogout}
+            title={isCollapsed ? "Keluar Sesi" : undefined}
+            className="group w-full flex items-center h-11 px-2 rounded-2xl text-xs font-mono font-semibold text-gray-400 hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20 active:scale-95 transition-all duration-200 select-none"
+          >
+            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
+              <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-400 transition-colors duration-200" />
+            </div>
+            <span
+              className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
+                isCollapsed
+                  ? "max-w-0 opacity-0 pointer-events-none ml-0"
+                  : "max-w-[180px] opacity-100 ml-3"
+              }`}
+            >
+              Keluar Sesi
+            </span>
+          </button>
+        </div>
+      </aside>
+    </>
+  );
+};
+
+export default Sidebar;
+```
+
+### `src/layouts/DashboardLayout/DashboardLayout.tsx`
+```tsx
+// src/layouts/DashboardLayout/DashboardLayout.tsx
+import { Outlet, useLocation } from 'react-router-dom';
+import Sidebar from './components/Sidebar';
+import { PageTransition } from '@/components/shared/PageTransition';
+
+export default function DashboardLayout() {
+  const location = useLocation();
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
+      {/* Sidebar Navigasi Utama */}
+      <Sidebar />
+
+      {/* Area Konten Utama */}
+      <main className="flex-1 h-full overflow-y-auto">
+        <PageTransition key={location.pathname}>
+          <Outlet />
+        </PageTransition>
+      </main>
+    </div>
+  );
+}
+```
+
+### `src/lib/pocketbase.ts`
+```typescript
+/// <reference types="vite/client" />
+import PocketBase, { BaseAuthStore } from 'pocketbase';
+
+class SessionAuthStore extends BaseAuthStore {
+  constructor() {
+    super();
+    try {
+      const data = JSON.parse(sessionStorage.getItem('pb_auth') || '{}');
+      this.save(data.token || '', data.model || null);
+    } catch {
+      this.clear();
+    }
+  }
+
+  save(token: string, model: any) {
+    super.save(token, model);
+    sessionStorage.setItem('pb_auth', JSON.stringify({ token, model }));
+  }
+
+  clear() {
+    super.clear();
+    sessionStorage.removeItem('pb_auth');
+  }
+}
+
+// 🎯 Dapatkan URL PocketBase secara dinamis & aman
+const getPocketBaseUrl = () => {
+  // 1. Jika ada variabel lingkungan VITE_PB_URL di .env
+  if (import.meta.env.VITE_PB_URL) {
+    return import.meta.env.VITE_PB_URL;
+  }
+  // 2. Jika di mode Dev atau berjalan dalam window Tauri
+  if (import.meta.env.DEV || (typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window)) {
+    return 'http://127.0.0.1:8090';
+  }
+  // 3. Jika di-host langsung oleh PocketBase (pb_public)
+  return '/';
+};
+
+export const pb = new PocketBase(getPocketBaseUrl(), new SessionAuthStore());
+pb.autoCancellation(false);
+```
+
+### `src/main.tsx`
+```tsx
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import App from './App.tsx';
+import './index.css';
+
+// 1. Buat instance QueryClient
+const queryClient = new QueryClient();
+
+ReactDOM.createRoot(document.getElementById('root')!).render(
+  <React.StrictMode>
+    {/* 2. Bungkus aplikasi dengan QueryClientProvider */}
+    <QueryClientProvider client={queryClient}>
+      <App />
+    </QueryClientProvider>
+  </React.StrictMode>,
+);
+```
+
+### `src/types/pocketbase-types.ts`
+```typescript
+/**
+* This file was @generated using pocketbase-typegen
+*/
+
+import type PocketBase from 'pocketbase'
+import type { RecordService } from 'pocketbase'
+
+export const Collections = {
+	Authorigins: "_authOrigins",
+	Externalauths: "_externalAuths",
+	Mfas: "_mfas",
+	Otps: "_otps",
+	Superusers: "_superusers",
+	KalenderHijriyah: "kalender_hijriyah",
+	Master: "master",
+	PengurusSantri: "pengurus_santri",
+	PeriodeRambut: "periode_rambut",
+	RiwayatSetorRambut: "riwayat_setor_rambut",
+	Users: "users",
+	WajibSetorRambut: "wajib_setor_rambut",
+} as const
+export type Collections = typeof Collections[keyof typeof Collections]
+
+// Alias types for improved usability
+export type IsoDateString = string
+export type IsoAutoDateString = string & { readonly autodate: unique symbol }
+export type RecordIdString = string
+export type FileNameString = string & { readonly filename: unique symbol }
+export type HTMLString = string
+
+type ExpandType<T> = unknown extends T
+	? T extends unknown
+		? { expand?: unknown }
+		: { expand: T }
+	: { expand: T }
+
+// System fields
+export type BaseSystemFields<T = unknown> = {
+	id: RecordIdString
+	collectionId: string
+	collectionName: Collections
+} & ExpandType<T>
+
+export type AuthSystemFields<T = unknown> = {
+	email: string
+	emailVisibility: boolean
+	username: string
+	verified: boolean
+} & BaseSystemFields<T>
+
+// Record types for each collection
+
+export type AuthoriginsRecord = {
+	collectionRef: string
+	created: IsoAutoDateString
+	fingerprint: string
+	id: string
+	recordRef: string
+	updated: IsoAutoDateString
+}
+
+export type ExternalauthsRecord = {
+	collectionRef: string
+	created: IsoAutoDateString
+	id: string
+	provider: string
+	providerId: string
+	recordRef: string
+	updated: IsoAutoDateString
+}
+
+export type MfasRecord = {
+	collectionRef: string
+	created: IsoAutoDateString
+	id: string
+	method: string
+	recordRef: string
+	updated: IsoAutoDateString
+}
+
+export type OtpsRecord = {
+	collectionRef: string
+	created: IsoAutoDateString
+	id: string
+	password: string
+	recordRef: string
+	sentTo?: string
+	updated: IsoAutoDateString
+}
+
+export type SuperusersRecord = {
+	created: IsoAutoDateString
+	email: string
+	emailVisibility?: boolean
+	id: string
+	password: string
+	tokenKey: string
+	updated: IsoAutoDateString
+	verified?: boolean
+}
+
+export const KalenderHijriyahBulanHijriNamaOptions = {
+	"Muharram": "Muharram",
+	"Safar": "Safar",
+	"Rabi'ul Awal": "Rabi'ul Awal",
+	"Rabi'ul Akhir": "Rabi'ul Akhir",
+	"Jumadil Ula": "Jumadil Ula",
+	"Jumadil Akhir": "Jumadil Akhir",
+	"Rajab": "Rajab",
+	"Sya'ban": "Sya'ban",
+	"Ramadhan": "Ramadhan",
+	"Syawwal": "Syawwal",
+	"Dzulqa'dah": "Dzulqa'dah",
+	"Dzulhijjah": "Dzulhijjah",
+} as const
+export type KalenderHijriyahBulanHijriNamaOptions = typeof KalenderHijriyahBulanHijriNamaOptions[keyof typeof KalenderHijriyahBulanHijriNamaOptions]
+export type KalenderHijriyahRecord = {
+	bulan_hijri_angka?: number
+	bulan_hijri_nama?: KalenderHijriyahBulanHijriNamaOptions
+	created: IsoAutoDateString
+	id: string
+	string_hijri: string
+	tahun_hijri?: number
+	tanggal_hijri?: number
+	tanggal_masehi: IsoDateString
+	updated: IsoAutoDateString
+}
+
+export type MasterRecord = {
+	alasan_update_status?: string
+	created: IsoAutoDateString
+	desa?: string
+	domisili?: string
+	id: string
+	id_pps: string
+	kabupaten?: string
+	kecamatan?: string
+	kelas?: string
+	keterangan_update_domisi?: string
+	kk?: string
+	kontak_wali?: string
+	nama?: string
+	nama_akte?: string
+	nama_ayah?: string
+	nama_ibu?: string
+	nama_wali?: string
+	nik?: string
+	nik_ayah?: string
+	nik_ibu?: string
+	nik_wali?: string
+	nisn?: string
+	noabsen?: string
+	nomor_daftar?: string
+	provinsi?: string
+	ruang_kelas?: string
+	status_aktif?: boolean
+	status_domisili?: string
+	tanggal_daftar?: string
+	tingkatan?: string
+	updated: IsoAutoDateString
+}
+
+export type PengurusSantriRecord = {
+	created: IsoAutoDateString
+	id: string
+	id_pps: string
+	jabatan?: string
+	santri?: RecordIdString
+	status_aktif?: boolean
+	updated: IsoAutoDateString
+}
+
+export const PeriodeRambutStatusPeriodeOptions = {
+	"draft": "draft",
+	"aktif": "aktif",
+	"selesai": "selesai",
+} as const
+export type PeriodeRambutStatusPeriodeOptions = typeof PeriodeRambutStatusPeriodeOptions[keyof typeof PeriodeRambutStatusPeriodeOptions]
+export type PeriodeRambutRecord = {
+	bulan_hijriyah_angka?: number
+	created: IsoAutoDateString
+	id: string
+	nama_periode: string
+	status_periode?: PeriodeRambutStatusPeriodeOptions
+	tahun_hijriyah?: number
+	tanggal_mulai: IsoDateString
+	tanggal_selesai: IsoDateString
+	updated: IsoAutoDateString
+}
+
+export type RiwayatSetorRambutRecord = {
+	catatan?: string
+	created: IsoAutoDateString
+	id: string
+	id_pps: string
+	periode?: RecordIdString
+	petugas_eksekutor?: RecordIdString
+	santri?: RecordIdString
+	tanggal_setor: IsoDateString
+	updated: IsoAutoDateString
+	wajib_setor?: RecordIdString
+	waktu_wis: string
+}
+
+export const UsersRoleOptions = {
+	"admin": "admin",
+	"umum": "umum",
+	"rambut": "rambut",
+} as const
+export type UsersRoleOptions = typeof UsersRoleOptions[keyof typeof UsersRoleOptions]
+export type UsersRecord = {
+	avatar?: FileNameString
+	created: IsoAutoDateString
+	email?: string
+	emailVisibility?: boolean
+	id: string
+	name: string
+	password: string
+	role: UsersRoleOptions
+	status?: boolean
+	tokenKey: string
+	updated: IsoAutoDateString
+	username: string
+	verified?: boolean
+}
+
+export const WajibSetorRambutKategoriWajibOptions = {
+	"aliyah": "aliyah",
+	"kuliah_syariah": "kuliah_syariah",
+	"pengurus_petugas": "pengurus_petugas",
+} as const
+export type WajibSetorRambutKategoriWajibOptions = typeof WajibSetorRambutKategoriWajibOptions[keyof typeof WajibSetorRambutKategoriWajibOptions]
+
+export const WajibSetorRambutStatusSetorOptions = {
+	"belum": "belum",
+	"sudah": "sudah",
+	"dispensasi": "dispensasi",
+} as const
+export type WajibSetorRambutStatusSetorOptions = typeof WajibSetorRambutStatusSetorOptions[keyof typeof WajibSetorRambutStatusSetorOptions]
+export type WajibSetorRambutRecord = {
+	created: IsoAutoDateString
+	id: string
+	id_pps: string
+	kategori_wajib?: WajibSetorRambutKategoriWajibOptions
+	periode?: RecordIdString
+	santri?: RecordIdString
+	status_setor?: WajibSetorRambutStatusSetorOptions
+	tanggal_setor?: IsoDateString
+	updated: IsoAutoDateString
+}
+
+// Response types include system fields and match responses from the PocketBase API
+export type AuthoriginsResponse<Texpand = unknown> = Required<AuthoriginsRecord> & BaseSystemFields<Texpand>
+export type ExternalauthsResponse<Texpand = unknown> = Required<ExternalauthsRecord> & BaseSystemFields<Texpand>
+export type MfasResponse<Texpand = unknown> = Required<MfasRecord> & BaseSystemFields<Texpand>
+export type OtpsResponse<Texpand = unknown> = Required<OtpsRecord> & BaseSystemFields<Texpand>
+export type SuperusersResponse<Texpand = unknown> = Required<SuperusersRecord> & AuthSystemFields<Texpand>
+export type KalenderHijriyahResponse<Texpand = unknown> = Required<KalenderHijriyahRecord> & BaseSystemFields<Texpand>
+export type MasterResponse<Texpand = unknown> = Required<MasterRecord> & BaseSystemFields<Texpand>
+export type PengurusSantriResponse<Texpand = unknown> = Required<PengurusSantriRecord> & BaseSystemFields<Texpand>
+export type PeriodeRambutResponse<Texpand = unknown> = Required<PeriodeRambutRecord> & BaseSystemFields<Texpand>
+export type RiwayatSetorRambutResponse<Texpand = unknown> = Required<RiwayatSetorRambutRecord> & BaseSystemFields<Texpand>
+export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
+export type WajibSetorRambutResponse<Texpand = unknown> = Required<WajibSetorRambutRecord> & BaseSystemFields<Texpand>
+
+// Types containing all Records and Responses, useful for creating typing helper functions
+
+export type CollectionRecords = {
+	_authOrigins: AuthoriginsRecord
+	_externalAuths: ExternalauthsRecord
+	_mfas: MfasRecord
+	_otps: OtpsRecord
+	_superusers: SuperusersRecord
+	kalender_hijriyah: KalenderHijriyahRecord
+	master: MasterRecord
+	pengurus_santri: PengurusSantriRecord
+	periode_rambut: PeriodeRambutRecord
+	riwayat_setor_rambut: RiwayatSetorRambutRecord
+	users: UsersRecord
+	wajib_setor_rambut: WajibSetorRambutRecord
+}
+
+export type CollectionResponses = {
+	_authOrigins: AuthoriginsResponse
+	_externalAuths: ExternalauthsResponse
+	_mfas: MfasResponse
+	_otps: OtpsResponse
+	_superusers: SuperusersResponse
+	kalender_hijriyah: KalenderHijriyahResponse
+	master: MasterResponse
+	pengurus_santri: PengurusSantriResponse
+	periode_rambut: PeriodeRambutResponse
+	riwayat_setor_rambut: RiwayatSetorRambutResponse
+	users: UsersResponse
+	wajib_setor_rambut: WajibSetorRambutResponse
+}
+
+// Utility types for create/update operations
+
+type ProcessCreateAndUpdateFields<T> = Omit<{
+	// Omit AutoDate fields
+	[K in keyof T as Extract<T[K], IsoAutoDateString> extends never ? K : never]:
+		// Convert FileNameString to File
+		T[K] extends infer U ?
+			U extends (FileNameString | FileNameString[]) ?
+				U extends any[] ? File[] : File
+			: U
+		: never
+}, 'id'>
+
+// Create type for Auth collections
+export type CreateAuth<T> = {
+	id?: RecordIdString
+	email: string
+	emailVisibility?: boolean
+	password: string
+	passwordConfirm: string
+	verified?: boolean
+} & ProcessCreateAndUpdateFields<T>
+
+// Create type for Base collections
+export type CreateBase<T> = {
+	id?: RecordIdString
+} & ProcessCreateAndUpdateFields<T>
+
+// Update type for Auth collections
+export type UpdateAuth<T> = Partial<
+	Omit<ProcessCreateAndUpdateFields<T>, keyof AuthSystemFields>
+> & {
+	email?: string
+	emailVisibility?: boolean
+	oldPassword?: string
+	password?: string
+	passwordConfirm?: string
+	verified?: boolean
+}
+
+// Update type for Base collections
+export type UpdateBase<T> = Partial<
+	Omit<ProcessCreateAndUpdateFields<T>, keyof BaseSystemFields>
+>
+
+// Get the correct create type for any collection
+export type Create<T extends keyof CollectionResponses> =
+	CollectionResponses[T] extends AuthSystemFields
+		? CreateAuth<CollectionRecords[T]>
+		: CreateBase<CollectionRecords[T]>
+
+// Get the correct update type for any collection
+export type Update<T extends keyof CollectionResponses> =
+	CollectionResponses[T] extends AuthSystemFields
+		? UpdateAuth<CollectionRecords[T]>
+		: UpdateBase<CollectionRecords[T]>
+
+// Type for usage with type asserted PocketBase instance
+// https://github.com/pocketbase/js-sdk#specify-typescript-definitions
+
+export type TypedPocketBase = {
+	collection<T extends keyof CollectionResponses>(
+		idOrName: T
+	): RecordService<CollectionResponses[T]>
+} & PocketBase
+```
+
+### `src/types/printer.ts`
+```typescript
+// src/types/printer.ts
+
+export type PrintMode = "off" | "auto" | "silent";
+
+export interface PrintJobOptions {
+  mode: PrintMode;
+  printerName?: string;
+}
+```
+
+### `src/utils/errorHandler.ts`
+```typescript
+// src/utils/errorHandler.ts
+export const parsePocketBaseError = (error: any): string => {
+  if (!error) return "Terjadi kesalahan yang tidak diketahui.";
+
+  if (typeof error === "string") return error;
+
+  // Tangkap error message bawaan PocketBase Client / ClientResponseError
+  if (error?.response?.message) {
+    return error.response.message;
+  }
+
+  if (error?.data?.message) {
+    return error.data.message;
+  }
+
+  if (error?.message) {
+    return error.message;
+  }
+
+  return "Gagal memproses permintaan ke server.";
+};
+```
+
+### `src/utils/printer.ts`
+```typescript
+import { toPng } from 'html-to-image';
+import { invoke } from '@tauri-apps/api/core';
+import type { PrintJobOptions } from '@/types/printer';
+
+export const LOCAL_STORAGE_PRINTER_KEY = 'selected_pos_printer';
+
+const isTauriEnvironment = () => {
+  return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
+};
+
+export const executeAutoPrintDialog = (htmlContent: string) => {
+  const existingIframe = document.getElementById('global-print-iframe');
+  if (existingIframe) document.body.removeChild(existingIframe);
+
+  const iframe = document.createElement('iframe');
+  iframe.id = 'global-print-iframe';
+  iframe.style.position = 'fixed';
+  iframe.style.right = '0';
+  iframe.style.bottom = '0';
+  iframe.style.width = '0px';
+  iframe.style.height = '0px';
+  iframe.style.border = 'none';
+  iframe.style.visibility = 'hidden';
+
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow?.document;
+  if (!doc) return;
+
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
+
+  setTimeout(() => {
+    iframe.contentWindow?.focus();
+    iframe.contentWindow?.print();
+  }, 150);
+};
+
+const convertHtmlToImageBase64 = async (
+  elementOrHtml: HTMLElement | string
+): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.left = '-9999px';
+    iframe.style.top = '0';
+    iframe.style.width = '380px';
+    iframe.style.height = '1000px';
+    iframe.style.border = 'none';
+
+    document.body.appendChild(iframe);
+
+    const doc = iframe.contentWindow?.document;
+    if (!doc) {
+      document.body.removeChild(iframe);
+      return reject(new Error('Gagal mengakses iframe document'));
+    }
+
+    const htmlStr =
+      typeof elementOrHtml === 'string'
+        ? elementOrHtml
+        : elementOrHtml.outerHTML;
+
+    doc.open();
+    doc.write(htmlStr);
+    doc.close();
+
+    setTimeout(async () => {
+      try {
+        if (iframe.contentWindow?.document.fonts) {
+          await iframe.contentWindow.document.fonts.ready;
+        }
+
+        const dataUrl = await toPng(doc.body, {
+          pixelRatio: 8,
+          backgroundColor: '#ffffff',
+        });
+
+        document.body.removeChild(iframe);
+        resolve(dataUrl);
+      } catch (err) {
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+        reject(err);
+      }
+    }, 200);
+  });
+};
+
+export const executeSilentPrintTauri = async (
+  elementOrHtml: HTMLElement | string,
+  printerName?: string
+) => {
+  if (!isTauriEnvironment()) {
+    console.warn('⚠️ [Global Printer] Silent Print disimulasikan (bukan di lingkungan Tauri).');
+    return;
+  }
+
+  const targetPrinter =
+    printerName ||
+    localStorage.getItem(LOCAL_STORAGE_PRINTER_KEY) ||
+    '';
+
+  const base64Image = await convertHtmlToImageBase64(elementOrHtml);
+
+  await invoke('print_image_silently', {
+    printerName: targetPrinter,
+    imageBase64: base64Image,
+  });
+};
+
+export const executePrint = async (
+  elementOrHtml: HTMLElement | string,
+  options: PrintJobOptions
+) => {
+  if (options.mode === 'off') {
+    return;
+  }
+
+  if (options.mode === 'silent') {
+    try {
+      await executeSilentPrintTauri(elementOrHtml, options.printerName);
+    } catch (err) {
+      console.error('❌ [Silent Print Error]:', err);
+    }
+  } else if (options.mode === 'auto') {
+    const htmlStr =
+      typeof elementOrHtml === 'string'
+        ? elementOrHtml
+        : elementOrHtml.outerHTML;
+    executeAutoPrintDialog(htmlStr);
+  }
+};
+```
+
+### `src/utils/syncExcelToPocketBase.ts`
+```typescript
+// src/utils/syncExcelToPocketBase.ts
+import { pb } from "@/lib/pocketbase";
+import type { MasterRecord, MasterResponse } from "@/types/pocketbase-types";
+
+export type ExcelSantriRow = Omit<MasterRecord, "id" | "created" | "updated" | "status_aktif">;
+
+const hasChanges = (excelRow: ExcelSantriRow, dbRecord: MasterResponse): boolean => {
+  if (!dbRecord.status_aktif) return true;
+
+  const IGNORED_FIELDS = ["alasan_update_status", "keterangan_update_domisi"];
+
+  for (const key in excelRow) {
+    if (IGNORED_FIELDS.includes(key)) continue;
+
+    const excelVal = excelRow[key as keyof ExcelSantriRow];
+    const dbVal = dbRecord[key as keyof MasterResponse];
+
+    const normalize = (val: any) => (val === undefined || val === null ? "" : String(val).trim());
+
+    if (normalize(excelVal) !== normalize(dbVal)) {
+      // 🕵️‍♂️ SCOPE MATA-MATA (X-RAY SCANNER):
+      // Ini akan mencetak langsung di Console browser kamu kolom mana yang tidak sama!
+      console.warn(
+        `🚨 [DATA BERBEDA LOG] ID PPS: ${excelRow.id_pps} | Kolom: "${key}" \n` +
+        `   -> Di Excel terbaca : "${normalize(excelVal)}"\n` +
+        `   -> Di PocketBase    : "${normalize(dbVal)}"`
+      );
+      return true;
+    }
+  }
+  return false;
+};
+
+export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promise<{
+  inserted: number;
+  updated: number;
+  softDeleted: number;
+  skipped: number;
+}> => {
+  const report = { inserted: 0, updated: 0, softDeleted: 0, skipped: 0 };
+  if (!excelData || excelData.length === 0) return report;
+
+  const existingRecords = await pb.collection("master").getFullList<MasterResponse>();
+  const dbMap = new Map<string, MasterResponse>();
+  existingRecords.forEach((rec) => {
+    if (rec.id_pps) dbMap.set(rec.id_pps.trim(), rec);
+  });
+
+  const BATCH_LIMIT = 200;
+  let batch = pb.createBatch();
+  let batchCount = 0;
+
+  const commitBatchIfFull = async () => {
+    if (batchCount >= BATCH_LIMIT) {
+      await batch.send();
+      batch = pb.createBatch();
+      batchCount = 0;
+    }
+  };
+
+  const processedExcelIds = new Set<string>();
+
+  for (const excelRow of excelData) {
+    if (!excelRow.id_pps) continue;
+
+    const id_pps_key = excelRow.id_pps.trim();
+    processedExcelIds.add(id_pps_key);
+
+    const matchDbRecord = dbMap.get(id_pps_key);
+
+    if (!matchDbRecord) {
+      batch.collection("master").create({
+        ...excelRow,
+        status_aktif: true,
+        alasan_update_status: "Santri baru terdaftar via sistem import massal",
+      });
+      report.inserted++;
+      batchCount++;
+      await commitBatchIfFull();
+    } else {
+      if (hasChanges(excelRow, matchDbRecord)) {
+        batch.collection("master").update(matchDbRecord.id, {
+          ...excelRow,
+          status_aktif: true,
+          alasan_update_status: matchDbRecord.status_aktif
+            ? "Pembaruan informasi data berkas induk"
+            : "Santri aktif kembali melalui import berkas terbaru",
+        });
+        report.updated++;
+        batchCount++;
+        await commitBatchIfFull();
+      } else {
+        report.skipped++;
+      }
+    }
+  }
+
+  for (const [id_pps, dbRecord] of dbMap.entries()) {
+    if (!processedExcelIds.has(id_pps) && dbRecord.status_aktif) {
+      batch.collection("master").update(dbRecord.id, {
+        status_aktif: false,
+        alasan_update_status: `Tidak terdaftar di Excel import terbaru pada tanggal ${new Date().toLocaleDateString("id-ID")}`,
+      });
+      report.softDeleted++;
+      batchCount++;
+      await commitBatchIfFull();
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.send();
+  }
+
+  return report;
+};
+```
+
+### `src/utils/userHelpers.ts`
+```typescript
+// src/utils/userHelpers.ts
+import type { UsersRoleOptions } from "../types/pocketbase-types";
+
+export const ROLE_OPTIONS: UsersRoleOptions[] = ["admin", "rambut", "umum"];
+export const STATUS_OPTIONS = ["Semua Status", "Aktif", "Nonaktif"];
+export const ROLE_FILTER_OPTIONS = ["Semua Role", "admin", "rambut", "umum"];
+
+export const roleBadgeClass = (role: string) => {
+  switch (role) {
+    case "admin":
+      return "bg-purple-600/20 text-purple-300 border-purple-500/40";
+    case "rambut":
+      return "bg-blue-600/20 text-blue-300 border-blue-500/40";
+    case "umum":
+      return "bg-gray-600/20 text-gray-300 border-gray-500/40";
+    default:
+      return "bg-gray-600/20 text-gray-400 border-gray-500/40";
+  }
+};
+```
+
+### `src/utils/waktuIstiwa.ts`
+```typescript
+// src/utils/waktuIstiwa.ts
+
+export interface DetailWis {
+  stringLengkap: string;
+  jamDanMenit: string;
+  jam: string;
+  menit: string;
+  detik: string;
+}
+
+// Fungsi Helper Trigonometri
+const deg2rad = (deg: number) => deg * (Math.PI / 180.0);
+const rad2deg = (rad: number) => rad * (180.0 / Math.PI);
+
+/**
+ * Menghitung Waktu Istiwa' (WIS) menggunakan standar Astronomi Jean Meeus (NOAA/NASA)
+ * Akurasi Equation of Time tingkat observatorium.
+ */
+export const dapatkanDetailWis = (waktuInput: Date = new Date()): DetailWis => {
+  // 1. Julian Date (JD) - Hitungan waktu absolut astronomi
+  const timeMs = waktuInput.getTime();
+  const JD = (timeMs / 86400000.0) + 2440587.5;
+
+  // 2. Julian Century (T) - Skala waktu acuan terhadap Epoch J2000.0
+  const T = (JD - 2451545.0) / 36525.0;
+
+  // 3. Geometric Mean Longitude of Sun (L0)
+  let L0 = 280.46646 + T * (36000.76983 + T * 0.0003032);
+  L0 = L0 % 360.0; // Batasi 0 - 360 derajat
+
+  // 4. Geometric Mean Anomaly of Sun (M)
+  const M = 357.52911 + T * (35999.05029 - 0.0001537 * T);
+
+  // 5. Eccentricity of Earth Orbit (eOrbit) - Fluktuasi lonjong bumi
+  const eOrbit = 0.016708634 - T * (0.000042037 + 0.0000001267 * T);
+
+  // 6. Mean Obliquity of Ecliptic & Oblique Correction (Kemiringan Aksis Bumi)
+  const epsilon0 = 23.0 + (26.0 + ((21.448 - T * (46.815 + T * (0.00059 - T * 0.001813)))) / 60.0) / 60.0;
+  const omega = 125.04 - 1934.136 * T;
+  const epsilon = epsilon0 + 0.00256 * Math.cos(deg2rad(omega));
+
+  // 7. Variabel Y pembantu
+  const y = Math.tan(deg2rad(epsilon) / 2.0) * Math.tan(deg2rad(epsilon) / 2.0);
+
+  // 8. Equation of Time (EoT) dalam Radian (Rumus Utama NOAA)
+  const EoT_rad =
+    y * Math.sin(2.0 * deg2rad(L0)) -
+    2.0 * eOrbit * Math.sin(deg2rad(M)) +
+    4.0 * eOrbit * y * Math.sin(deg2rad(M)) * Math.cos(2.0 * deg2rad(L0)) -
+    0.5 * y * y * Math.sin(4.0 * deg2rad(L0)) -
+    1.25 * eOrbit * eOrbit * Math.sin(2.0 * deg2rad(M));
+
+  // Konversi Equation of Time (EoT) ke satuan Menit Waktu
+  const e = rad2deg(EoT_rad) * 4.0;
+
+  // 9. Presisi Maksimal Koordinat Masjid Jami' Sidogiri
+  // Lintang: 112°50'09.38" E -> Dikonversi ke desimal = 112.8359388° E
+  // WIB: 105° E. Selisih Bujur = 7.8359388°. Dikalikan 4 menit per derajat.
+  const kwdSidogiri = 31.3437555;
+
+  // TEMPAT KALIBRASI DETIK
+  // Saya set 0 dulu agar kamu bisa mengecek keampuhan rumus NASA ini
+  const offsetDetikPondok = 20;
+
+  // 10. Konversi total pergeseran ke Milidetik
+  const totalPergeseranMenit = e + kwdSidogiri;
+  const totalPergeseranMilidetik = (totalPergeseranMenit * 60 * 1000) + (offsetDetikPondok * 1000);
+
+  // 11. Kalkulasi hasil akhir
+  const waktuWis = new Date(waktuInput.getTime() + totalPergeseranMilidetik);
+
+  const jam = String(waktuWis.getHours()).padStart(2, '0');
+  const menit = String(waktuWis.getMinutes()).padStart(2, '0');
+  const detik = String(waktuWis.getSeconds()).padStart(2, '0');
+
+  return {
+    stringLengkap: `${jam}:${menit}:${detik} WIS`,
+    jamDanMenit: `${jam}:${menit} WIS`,
+    jam,
+    menit,
+    detik
+  };
+};
+```
+
+### `src/vite-env.d.ts`
+```typescript
+/// <reference types="vite/client" />
+```
+
+### `tailwind.config.js`
+```javascript
+/** @type {import('tailwindcss').Config} */
+export default {
+  // Memberi tahu Tailwind untuk memindai file index.html dan semua file .ts/.tsx di folder src
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      // Kamu bisa menambahkan warna custom atau font kustom di sini nanti
+      colors: {
+        utama: '#1E40AF',
+      }
+    },
+  },
+  plugins: [],
+}
+```
+
+### `tsconfig.json`
+```json
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "types": ["vite/client"],
+    "useDefineForClassFields": true,
+    "lib": ["ES2020", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+
+    /* Bundler mode */
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true
+  },
+  "include": ["src"],
+  "references": [{ "path": "./tsconfig.node.json" }]
+}
+```
+
+### `tsconfig.node.json`
+```json
+{
+  "compilerOptions": {
+    "composite": true,
+    "skipLibCheck": true,
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "allowSyntheticDefaultImports": true,
+    "strict": true
+  },
+  "include": ["vite.config.ts"]
+}
+```
+
+### `vite.config.ts`
+```typescript
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
+
+export default defineConfig(() => {
+  const isTauri = Object.keys(process.env).some(key => key.startsWith('TAURI_'));
+
+  return {
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
+    },
+    build: {
+      outDir: isTauri
+        ? path.resolve(__dirname, './dist')
+        : path.resolve(__dirname, '../backend/pb_public'),
+      emptyOutDir: true,
+      chunkWarningLimit: 1600, // Biarkan Rollup mengatur chunking secara otomatis
+    },
+    server: {
+      port: 5173,
+      strictPort: true,
+      watch: {
+        ignored: ["**/src-tauri/**"],
+      },
+    }
+  };
+});
+```
