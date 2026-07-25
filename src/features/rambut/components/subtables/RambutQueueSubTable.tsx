@@ -17,6 +17,7 @@ import {
   Clock,
   Printer,
   Loader2,
+  Lock,
 } from "lucide-react";
 
 interface Props {
@@ -24,7 +25,8 @@ interface Props {
   isLoading: boolean;
   page: number;
   perPage: number;
-  canExecute: boolean;
+  canExecute: boolean; // Bernilai true HANYA jika User berhak (Admin/Rambut) AND Periode Aktif AND Dalam Rentang Tanggal
+  disabledReason?: string; // Alasan jika tombol dikunci (Opsional)
   onOpenExecuteModal: (item: WajibSetorExpanded) => void;
   onOpenDispensasiModal: (item: WajibSetorExpanded) => void;
 }
@@ -43,6 +45,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
   page,
   perPage,
   canExecute,
+  disabledReason = "Transaksi dikunci. Periode tidak aktif atau di luar jadwal operasional.",
   onOpenExecuteModal,
   onOpenDispensasiModal,
 }) => {
@@ -72,7 +75,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
         const hijriData = await fetchHijriByDate(log.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
 
-        // Format Kelas dulu baru Tingkatan (misal: "2 MLH-A ALIYAH" / "GURU KULIYAH SYARIAH")
+        // Format Kelas dulu baru Tingkatan
         const kelasVal = santri?.kelas ? `${santri.kelas}` : "";
         const tingkatanVal = santri?.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
@@ -214,24 +217,36 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                   )}
                 </td>
 
+                {/* 🎯 TAMPILAN AKSI DENGAN PROTEKSI STRICT CAN_EXECUTE */}
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                  {row.status_setor === "belum" && canExecute ? (
-                    <div className="flex items-center justify-center gap-1 font-sans">
-                      <button
-                        type="button"
-                        onClick={() => onOpenExecuteModal(row)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] font-semibold shadow active:scale-95 transition-all"
+                  {row.status_setor === "belum" ? (
+                    canExecute ? (
+                      <div className="flex items-center justify-center gap-1 font-sans">
+                        <button
+                          type="button"
+                          onClick={() => onOpenExecuteModal(row)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] font-semibold shadow active:scale-95 transition-all"
+                        >
+                          <Scissors className="w-3 h-3" /> Setor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenDispensasiModal(row)}
+                          className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-gray-900 border border-gray-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold active:scale-95 transition-all"
+                        >
+                          <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
+                        </button>
+                      </div>
+                    ) : (
+                      /* 🛡️ IKON KUNCI JIKA PERIODE TIDAK AKTIF / DI LUAR JADWAL */
+                      <div
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-gray-950/60 border border-gray-800 text-gray-500 text-[10px] font-mono cursor-not-allowed select-none"
+                        title={disabledReason}
                       >
-                        <Scissors className="w-3 h-3" /> Setor
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenDispensasiModal(row)}
-                        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-gray-900 border border-gray-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold active:scale-95 transition-all"
-                      >
-                        <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
-                      </button>
-                    </div>
+                        <Lock className="w-3 h-3 text-gray-600" />
+                        <span>Terkunci</span>
+                      </div>
+                    )
                   ) : row.status_setor === "sudah" ? (
                     <button
                       type="button"

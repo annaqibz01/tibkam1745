@@ -25,6 +25,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         onClose={() => p.setActiveModal(null)}
         onSubmit={p.handleCreatePeriode}
         isPending={p.isCreatePending}
+        existingPeriodes={p.periodeList}
       />
 
       <ManagePeriodeModal

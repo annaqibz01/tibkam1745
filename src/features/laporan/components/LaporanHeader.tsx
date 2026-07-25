@@ -55,7 +55,7 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
           </h1>
 
           <p className="max-w-xl text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
-            Pusat rekapitulasi data setoran cukur rambut santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri.
+            Pusat rekapitulasi data setoran rambut santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri.
           </p>
         </div>
 

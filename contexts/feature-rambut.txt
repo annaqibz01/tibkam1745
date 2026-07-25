@@ -36,12 +36,13 @@
 
 ### `src/features/rambut/components/CreatePeriodeModal.tsx`
 ```tsx
-// src/components/rambut/CreatePeriodeModal.tsx
+// src/features/rambut/components/CreatePeriodeModal.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { CustomDatePickerHijriyah } from "@/components/shared/CustomDatePickerHijriyah";
 import NotificationToast, { ToastMessage } from "@/components/shared/NotificationToast";
 import { useTodayHijri } from "@/features/kalender";
+import { toLocalYMD } from "@/utils/dateHelpers";
 import type { CreatePeriodePayload } from "../hooks/useRambut";
 import {
   Calendar,
@@ -81,7 +82,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   isPending,
   existingPeriodes = [],
 }) => {
-  // 🌙 Fetch data Hijriyah hari ini dari database
+  // 🌙 Fetch data Hijriyah hari ini dari database kalender
   const { data: todayHijri } = useTodayHijri();
 
   const [namaPeriode, setNamaPeriode] = useState("");
@@ -98,33 +99,32 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     );
   }, [bulanHijri]);
 
-  // ✨ Reset Form & Auto-Sync langsung ke Bulan aktif saat ini (contoh: Safar)
+  // ✨ Reset Form & Auto-Sync ke Bulan Hijriyah Berjalan
   useEffect(() => {
     if (isOpen) {
-      setNamaPeriode(""); // [UBAH]: Kosongkan nama periode agar diisi manual oleh user
+      setNamaPeriode("");
       setTglMulai("");
       setTglSelesai("");
       setToast(null);
 
-      // Pastikan jika data asinkronus server sudah termuat, langsung setel bulan berjalan
       if (todayHijri) {
-        setBulanHijri(todayHijri.bulan_hijri_angka);
-        setTahunHijri(todayHijri.tahun_hijri);
+        if (todayHijri.bulan_hijri_angka) setBulanHijri(todayHijri.bulan_hijri_angka);
+        if (todayHijri.tahun_hijri) setTahunHijri(todayHijri.tahun_hijri);
       }
     }
   }, [isOpen, todayHijri]);
 
-  // ==================== AREA PENGAMAN & VALIDASI PERBAIKAN ====================
+  // ==================== AREA VALIDASI STRICT ====================
 
-  // 1. PENGAMAN: Validasi Real-Time Tanggal Selesai < Tanggal Mulai
+  // 1. Validasi: Tanggal Selesai < Tanggal Mulai
   const isDateInvalid = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
-    const start = new Date(tglMulai).getTime();
-    const end = new Date(tglSelesai).getTime();
-    return end < start;
+    const startStr = toLocalYMD(tglMulai);
+    const endStr = toLocalYMD(tglSelesai);
+    return endStr < startStr;
   }, [tglMulai, tglSelesai]);
 
-  // 2. PENGAMAN: Cek Duplikasi Nama
+  // 2. Validasi: Cek Duplikasi Nama Periode
   const isNameDuplicate = useMemo(() => {
     if (!namaPeriode.trim()) return false;
     return existingPeriodes.some(
@@ -132,31 +132,23 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     );
   }, [namaPeriode, existingPeriodes]);
 
-  // 3. PENGAMAN FIX: Deteksi Bentrok Tanggal Melalui Pemotongan String ISO / Jam
+  // 3. Validasi: Deteksi Rentang Tanggal Bentrok (Overlapping) Menggunakan Local YMD
   const isDateOverlapping = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
 
-    // Fungsi pembantu untuk menormalkan tanggal ke jam 00:00 lokal tanpa interferensi timezone
-    const normalizeDate = (dateStr: string) => {
-      const cleanStr = dateStr.split("T")[0].split(" ")[0]; // Ambil YYYY-MM-DD saja
-      const d = new Date(cleanStr);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    };
-
-    const startNew = normalizeDate(tglMulai);
-    const endNew = normalizeDate(tglSelesai);
+    const startNew = toLocalYMD(tglMulai);
+    const endNew = toLocalYMD(tglSelesai);
 
     return existingPeriodes.some((p) => {
-      const startExisting = normalizeDate(p.tanggal_mulai);
-      const endExisting = normalizeDate(p.tanggal_selesai);
+      const startExisting = toLocalYMD(p.tanggal_mulai);
+      const endExisting = toLocalYMD(p.tanggal_selesai);
 
-      // Rumus irisan rentang waktu
+      // Rumus irisan rentang waktu lokal
       return startNew <= endExisting && endNew >= startExisting;
     });
   }, [tglMulai, tglSelesai, existingPeriodes]);
 
-  // Pemicu Toast Otomatis jika melanggar aturan
+  // Pemicu Toast Otomatis saat ada eror validasi
   useEffect(() => {
     if (isDateInvalid) {
       setToast({
@@ -214,7 +206,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
       return;
     }
     if (isDateInvalid || isNameDuplicate || isDateOverlapping) {
-      setToast({ title: "Gagal Menyimpan", message: "Harap periksa kembali error pada form.", type: "error" });
+      setToast({ title: "Gagal Menyimpan", message: "Harap periksa kembali eror pada form.", type: "error" });
       return;
     }
 
@@ -237,19 +229,19 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         icon={<Calendar className="w-5 h-5 text-indigo-400" />}
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4">
+        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4 select-none font-mono">
 
           {/* NAMA PERIODE */}
           <div>
-            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">
               Nama Periode {isNameDuplicate && <span className="text-rose-400 font-bold ml-1">(Sudah Ada)</span>}
             </label>
             <input
               type="text"
               value={namaPeriode}
               onChange={(e) => setNamaPeriode(e.target.value)}
-              placeholder="Ketik nama periode baru di sini..."
-              className={`w-full h-[42px] px-4 bg-gray-950/60 border rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 shadow-inner transition-all ${
+              placeholder="Contoh: Setoran Rambut Muharram 1448 H"
+              className={`w-full h-[42px] px-4 bg-gray-950/60 border rounded-2xl text-white text-xs focus:outline-none focus:ring-2 shadow-inner transition-all ${
                 isNameDuplicate ? "border-rose-500 focus:ring-rose-500/40" : "border-gray-800 focus:ring-indigo-500/40"
               }`}
               required
@@ -259,14 +251,14 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
           {/* BULAN & TAHUN HIJRIYAH */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Bulan Hijriyah Target
               </label>
               <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
                 <button type="button" onClick={handlePrevBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <div className="flex-1 text-center font-mono text-xs font-bold text-amber-300 truncate px-2 select-none">
+                <div className="flex-1 text-center text-xs font-bold text-amber-300 truncate px-2 select-none">
                   {activeBulan.angka}. {activeBulan.nama}
                 </div>
                 <button type="button" onClick={handleNextBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
@@ -276,7 +268,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tahun Hijriyah
               </label>
               <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
@@ -288,7 +280,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
                   value={tahunHijri}
                   onChange={(e) => handleYearChange(Number(e.target.value))}
                   placeholder="1448"
-                  className="w-full h-full px-2 bg-transparent text-white font-mono text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full h-full px-2 bg-transparent text-white text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
                 <button type="button" onClick={() => handleYearChange(tahunHijri + 1)} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
@@ -301,13 +293,13 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
           {/* TANGGAL MULAI & SELESAI */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tanggal Mulai
               </label>
               <CustomDatePickerHijriyah value={tglMulai} onChange={(val) => setTglMulai(val)} />
             </div>
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tanggal Selesai {(isDateOverlapping || isDateInvalid) && <span className="text-rose-400 font-bold ml-1">(! Error)</span>}
               </label>
               <CustomDatePickerHijriyah value={tglSelesai} onChange={(val) => setTglSelesai(val)} />
@@ -319,7 +311,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold transition-all active:scale-95"
+              className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-semibold transition-all active:scale-95"
             >
               Batal
             </button>
@@ -334,7 +326,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
                 isNameDuplicate ||
                 isDateOverlapping
               }
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-mono text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
             >
               {isPending ? (
                 <>
@@ -599,12 +591,12 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
 
 ### `src/features/rambut/components/ImportPengurusModal.tsx`
 ```tsx
-// src/components/rambut/ImportPengurusModal.tsx
+// src/features/rambut/components/ImportPengurusModal.tsx
 import React, { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { pb } from "@/lib/pocketbase";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { parsePocketBaseError } from "@/utils/errorHandler"; // Terpusat & Patuh DRY
+import { parsePocketBaseError } from "@/utils/errorHandler";
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -664,7 +656,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
     onClose();
   };
 
-  // 🎯 PARSER EXCEL + BULK LOOK-UP ENGINE (ANTI-FLOODING)
+  // 🎯 PARSER EXCEL + BULK LOOK-UP ENGINE (CHUNKED LOOKUP 50 ID)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -719,7 +711,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
         new Set(initialRows.map((r) => r.idPps).filter(Boolean))
       );
 
-      // 2. Fetch Pengurus Existing Map untuk Komparasi Lokal O(1)
+      // 2. Fetch Pengurus Existing Map
       const existingPengurusMap = new Map<string, { recordId: string; jabatan: string }>();
       try {
         const currentPengurusList = await pb.collection("pengurus_santri").getFullList();
@@ -735,10 +727,9 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
         console.warn("[Smart Sync Warning] Gagal sinkronisasi data existing pengurus lokal.", err);
       }
 
-      // 3. 🧠 REFAKTOR: BULK LOOK-UP GABUNGAN (1 SINGLE HTTP REQUEST SEBAGAI GANTI PROMISE.ALL LOOP)
+      // 3. BULK LOOK-UP CHUNKED MASTER SANTRI (Isi 50 ID)
       const santriMap = new Map<string, { id: string; nama: string }>();
       if (uniqueIds.length > 0) {
-        // Kita bagi per-chunk isi 50 ID agar string filter URL PocketBase tidak terlalu panjang
         const chunkSize = 50;
         for (let i = 0; i < uniqueIds.length; i += chunkSize) {
           const chunkIds = uniqueIds.slice(i, i + chunkSize);
@@ -808,57 +799,55 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
     }
   };
 
-  // 🚀 REFAKTOR: HIGH-SPEED BATCH SINKRONISASI TRANSACTION ENGINE
+  // 🚀 HIGH-SPEED CHUNKED BATCH TRANSACTION ENGINE (SETIAP 100 BARIS DATA)
   const handleExecuteImport = async () => {
     const processableRows = parsedRows.filter((r) => r.syncAction !== "invalid" && r.syncAction !== "skip");
-    if (processableRows.length === 0 && parsedRows.filter(r => r.syncAction === "skip").length === 0) return;
+    if (processableRows.length === 0) return;
 
     setIsSubmitting(true);
     setErrorMessage("");
 
-    let createCount = 0;
-    let updateCount = 0;
-    let skipCount = 0;
-
     const updatedRows = [...parsedRows];
-    // Inisialisasi unit transaksi batch PocketBase resmi
-    const batch = pb.createBatch();
+    let batch = pb.createBatch();
     let batchActionCount = 0;
 
-    // 1. Susun Antrean Perintah ke dalam Unit Batch Lokal
-    for (let i = 0; i < updatedRows.length; i++) {
-      const row = updatedRows[i];
-      if (row.syncAction === "invalid") continue;
-
-      if (row.syncAction === "skip") {
-        skipCount++;
-        updatedRows[i] = { ...row, status: "skipped", message: "Dilewati (Tidak Berubah)" };
-      } else if (row.syncAction === "update" && row.existingId) {
-        batch.collection("pengurus_santri").update(row.existingId, {
-          jabatan: row.jabatan,
-          status_aktif: true,
-          ...(row.santriId ? { santri: row.santriId } : {}),
-        });
-        updateCount++;
-        batchActionCount++;
-        updatedRows[i] = { ...row, status: "success", message: "Jabatan Diperbarui" };
-      } else if (row.syncAction === "create") {
-        const payload: Record<string, any> = {
-          id_pps: row.idPps,
-          jabatan: row.jabatan,
-          status_aktif: true,
-        };
-        if (row.santriId) payload.santri = row.santriId;
-
-        batch.collection("pengurus_santri").create(payload);
-        createCount++;
-        batchActionCount++;
-        updatedRows[i] = { ...row, status: "success", message: "Berhasil Ditambahkan" };
-      }
-    }
-
     try {
-      // 2. Tembak Seluruh Antrean dalam 1 Single HTTP Request Pasak Transaksi Atomik
+      for (let i = 0; i < updatedRows.length; i++) {
+        const row = updatedRows[i];
+        if (row.syncAction === "invalid") continue;
+
+        if (row.syncAction === "skip") {
+          updatedRows[i] = { ...row, status: "skipped", message: "Dilewati (Tidak Berubah)" };
+        } else if (row.syncAction === "update" && row.existingId) {
+          batch.collection("pengurus_santri").update(row.existingId, {
+            jabatan: row.jabatan,
+            status_aktif: true,
+            ...(row.santriId ? { santri: row.santriId } : {}),
+          });
+          batchActionCount++;
+          updatedRows[i] = { ...row, status: "success", message: "Jabatan Diperbarui" };
+        } else if (row.syncAction === "create") {
+          const payload: Record<string, any> = {
+            id_pps: row.idPps,
+            jabatan: row.jabatan,
+            status_aktif: true,
+          };
+          if (row.santriId) payload.santri = row.santriId;
+
+          batch.collection("pengurus_santri").create(payload);
+          batchActionCount++;
+          updatedRows[i] = { ...row, status: "success", message: "Berhasil Ditambahkan" };
+        }
+
+        // 🎯 PERBAIKAN: EKSEKUSI BATCH SETIAP REACH 100 OPERASI
+        if (batchActionCount >= 100) {
+          await batch.send();
+          batch = pb.createBatch();
+          batchActionCount = 0;
+        }
+      }
+
+      // Kirim sisa antrean batch jika ada
       if (batchActionCount > 0) {
         await batch.send();
       }
@@ -867,12 +856,17 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
       showSuccessImport();
       handleClose();
     } catch (err: any) {
-      // Jika transaksi batch gagal total, beri laporan terpusat
       const pbMsg = parsePocketBaseError(err) || "Gagal memproses transaksi paket batch data.";
       setErrorMessage(`Gagal Sinkronisasi Massal: ${pbMsg}`);
 
-      // Kembalikan status baris ke error
-      setParsedRows(prev => prev.map(r => r.syncAction !== "invalid" && r.syncAction !== "skip" ? { ...r, status: "error", message: "Gagal transaksi batch" } : r));
+      // Set status error pada baris yang belum dilewati
+      setParsedRows((prev) =>
+        prev.map((r) =>
+          r.syncAction !== "invalid" && r.syncAction !== "skip"
+            ? { ...r, status: "error", message: "Gagal transaksi batch" }
+            : r
+        )
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -1224,10 +1218,10 @@ export const ManagePengurusModal: React.FC<ManagePengurusModalProps> = ({
 
 ### `src/features/rambut/components/ManagePeriodeModal.tsx`
 ```tsx
-// src/components/rambut/ManagePeriodeModal.tsx
+// src/features/rambut/components/ManagePeriodeModal.tsx
 import React, { useState } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { HijriText } from "@/components/shared/HijriText";
+import { useHijriByDate } from "@/features/kalender";
 import type {
   PeriodeRambutResponse,
   PeriodeRambutStatusPeriodeOptions,
@@ -1241,11 +1235,11 @@ import {
   Eye,
   Loader2,
   CalendarDays,
-  Sparkles,
   Trash2,
   AlertTriangle,
   Moon,
   PlusCircle,
+  HelpCircle,
 } from "lucide-react";
 
 interface ManagePeriodeModalProps {
@@ -1265,6 +1259,26 @@ interface ManagePeriodeModalProps {
   onOpenCreateModal: () => void;
 }
 
+/**
+ * 🌙 HELPER SUB-COMPONENT: Format Tanggal Hijriyah Ringkas (DD-MM-YYYY)
+ * Contoh: "07-02-1448" -> Ukuran string 100% terkunci fixed-width!
+ */
+const HijriShortText: React.FC<{ date: string | Date | null | undefined }> = ({
+  date,
+}) => {
+  const { data, isLoading } = useHijriByDate(date);
+
+  if (!date) return <>--/--/----</>;
+  if (isLoading) return <span className="animate-pulse">..-..-....</span>;
+  if (!data) return <>--/--/----</>;
+
+  const dd = String(data.tanggal_hijri || 0).padStart(2, "0");
+  const mm = String(data.bulan_hijri_angka || 0).padStart(2, "0");
+  const yyyy = data.tahun_hijri || "----";
+
+  return <>{`${dd}-${mm}-${yyyy}`}</>;
+};
+
 export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
   isOpen,
   onClose,
@@ -1278,28 +1292,34 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
   isDeletingPeriode,
   onOpenCreateModal,
 }) => {
-  // State Konfirmasi Pop-up Hapus Periode
+  // State Pop-up Konfirmasi Hapus Periode
   const [periodeToDelete, setPeriodeToDelete] = useState<PeriodeRambutResponse | null>(null);
+
+  // State Pop-up Konfirmasi Ubah Status Periode
+  const [statusTarget, setStatusTarget] = useState<{
+    periode: PeriodeRambutResponse;
+    newStatus: PeriodeRambutStatusPeriodeOptions;
+  } | null>(null);
 
   const getStatusBadge = (status?: PeriodeRambutStatusPeriodeOptions) => {
     switch (status) {
       case "aktif":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Aktif
           </span>
         );
       case "selesai":
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase bg-gray-800 text-gray-400 border border-gray-700 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-gray-800 text-gray-400 border border-gray-700 whitespace-nowrap">
             <CheckCircle2 className="w-3 h-3 text-gray-500" />
             Selesai
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap">
             <Clock className="w-3 h-3 text-amber-400" />
             Draft
           </span>
@@ -1314,6 +1334,13 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
     }
   };
 
+  const handleConfirmStatusUpdate = () => {
+    if (statusTarget) {
+      onUpdateStatus(statusTarget.periode.id, statusTarget.newStatus);
+      setStatusTarget(null);
+    }
+  };
+
   return (
     <>
       <BaseModal
@@ -1321,14 +1348,13 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         onClose={onClose}
         title="Kelola Daftar Periode Setor Rambut"
         icon={<CalendarDays className="w-5 h-5 text-indigo-400" />}
-        maxWidth="max-w-4xl"
+        maxWidth="max-w-3xl"
       >
-        {/* ✨ Ditambahkan px-6 pb-6 pt-2 agar isi modal tidak mepet ke pinggir */}
-        <div className="space-y-4 px-6 pb-6 pt-2 select-none flex flex-col min-h-0">
+        <div className="space-y-3 px-1 sm:px-2 pb-3 pt-1 select-none flex flex-col min-h-0 font-mono">
           {/* TOP TOOLBAR */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
-            <div className="text-xs font-mono text-gray-400 leading-relaxed">
-              Pilih periode untuk ditinjau antreannya atau ubah status siklus operasional.
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
+            <div className="text-xs text-gray-400 leading-relaxed">
+              Pilih periode untuk ditinjau atau ubah status operasional.
             </div>
             <button
               type="button"
@@ -1337,50 +1363,51 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                 onClose();
                 onOpenCreateModal();
               }}
-              className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-mono font-bold shadow-md transition-all active:scale-95 border border-indigo-400/30 shrink-0"
+              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-md transition-all active:scale-95 border border-indigo-400/30 shrink-0"
             >
-              <PlusCircle className="w-4 h-4 text-indigo-100" />
+              <PlusCircle className="w-3.5 h-3.5 text-indigo-100" />
               <span>Buat Periode Baru</span>
             </button>
           </div>
 
-          {/* CONTAINER TABEL PERIODE */}
+          {/* CONTAINER TABEL PERIODE (TINGGI FIXED TERKUNCI ISTIMEWA) */}
           <div className="border border-gray-800/80 rounded-2xl overflow-hidden bg-gray-950/60 shadow-inner flex flex-col">
-            <div className="overflow-x-auto overflow-y-auto max-h-[340px] custom-scrollbar">
-              <table className="w-full min-w-[700px] text-xs text-left border-collapse font-mono">
+            {/* 🎯 KUNCI UTAMA: Menggunakan h-[280px] agar tinggi modal konsisten & tidak melompat */}
+            <div className="overflow-y-auto h-[280px] custom-scrollbar">
+              <table className="w-full text-xs text-left border-collapse table-auto">
                 <thead>
                   <tr className="bg-gray-950 border-b border-gray-800 text-gray-400 text-[10px] uppercase sticky top-0 z-20 backdrop-blur-md">
-                    <th className="px-4 py-3 w-12 text-center bg-gray-950">#</th>
-                    <th className="px-4 py-3 min-w-[170px] bg-gray-950">Nama Periode</th>
-                    <th className="px-4 py-3 min-w-[210px] text-center bg-gray-950">Rentang Hijriyah</th>
-                    <th className="px-4 py-3 w-28 text-center bg-gray-950">Status</th>
-                    <th className="px-4 py-3 w-56 text-center bg-gray-950">Aksi & Kontrol</th>
+                    <th className="px-2 py-2.5 w-8 text-center bg-gray-950">#</th>
+                    <th className="px-2.5 py-2.5 bg-gray-950">Nama Periode</th>
+                    <th className="px-2 py-2.5 text-center bg-gray-950">Rentang Hijriyah</th>
+                    <th className="px-2 py-2.5 w-20 text-center bg-gray-950">Status</th>
+                    <th className="px-2 py-2.5 w-[220px] text-center bg-gray-950">Aksi & Kontrol</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-800/50 bg-gray-900/20">
                   {isLoading ? (
-                    Array.from({ length: 4 }).map((_, idx) => (
+                    Array.from({ length: 3 }).map((_, idx) => (
                       <tr key={`skel-per-${idx}`} className="animate-pulse">
-                        <td className="px-4 py-3.5 text-center">
-                          <div className="h-3.5 bg-gray-800/60 rounded w-4 mx-auto" />
+                        <td className="px-2 py-2 text-center">
+                          <div className="h-3 bg-gray-800/60 rounded w-4 mx-auto" />
                         </td>
-                        <td className="px-4 py-3.5">
-                          <div className="h-3.5 bg-gray-800/60 rounded w-32" />
+                        <td className="px-2.5 py-2">
+                          <div className="h-3 bg-gray-800/60 rounded w-28" />
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <div className="h-5 bg-gray-800/60 rounded-lg w-44 mx-auto" />
+                        <td className="px-2 py-2 text-center">
+                          <div className="h-4 bg-gray-800/60 rounded-lg w-36 mx-auto" />
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <div className="h-5 bg-gray-800/60 rounded-full w-16 mx-auto" />
+                        <td className="px-2 py-2 text-center">
+                          <div className="h-4 bg-gray-800/60 rounded-full w-14 mx-auto" />
                         </td>
-                        <td className="px-4 py-3.5 text-center">
-                          <div className="h-6 bg-gray-800/60 rounded-xl w-36 mx-auto" />
+                        <td className="px-2 py-2 text-center">
+                          <div className="h-5 bg-gray-800/60 rounded-xl w-32 mx-auto" />
                         </td>
                       </tr>
                     ))
                   ) : periodeList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-6 py-12 text-center text-gray-500 font-mono text-xs">
+                      <td colSpan={5} className="px-4 py-16 text-center text-gray-500 text-xs">
                         Belum ada periode setor yang terdaftar di sistem.
                       </td>
                     </tr>
@@ -1397,94 +1424,94 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                             isBeingInspected ? "bg-indigo-500/10 border-l-2 border-indigo-400" : ""
                           }`}
                         >
-                          <td className="px-4 py-3 text-center text-gray-500 font-mono">
+                          <td className="px-2 py-2 text-center text-gray-500">
                             {index + 1}
                           </td>
 
-                          <td className="px-4 py-3 font-bold text-white whitespace-nowrap">
-                            <div className="flex items-center gap-2">
+                          {/* NAMA PERIODE */}
+                          <td className="px-2.5 py-2 font-bold text-white whitespace-nowrap">
+                            <div className="flex items-center gap-1.5 min-w-0">
                               <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                              <span>{p.nama_periode}</span>
-                              {isBeingInspected && (
-                                <span className="text-[9px] font-bold text-indigo-300 bg-indigo-500/20 px-1.5 py-0.5 rounded border border-indigo-500/30">
-                                  Ditinjau
-                                </span>
-                              )}
+                              <span className="truncate max-w-[130px] sm:max-w-[170px]">{p.nama_periode}</span>
                             </div>
                           </td>
 
-                          {/* 🌙 TAMPILAN RENTANG HIJRIYAH */}
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-1 rounded-lg border border-amber-500/20 text-amber-300">
+                          {/* RENTANG HIJRIYAH FORMAT ANGKA RINGKAS (DD-MM-YYYY) */}
+                          <td className="px-2 py-2 text-center whitespace-nowrap">
+                            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-amber-300 text-[11px] font-mono font-bold tracking-tight">
                               <Moon className="w-3 h-3 text-amber-400 shrink-0" />
-                              <HijriText date={p.tanggal_mulai} /> – <HijriText date={p.tanggal_selesai} />
+                              <span><HijriShortText date={p.tanggal_mulai} /></span>
+                              <span className="text-amber-500/60">–</span>
+                              <span><HijriShortText date={p.tanggal_selesai} /></span>
                             </div>
                           </td>
 
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                          <td className="px-2 py-2 text-center whitespace-nowrap">
                             {getStatusBadge(p.status_periode)}
                           </td>
 
-                          <td className="px-4 py-3 text-center whitespace-nowrap">
+                          {/* AKSI & KONTROL */}
+                          <td className="px-2 py-2 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
-                              {/* Tombol Tinjau */}
+                              {/* SLOT 1: TINJAU / DITINJAU */}
                               <button
                                 type="button"
                                 onClick={() => onSelectPeriode(p)}
                                 disabled={isBeingInspected || isUpdatingStatus || isDeletingPeriode}
-                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-[11px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                className={`w-[78px] h-7 inline-flex items-center justify-center gap-1 rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
                                   isBeingInspected
                                     ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
                                     : "bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-indigo-500/40 active:scale-95"
                                 }`}
                                 title="Tampilkan antrean periode ini di halaman utama"
                               >
-                                <Eye className="w-3 h-3 text-indigo-400" />
+                                <Eye className="w-3 h-3 text-indigo-400 shrink-0" />
                                 <span>{isBeingInspected ? "Ditinjau" : "Tinjau"}</span>
                               </button>
 
-                              {/* Tombol Aktifkan */}
-                              {!isAktif && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateStatus(p.id, "aktif")}
-                                  disabled={isUpdatingStatus || isDeletingPeriode}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  title="Jadikan sebagai Periode Aktif Utama"
-                                >
-                                  {isUpdatingStatus ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Play className="w-3 h-3 text-emerald-400" />
-                                  )}
-                                  <span>Aktifkan</span>
-                                </button>
-                              )}
+                              {/* SLOT 2: AKTIFKAN / SELESAIKAN */}
+                              <div className="w-[90px] flex justify-center">
+                                {!isAktif ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setStatusTarget({ periode: p, newStatus: "aktif" })}
+                                    disabled={isUpdatingStatus || isDeletingPeriode}
+                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title="Jadikan sebagai Periode Aktif Utama"
+                                  >
+                                    {isUpdatingStatus ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Play className="w-3 h-3 text-emerald-400 shrink-0" />
+                                    )}
+                                    <span>Aktifkan</span>
+                                  </button>
+                                ) : !isSelesai ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => setStatusTarget({ periode: p, newStatus: "selesai" })}
+                                    disabled={isUpdatingStatus || isDeletingPeriode}
+                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    title="Tutup & Selesaikan Periode Ini"
+                                  >
+                                    {isUpdatingStatus ? (
+                                      <Loader2 className="w-3 h-3 animate-spin" />
+                                    ) : (
+                                      <Check className="w-3 h-3 text-gray-400 shrink-0" />
+                                    )}
+                                    <span>Selesaikan</span>
+                                  </button>
+                                ) : (
+                                  <div className="w-full" />
+                                )}
+                              </div>
 
-                              {/* Tombol Selesaikan */}
-                              {isAktif && !isSelesai && (
-                                <button
-                                  type="button"
-                                  onClick={() => onUpdateStatus(p.id, "selesai")}
-                                  disabled={isUpdatingStatus || isDeletingPeriode}
-                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[11px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
-                                  title="Tutup & Selesaikan Periode Ini"
-                                >
-                                  {isUpdatingStatus ? (
-                                    <Loader2 className="w-3 h-3 animate-spin" />
-                                  ) : (
-                                    <Check className="w-3 h-3 text-gray-400" />
-                                  )}
-                                  <span>Selesaikan</span>
-                                </button>
-                              )}
-
-                              {/* Tombol Hapus Periode */}
+                              {/* SLOT 3: TOMBOL HAPUS */}
                               <button
                                 type="button"
                                 onClick={() => setPeriodeToDelete(p)}
                                 disabled={isDeletingPeriode || isUpdatingStatus}
-                                className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed"
+                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                 title="Hapus Periode Ini"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1506,7 +1533,7 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
               type="button"
               onClick={onClose}
               disabled={isUpdatingStatus || isDeletingPeriode}
-              className="px-4 py-2 rounded-2xl border border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800 text-xs font-mono font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-1.5 rounded-xl border border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800 text-xs font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Tutup
             </button>
@@ -1514,7 +1541,81 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         </div>
       </BaseModal>
 
-      {/* 🚨 POP-UP PERINGATAN KONFIRMASI HAPUS PERIODE */}
+      {/* 🚨 1. POP-UP KONFIRMASI UBAH STATUS PERIODE */}
+      <BaseModal
+        isOpen={!!statusTarget}
+        onClose={() => {
+          if (!isUpdatingStatus) setStatusTarget(null);
+        }}
+        title="Konfirmasi Ubah Status Periode"
+        icon={<HelpCircle className="w-5 h-5 text-indigo-400" />}
+        maxWidth="max-w-md"
+      >
+        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-mono select-none">
+          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
+            statusTarget?.newStatus === "aktif"
+              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
+              : "bg-gray-800 border border-gray-700 text-gray-300"
+          }`}>
+            {statusTarget?.newStatus === "aktif" ? (
+              <Play className="w-6 h-6 text-emerald-400" />
+            ) : (
+              <CheckCircle2 className="w-6 h-6 text-gray-400" />
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <h4 className="text-sm font-bold text-white">
+              {statusTarget?.newStatus === "aktif"
+                ? `Aktifkan Periode "${statusTarget?.periode.nama_periode}"?`
+                : `Selesaikan Periode "${statusTarget?.periode.nama_periode}"?`}
+            </h4>
+            <p className="text-xs text-gray-300 leading-relaxed bg-gray-950/60 p-3 rounded-2xl border border-gray-800 text-left font-sans">
+              {statusTarget?.newStatus === "aktif" ? (
+                <>
+                  Mengaktifkan periode ini akan otomatis menonaktifkan periode lain yang sedang aktif. Seluruh transaksi POS dan scan kartu akan dialihkan ke periode <strong>{statusTarget?.periode.nama_periode}</strong>.
+                </>
+              ) : (
+                <>
+                  Menyelesaikan periode ini akan menutup seluruh siklus perapian rambut untuk periode <strong>{statusTarget?.periode.nama_periode}</strong>. Transaksi baru tidak dapat dilakukan setelah diselesaikan.
+                </>
+              )}
+            </p>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+            <button
+              type="button"
+              disabled={isUpdatingStatus}
+              onClick={() => setStatusTarget(null)}
+              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Batal
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirmStatusUpdate}
+              disabled={isUpdatingStatus}
+              className={`inline-flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                statusTarget?.newStatus === "aktif"
+                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/20"
+                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-indigo-600/20"
+              }`}
+            >
+              {isUpdatingStatus ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : statusTarget?.newStatus === "aktif" ? (
+                <Play className="w-3.5 h-3.5" />
+              ) : (
+                <Check className="w-3.5 h-3.5" />
+              )}
+              <span>Ya, Ubah Status</span>
+            </button>
+          </div>
+        </div>
+      </BaseModal>
+
+      {/* 🚨 2. POP-UP KONFIRMASI HAPUS PERIODE */}
       <BaseModal
         isOpen={!!periodeToDelete}
         onClose={() => {
@@ -1524,8 +1625,7 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
         maxWidth="max-w-md"
       >
-        {/* ✨ Ditambahkan px-6 pb-6 pt-2 pada modal konfirmasi */}
-        <div className="space-y-4 px-6 pb-6 pt-2 text-center font-mono select-none">
+        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-mono select-none">
           <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
             <Trash2 className="w-6 h-6" />
           </div>
@@ -1534,7 +1634,7 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
             <h4 className="text-sm font-bold text-white">
               Hapus Periode "{periodeToDelete?.nama_periode}"?
             </h4>
-            <p className="text-xs text-rose-300/90 leading-relaxed bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20">
+            <p className="text-xs text-rose-300/90 leading-relaxed bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20 font-sans text-left">
               ⚠️ Peringatan: Tindakan ini akan <strong>menghapus secara permanen</strong> seluruh data antrean wajib setor di dalamnya!
             </p>
           </div>
@@ -2149,6 +2249,7 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         onClose={() => p.setActiveModal(null)}
         onSubmit={p.handleCreatePeriode}
         isPending={p.isCreatePending}
+        existingPeriodes={p.periodeList}
       />
 
       <ManagePeriodeModal
@@ -3221,6 +3322,7 @@ import {
   Clock,
   Printer,
   Loader2,
+  Lock,
 } from "lucide-react";
 
 interface Props {
@@ -3228,7 +3330,8 @@ interface Props {
   isLoading: boolean;
   page: number;
   perPage: number;
-  canExecute: boolean;
+  canExecute: boolean; // Bernilai true HANYA jika User berhak (Admin/Rambut) AND Periode Aktif AND Dalam Rentang Tanggal
+  disabledReason?: string; // Alasan jika tombol dikunci (Opsional)
   onOpenExecuteModal: (item: WajibSetorExpanded) => void;
   onOpenDispensasiModal: (item: WajibSetorExpanded) => void;
 }
@@ -3247,6 +3350,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
   page,
   perPage,
   canExecute,
+  disabledReason = "Transaksi dikunci. Periode tidak aktif atau di luar jadwal operasional.",
   onOpenExecuteModal,
   onOpenDispensasiModal,
 }) => {
@@ -3276,7 +3380,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
         const hijriData = await fetchHijriByDate(log.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
 
-        // Format Kelas dulu baru Tingkatan (misal: "2 MLH-A ALIYAH" / "GURU KULIYAH SYARIAH")
+        // Format Kelas dulu baru Tingkatan
         const kelasVal = santri?.kelas ? `${santri.kelas}` : "";
         const tingkatanVal = santri?.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
@@ -3418,24 +3522,36 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                   )}
                 </td>
 
+                {/* 🎯 TAMPILAN AKSI DENGAN PROTEKSI STRICT CAN_EXECUTE */}
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                  {row.status_setor === "belum" && canExecute ? (
-                    <div className="flex items-center justify-center gap-1 font-sans">
-                      <button
-                        type="button"
-                        onClick={() => onOpenExecuteModal(row)}
-                        className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] font-semibold shadow active:scale-95 transition-all"
+                  {row.status_setor === "belum" ? (
+                    canExecute ? (
+                      <div className="flex items-center justify-center gap-1 font-sans">
+                        <button
+                          type="button"
+                          onClick={() => onOpenExecuteModal(row)}
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] font-semibold shadow active:scale-95 transition-all"
+                        >
+                          <Scissors className="w-3 h-3" /> Setor
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onOpenDispensasiModal(row)}
+                          className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-gray-900 border border-gray-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold active:scale-95 transition-all"
+                        >
+                          <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
+                        </button>
+                      </div>
+                    ) : (
+                      /* 🛡️ IKON KUNCI JIKA PERIODE TIDAK AKTIF / DI LUAR JADWAL */
+                      <div
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-gray-950/60 border border-gray-800 text-gray-500 text-[10px] font-mono cursor-not-allowed select-none"
+                        title={disabledReason}
                       >
-                        <Scissors className="w-3 h-3" /> Setor
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => onOpenDispensasiModal(row)}
-                        className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-gray-900 border border-gray-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold active:scale-95 transition-all"
-                      >
-                        <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
-                      </button>
-                    </div>
+                        <Lock className="w-3 h-3 text-gray-600" />
+                        <span>Terkunci</span>
+                      </div>
+                    )
                   ) : row.status_setor === "sudah" ? (
                     <button
                       type="button"
@@ -3779,10 +3895,16 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
 ### `src/features/rambut/hooks/useRambut.ts`
 ```typescript
 // src/features/rambut/hooks/useRambut.ts
-import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import {
+  useQuery,
+  useMutation,
+  useQueryClient,
+  keepPreviousData,
+} from "@tanstack/react-query";
 import { pb } from "@/lib/pocketbase";
 import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
 import { parsePocketBaseError } from "@/utils/errorHandler";
+import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
 import type {
   PeriodeRambutResponse,
   WajibSetorRambutResponse,
@@ -3791,7 +3913,6 @@ import type {
   MasterResponse,
   PeriodeRambutStatusPeriodeOptions,
   WajibSetorRambutKategoriWajibOptions,
-  WajibSetorRambutStatusSetorOptions,
 } from "@/types/pocketbase-types";
 
 export const formatHijriDate = (dateInput?: string | Date | null): string => {
@@ -3813,7 +3934,11 @@ export const formatHijriDate = (dateInput?: string | Date | null): string => {
       year: "numeric",
     }).format(d);
 
-    const clean = raw.replace(/AH|M/g, "").replace(/\s+/g, " ").replace(/\s*H+/gi, "").trim();
+    const clean = raw
+      .replace(/AH|M/g, "")
+      .replace(/\s+/g, " ")
+      .replace(/\s*H+/gi, "")
+      .trim();
     return `${clean} H`;
   } catch {
     return "-";
@@ -3843,6 +3968,14 @@ export interface ExecuteSetorPayload {
   catatan?: string;
 }
 
+export interface DispensasiPayload {
+  wajibSetorId: string;
+  santriId: string;
+  id_pps: string;
+  periodeId: string;
+  catatan: string;
+}
+
 export type WajibSetorExpanded = WajibSetorRambutResponse<{
   santri?: MasterResponse;
 }>;
@@ -3862,10 +3995,27 @@ export function useRambutStats(periodeId?: string) {
       }
 
       const [totalRes, sudahRes, belumRes, dispensasiRes] = await Promise.all([
-        pb.collection("wajib_setor_rambut").getList(1, 1, { filter: `periode = "${periodeId}"`, fields: "id" }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, { filter: `periode = "${periodeId}" && status_setor = "sudah"`, fields: "id" }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, { filter: `periode = "${periodeId}" && status_setor = "belum"`, fields: "id" }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, { filter: `periode = "${periodeId}" && status_setor = "dispensasi"`, fields: "id" }),
+        pb
+          .collection("wajib_setor_rambut")
+          .getList(1, 1, { filter: `periode = "${periodeId}"`, fields: "id" }),
+        pb
+          .collection("wajib_setor_rambut")
+          .getList(1, 1, {
+            filter: `periode = "${periodeId}" && status_setor = "sudah"`,
+            fields: "id",
+          }),
+        pb
+          .collection("wajib_setor_rambut")
+          .getList(1, 1, {
+            filter: `periode = "${periodeId}" && status_setor = "belum"`,
+            fields: "id",
+          }),
+        pb
+          .collection("wajib_setor_rambut")
+          .getList(1, 1, {
+            filter: `periode = "${periodeId}" && status_setor = "dispensasi"`,
+            fields: "id",
+          }),
       ]);
 
       return {
@@ -3888,7 +4038,11 @@ export function useRambut() {
       queryKey: ["rambut-periode-aktif"],
       queryFn: async () => {
         try {
-          return await pb.collection("periode_rambut").getFirstListItem<PeriodeRambutResponse>('status_periode = "aktif"');
+          return await pb
+            .collection("periode_rambut")
+            .getFirstListItem<PeriodeRambutResponse>(
+              'status_periode = "aktif"',
+            );
         } catch {
           return null;
         }
@@ -3901,7 +4055,9 @@ export function useRambut() {
     return useQuery<PeriodeRambutResponse[]>({
       queryKey: ["rambut-periode-list"],
       queryFn: async () => {
-        return await pb.collection("periode_rambut").getFullList<PeriodeRambutResponse>({ sort: "-created" });
+        return await pb
+          .collection("periode_rambut")
+          .getFullList<PeriodeRambutResponse>({ sort: "-created" });
       },
     });
   };
@@ -3910,10 +4066,32 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (payload: CreatePeriodePayload) => {
         try {
-          return await pb.collection("periode_rambut").create<PeriodeRambutResponse>({
-            ...payload,
-            status_periode: payload.status_periode || "draft",
+          // 🛡️ PENGAMAN GANDA: Cek Irisan Tanggal Masehi Langsung di Database
+          const existingList = await pb
+            .collection("periode_rambut")
+            .getFullList<PeriodeRambutResponse>();
+
+          const startNew = toLocalYMD(payload.tanggal_mulai);
+          const endNew = toLocalYMD(payload.tanggal_selesai);
+
+          const isOverlap = existingList.some((p) => {
+            const startExist = toLocalYMD(p.tanggal_mulai);
+            const endExist = toLocalYMD(p.tanggal_selesai);
+            return startNew <= endExist && endNew >= startExist;
           });
+
+          if (isOverlap) {
+            throw new Error(
+              "Gagal menyimpan! Rentang tanggal bertabrakan dengan periode yang sudah ada.",
+            );
+          }
+
+          return await pb
+            .collection("periode_rambut")
+            .create<PeriodeRambutResponse>({
+              ...payload,
+              status_periode: payload.status_periode || "draft",
+            });
         } catch (error) {
           throw new Error(parsePocketBaseError(error));
         }
@@ -3929,35 +4107,51 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (periodeId: string) => {
         try {
-          const periode = await pb.collection("periode_rambut").getOne<PeriodeRambutResponse>(periodeId);
+          const periode = await pb
+            .collection("periode_rambut")
+            .getOne<PeriodeRambutResponse>(periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
           // 🎯 FILTER DIPERBARUI: Hanya ambil santri aktif dengan status_domisili PPS (Bukan LPPS)
-          const masterSantri = await pb.collection("master").getFullList<MasterResponse>({
-            filter: 'status_aktif = true && status_domisili = "PPS" && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
-            batch: 500,
-          });
+          const masterSantri = await pb
+            .collection("master")
+            .getFullList<MasterResponse>({
+              filter:
+                'status_aktif = true && status_domisili = "PPS" && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
+              batch: 500,
+            });
 
           // 🎯 PENGURUS: Expand relasi santri untuk verifikasi status domisili PPS
-          const pengurusList = await pb.collection("pengurus_santri").getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
-            filter: "status_aktif = true",
-            expand: "santri",
-            batch: 500,
-          });
+          const pengurusList = await pb
+            .collection("pengurus_santri")
+            .getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
+              filter: "status_aktif = true",
+              expand: "santri",
+              batch: 500,
+            });
 
-          const targetEligibleMap = new Map<string, { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }>();
+          const targetEligibleMap = new Map<
+            string,
+            { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }
+          >();
 
           for (const s of masterSantri) {
             const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
             if (!cleanIdPps) continue;
 
             // 🛡️ Double Check Status Domisili PPS
-            const statusDomisili = (s.status_domisili || "").toString().trim().toUpperCase();
+            const statusDomisili = (s.status_domisili || "")
+              .toString()
+              .trim()
+              .toUpperCase();
             if (statusDomisili !== "PPS") continue;
 
             const lowerTingkatan = (s.tingkatan || "").toLowerCase();
             let kategori: WajibSetorRambutKategoriWajibOptions = "aliyah";
-            if (lowerTingkatan.includes("kuliah") || lowerTingkatan.includes("syariah")) {
+            if (
+              lowerTingkatan.includes("kuliah") ||
+              lowerTingkatan.includes("syariah")
+            ) {
               kategori = "kuliah_syariah";
             }
             targetEligibleMap.set(cleanIdPps, { santriId: s.id, kategori });
@@ -3965,21 +4159,30 @@ export function useRambut() {
 
           for (const p of pengurusList) {
             const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
-            if (!cleanIdPps) continue;
+            // 🛡️ Filter data orphan (pengurus tanpa relasi santri)
+            if (!cleanIdPps || !p.expand?.santri) continue;
 
             // 🛡️ Pengurus yang berstatus domisili LPPS dilewati
-            const santriDomisili = (p.expand?.santri?.status_domisili || "").toString().trim().toUpperCase();
+            const santriDomisili = (p.expand.santri.status_domisili || "")
+              .toString()
+              .trim()
+              .toUpperCase();
             if (santriDomisili && santriDomisili !== "PPS") continue;
 
             if (!targetEligibleMap.has(cleanIdPps)) {
-              targetEligibleMap.set(cleanIdPps, { santriId: p.santri, kategori: "pengurus_petugas" });
+              targetEligibleMap.set(cleanIdPps, {
+                santriId: p.santri,
+                kategori: "pengurus_petugas",
+              });
             }
           }
 
-          const existingQueue = await pb.collection("wajib_setor_rambut").getFullList<WajibSetorRambutResponse>({
-            filter: `periode = "${periodeId}"`,
-            batch: 500,
-          });
+          const existingQueue = await pb
+            .collection("wajib_setor_rambut")
+            .getFullList<WajibSetorRambutResponse>({
+              filter: `periode = "${periodeId}"`,
+              batch: 500,
+            });
 
           const existingMap = new Map<string, WajibSetorRambutResponse>();
           existingQueue.forEach((item) => {
@@ -4035,13 +4238,20 @@ export function useRambut() {
 
           if (batchCount > 0) await batch.send();
 
-          return { addedCount, removedCount, retainedHistoryCount, unchangedCount };
+          return {
+            addedCount,
+            removedCount,
+            retainedHistoryCount,
+            unchangedCount,
+          };
         } catch (error) {
           throw new Error(parsePocketBaseError(error));
         }
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list"] });
+        queryClient.invalidateQueries({
+          queryKey: ["rambut-wajib-setor-list"],
+        });
         queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
       },
     });
@@ -4052,11 +4262,13 @@ export function useRambut() {
       queryKey: ["rambut-wajib-setor-list-full", periodeId],
       queryFn: async () => {
         if (!periodeId) return [];
-        return await pb.collection("wajib_setor_rambut").getFullList<WajibSetorExpanded>({
-          filter: `periode = "${periodeId}"`,
-          expand: "santri",
-          batch: 500,
-        });
+        return await pb
+          .collection("wajib_setor_rambut")
+          .getFullList<WajibSetorExpanded>({
+            filter: `periode = "${periodeId}"`,
+            expand: "santri",
+            batch: 500,
+          });
       },
       enabled: !!periodeId,
       staleTime: 1000 * 15,
@@ -4067,14 +4279,40 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (payload: ExecuteSetorPayload) => {
         try {
+          // 🛡️ PENGAMAN 1: Cek Status Periode & Rentang Tanggal
+          const periode = await pb
+            .collection("periode_rambut")
+            .getOne<PeriodeRambutResponse>(payload.periodeId);
+          if (!periode) throw new Error("Periode tidak ditemukan.");
+
+          if (periode.status_periode !== "aktif") {
+            throw new Error(
+              `Setor ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+            );
+          }
+
+          if (
+            !isDateWithinRange(
+              new Date(),
+              periode.tanggal_mulai,
+              periode.tanggal_selesai,
+            )
+          ) {
+            throw new Error(
+              `Setor ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+            );
+          }
+
           const nowIso = new Date().toISOString();
           const detailWis = dapatkanDetailWis();
           const currentUserId = pb.authStore.model?.id || "";
 
-          const updatedWajibSetor = await pb.collection("wajib_setor_rambut").update<WajibSetorRambutResponse>(payload.wajibSetorId, {
-            status_setor: "sudah",
-            tanggal_setor: nowIso,
-          });
+          const updatedWajibSetor = await pb
+            .collection("wajib_setor_rambut")
+            .update<WajibSetorRambutResponse>(payload.wajibSetorId, {
+              status_setor: "sudah",
+              tanggal_setor: nowIso,
+            });
 
           await pb.collection("riwayat_setor_rambut").create({
             wajib_setor: payload.wajibSetorId,
@@ -4093,7 +4331,9 @@ export function useRambut() {
         }
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+        queryClient.invalidateQueries({
+          queryKey: ["rambut-wajib-setor-list-full"],
+        });
         queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
         queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
       },
@@ -4105,12 +4345,14 @@ export function useRambut() {
       queryKey: ["rambut-riwayat-list", periodeId],
       queryFn: async () => {
         const filter = periodeId ? `periode = "${periodeId}"` : "";
-        return await pb.collection("riwayat_setor_rambut").getFullList<RiwayatSetorExpanded>({
-          filter,
-          expand: "santri,petugas_eksekutor,periode",
-          sort: "-tanggal_setor",
-          batch: 500,
-        });
+        return await pb
+          .collection("riwayat_setor_rambut")
+          .getFullList<RiwayatSetorExpanded>({
+            filter,
+            expand: "santri,petugas_eksekutor,periode",
+            sort: "-tanggal_setor",
+            batch: 500,
+          });
       },
       enabled: !!periodeId,
       placeholderData: keepPreviousData,
@@ -4119,15 +4361,66 @@ export function useRambut() {
 
   const useDispensasiRambut = () => {
     return useMutation({
-      mutationFn: async ({ wajibSetorId }: { wajibSetorId: string; catatan: string }) => {
+      mutationFn: async (payload: DispensasiPayload) => {
         try {
-          return await pb.collection("wajib_setor_rambut").update(wajibSetorId, { status_setor: "dispensasi" });
+          // 🛡️ PENGAMAN 1: Cek Status Periode & Rentang Tanggal
+          const periode = await pb
+            .collection("periode_rambut")
+            .getOne<PeriodeRambutResponse>(payload.periodeId);
+          if (!periode) throw new Error("Periode tidak ditemukan.");
+
+          if (periode.status_periode !== "aktif") {
+            throw new Error(
+              `Pemberian izin ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+            );
+          }
+
+          if (
+            !isDateWithinRange(
+              new Date(),
+              periode.tanggal_mulai,
+              periode.tanggal_selesai,
+            )
+          ) {
+            throw new Error(
+              `Pemberian izin ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+            );
+          }
+
+          const nowIso = new Date().toISOString();
+          const detailWis = dapatkanDetailWis();
+          const currentUserId = pb.authStore.model?.id || "";
+
+          // 1. Update status_setor di wajib_setor_rambut
+          const updatedWajibSetor = await pb
+            .collection("wajib_setor_rambut")
+            .update(payload.wajibSetorId, {
+              status_setor: "dispensasi",
+              tanggal_setor: nowIso,
+            });
+
+          // 2. 🌟 BUAT LOG AUDIT TRAIL DI riwayat_setor_rambut
+          await pb.collection("riwayat_setor_rambut").create({
+            wajib_setor: payload.wajibSetorId,
+            santri: payload.santriId,
+            id_pps: payload.id_pps,
+            periode: payload.periodeId,
+            tanggal_setor: nowIso,
+            waktu_wis: detailWis.stringLengkap,
+            petugas_eksekutor: currentUserId,
+            catatan: `[DISPENSASI]: ${payload.catatan || "Izin berhalangan"}`,
+          });
+
+          return updatedWajibSetor;
         } catch (error) {
           throw new Error(parsePocketBaseError(error));
         }
       },
       onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+        queryClient.invalidateQueries({
+          queryKey: ["rambut-wajib-setor-list-full"],
+        });
+        queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
         queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
       },
     });
@@ -4135,17 +4428,31 @@ export function useRambut() {
 
   const useUpdateStatusPeriode = () => {
     return useMutation({
-      mutationFn: async ({ periodeId, status }: { periodeId: string; status: PeriodeRambutStatusPeriodeOptions }) => {
+      mutationFn: async ({
+        periodeId,
+        status,
+      }: {
+        periodeId: string;
+        status: PeriodeRambutStatusPeriodeOptions;
+      }) => {
         try {
           if (status === "aktif") {
-            const activeList = await pb.collection("periode_rambut").getFullList<PeriodeRambutResponse>({ filter: 'status_periode = "aktif"' });
+            const activeList = await pb
+              .collection("periode_rambut")
+              .getFullList<PeriodeRambutResponse>({
+                filter: 'status_periode = "aktif"',
+              });
             for (const item of activeList) {
               if (item.id !== periodeId) {
-                await pb.collection("periode_rambut").update(item.id, { status_periode: "draft" });
+                await pb
+                  .collection("periode_rambut")
+                  .update(item.id, { status_periode: "draft" });
               }
             }
           }
-          return await pb.collection("periode_rambut").update(periodeId, { status_periode: status });
+          return await pb
+            .collection("periode_rambut")
+            .update(periodeId, { status_periode: status });
         } catch (error) {
           throw new Error(parsePocketBaseError(error));
         }
@@ -4153,7 +4460,9 @@ export function useRambut() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
         queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+        queryClient.invalidateQueries({
+          queryKey: ["rambut-wajib-setor-list-full"],
+        });
         queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
       },
     });
@@ -4163,7 +4472,9 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (periodeId: string) => {
         try {
-          const queueItems = await pb.collection("wajib_setor_rambut").getFullList({ filter: `periode = "${periodeId}"`, fields: "id" });
+          const queueItems = await pb
+            .collection("wajib_setor_rambut")
+            .getFullList({ filter: `periode = "${periodeId}"`, fields: "id" });
           if (queueItems.length > 0) {
             let batch = pb.createBatch();
             let count = 0;
@@ -4186,7 +4497,9 @@ export function useRambut() {
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
         queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+        queryClient.invalidateQueries({
+          queryKey: ["rambut-wajib-setor-list-full"],
+        });
         queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
       },
     });
@@ -4217,6 +4530,7 @@ import { pb } from "@/lib/pocketbase";
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/context/ToastContext";
 import { HijriText } from "@/components/shared/HijriText";
+import { toLocalYMD } from "@/utils/dateHelpers";
 import {
   useRambut,
   useRambutStats,
@@ -4235,7 +4549,6 @@ import type {
 
 const PER_PAGE = 15;
 
-// ✅ REGISTERED MODAL REGISTRY TYPE
 export type RambutModalType =
   | "CREATE_PERIODE"
   | "MANAGE_PERIODE"
@@ -4267,10 +4580,10 @@ export function useRambutPage() {
 
   const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
 
-  // 🔥 DIET KETAT STATE: 6 State boolean dilebur menjadi 1 Registry State
+  // Unified Modal Registry State
   const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
 
-  // Data-Driven Modals (Tetap dipertahankan karena mempassing object record)
+  // Data-Driven Modals
   const [selectedExecuteItem, setSelectedExecuteItem] = useState<WajibSetorExpanded | null>(null);
   const [selectedDispensasiItem, setSelectedDispensasiItem] = useState<WajibSetorExpanded | null>(null);
   const [selectedDeletePengurus, setSelectedDeletePengurus] = useState<PengurusItem | null>(null);
@@ -4328,7 +4641,7 @@ export function useRambutPage() {
       const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
       if (dom) {
         const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-        if (firstChar && firstChar >= 'A' && firstChar <= 'Z') set.add(firstChar);
+        if (firstChar && firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
       }
     });
     return Array.from(set).sort();
@@ -4384,11 +4697,12 @@ export function useRambutPage() {
   // 3. Audit Data
   const { data: historyData = [], isLoading: isHistoryLoading } = useRiwayatSetorList(currentPeriodeId);
 
+  // 🎯 FIX 1: FILTER TANGGAL AUDIT BERBASIS WAKTU LOKAL (Mencegah Shift Jam UTC)
   const availableHijriDateOptions = useMemo(() => {
     if (!historyData) return [];
     const map = new Map<string, string>();
     historyData.forEach((item: any) => {
-      const dateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
+      const dateKey = toLocalYMD(item.tanggal_setor || item.created);
       if (dateKey && !map.has(dateKey)) {
         map.set(dateKey, dateKey);
       }
@@ -4414,7 +4728,7 @@ export function useRambutPage() {
         petugasNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
         catatan.toLowerCase().includes(auditSearch.toLowerCase());
 
-      const itemDateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
+      const itemDateKey = toLocalYMD(item.tanggal_setor || item.created);
       const matchDate = auditDateFilter === "all" || itemDateKey === auditDateFilter;
 
       return matchSearch && matchDate;
@@ -4461,7 +4775,7 @@ export function useRambutPage() {
     executeSetorMutation.mutate(
       {
         wajibSetorId: selectedExecuteItem.id,
-        santriId: selectedExecuteItem.santri || "",
+        santriId: selectedExecuteItem.santri || selectedExecuteItem.expand?.santri?.id || "",
         id_pps: selectedExecuteItem.id_pps,
         periodeId: currentPeriodeId,
         catatan,
@@ -4476,10 +4790,17 @@ export function useRambutPage() {
     );
   };
 
+  // 🎯 FIX 2: SINKRONISASI PAYLOAD LENGKAP MUTASI DISPENSASI (Agar Tercatat di Audit Log)
   const handleConfirmDispensasi = (catatan: string) => {
-    if (!selectedDispensasiItem) return;
+    if (!selectedDispensasiItem || !currentPeriodeId) return;
     dispensasiMutation.mutate(
-      { wajibSetorId: selectedDispensasiItem.id, catatan },
+      {
+        wajibSetorId: selectedDispensasiItem.id,
+        santriId: selectedDispensasiItem.santri || selectedDispensasiItem.expand?.santri?.id || "",
+        id_pps: selectedDispensasiItem.id_pps,
+        periodeId: currentPeriodeId,
+        catatan,
+      },
       {
         onSuccess: () => {
           showSuccess(`Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`, "Dispensasi Disimpan");
@@ -4508,7 +4829,6 @@ export function useRambutPage() {
   const handleConfirmGenerateQueue = () => {
     if (!currentPeriodeId) return;
 
-    // ✨ Cek apakah antrean sudah ada atau masih kosong sebelum mutasi
     const hasExistingQueue = stats.total > 0;
 
     setActiveModal(null);
@@ -4517,11 +4837,9 @@ export function useRambutPage() {
         const addedCount = res?.addedCount ?? 0;
 
         if (hasExistingQueue) {
-          // Toast untuk Smart Sync (Antrean Sudah Ada)
           const msg = addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
           showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
         } else {
-          // Toast untuk Generate Awal (Antrean Masih Kosong)
           showSuccess(
             `Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`,
             "Generate Antrean Berhasil"
@@ -4633,8 +4951,10 @@ import { fetchHijriByDate } from "@/features/kalender";
 import { playAudioFeedback } from "../utils/posAudio";
 import { buildReceiptHtml, getAlamatStr } from "../utils/posPrinter";
 import { executePrint } from "@/utils/printer";
+import { isDateWithinRange } from "@/utils/dateHelpers";
 import type { PrintMode } from "@/types/printer";
 import type { WajibSetorExpanded } from "./useRambut";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export interface ScanSessionLog {
   id: string;
@@ -4688,18 +5008,16 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
     return () => clearInterval(interval);
   }, []);
 
-  // 🎯 PERBAIKAN: Beri delay singkat agar React selesai merender status `disabled={false}`
-  // lalu fokuskan kursor dan seleksi seluruh isi teks.
+  // 🎯 Focus & Select otomatis agar scan berikutnya langsung menimpa isi teks
   const focusInput = useCallback(() => {
     setTimeout(() => {
       if (inputRef.current) {
         inputRef.current.focus();
-        inputRef.current.select(); // 👈 Menyeleksi seluruh isi input agar scan berikutnya langsung menimpa
+        inputRef.current.select();
       }
     }, 50);
   }, []);
 
-  // 🎯 PERBAIKAN: Memicu fokus & seleksi otomatis setiap kali modal dibuka ATAU setelah proses scan selesai (isProcessing = false)
   useEffect(() => {
     if (isOpen && !isProcessing) {
       focusInput();
@@ -4714,10 +5032,29 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
     setBarcodeInput("");
 
     try {
-      let filterQuery = `(id_pps = "${queryCode}" || santri.nama ~ "${queryCode}")`;
-      if (periodeId) {
-        filterQuery = `periode = "${periodeId}" && ` + filterQuery;
+      // 🛡️ PENGAMAN 1: Validasi Ketersediaan & Status Periode
+      if (!periodeId) {
+        throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
       }
+
+      const periode = await pb
+        .collection("periode_rambut")
+        .getOne<PeriodeRambutResponse>(periodeId);
+
+      if (!periode) {
+        throw new Error("Data periode tidak ditemukan di sistem.");
+      }
+
+      if (periode.status_periode !== "aktif") {
+        throw new Error(`POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
+      }
+
+      if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
+        throw new Error(`POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
+      }
+
+      // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
+      const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
 
       const matchRecord = await pb
         .collection("wajib_setor_rambut")
@@ -4726,9 +5063,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         });
 
       if (!matchRecord) {
-        throw new Error(
-          `Data PPS / Nama "${queryCode}" tidak ditemukan di antrean periode ini.`,
-        );
+        throw new Error(`ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`);
       }
 
       const santriData = matchRecord.expand?.santri;
@@ -4736,30 +5071,26 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       const idPps = matchRecord.id_pps;
 
       if (matchRecord.status_setor === "sudah") {
-        throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`,
-        );
+        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`);
       }
 
       if (matchRecord.status_setor === "dispensasi") {
-        throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`,
-        );
+        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`);
       }
 
       const nowIso = new Date().toISOString();
       const detailWis = dapatkanDetailWis();
       const currentUser = pb.authStore.record || pb.authStore.model;
       const currentUserId = currentUser?.id || "";
-      const penerimaNama = (
-        currentUser?.username || "PETUGAS TIBKAM"
-      ).toUpperCase();
+      const penerimaNama = (currentUser?.username || "PETUGAS TIBKAM").toUpperCase();
 
+      // Update status wajib_setor_rambut
       await pb.collection("wajib_setor_rambut").update(matchRecord.id, {
         status_setor: "sudah",
         tanggal_setor: nowIso,
       });
 
+      // Catat ke riwayat_setor_rambut
       const riwayatRecord = await pb.collection("riwayat_setor_rambut").create({
         wajib_setor: matchRecord.id,
         santri: matchRecord.santri || matchRecord.expand?.santri?.id || "",
@@ -4773,11 +5104,8 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const kelasVal = santriData?.kelas ? `${santriData.kelas}` : "";
       const tingkatanVal = santriData?.tingkatan || "";
-      const kelasTingkatanStr = [kelasVal, tingkatanVal]
-        .filter(Boolean)
-        .join(" ");
-      const domisiliStr =
-        santriData?.domisili || santriData?.status_domisili || "-";
+      const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
+      const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
       const alamatStr = getAlamatStr(santriData);
 
       const hijriData = await fetchHijriByDate(nowIso);
@@ -4803,13 +5131,13 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       if (enableSound) playAudioFeedback("success");
 
-      // ⚡ PROSES CETAK ASINKRONUS (Tanpa await agar UI POS instant/cepat)
+      // ⚡ PROSES CETAK ASINKRONUS (Non-blocking)
       const htmlReceipt = buildReceiptHtml(receiptDetails);
       executePrint(htmlReceipt, { mode: printMode }).catch((err) => {
         console.error("❌ Background Print Error:", err);
       });
 
-      // Langsung update log UI tanpa menunggu fisik printer selesai
+      // Update log UI POS
       setSessionLogs((prev) => [
         {
           id: riwayatRecord.id,
@@ -4828,8 +5156,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
-      const errMsg =
-        parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
+      const errMsg = parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
 
       setLastResult({
         status: "error",
@@ -4839,7 +5166,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (enableSound) playAudioFeedback("error");
     } finally {
       setIsProcessing(false);
-      focusInput(); // Memicu seleksi teks & fokus ulang setelah proses selesai
+      focusInput();
     }
   };
 

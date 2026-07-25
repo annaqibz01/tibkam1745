@@ -452,7 +452,7 @@ export default function SantriStatsSummary({
                 <GraduationCap className="h-4 w-4" />
               </div>
               <h3 className="text-xs font-mono font-semibold text-gray-200 uppercase tracking-wider">
-                Sebaran Tingkatan Pendidikan
+                Sebaran Tingkatan
               </h3>
             </div>
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-mono font-medium text-indigo-300">

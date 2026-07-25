@@ -1,6 +1,6 @@
 // src/pages/Login.tsx
 import { useState, useEffect, type FormEvent } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import {
   User,
   Lock,
@@ -18,7 +18,6 @@ import NotificationToast, {
 const Login = () => {
   // --- Router ---
   const navigate = useNavigate();
-  const location = useLocation();
 
   // --- Auth Hook ---
   const { login, isLoading, isValid } = useAuth();
@@ -29,15 +28,12 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
-  // --- Derive redirect destination ---
-  const from = (location.state as { from?: string })?.from || "/dashboard";
-
   // --- Auto-redirect if already authenticated ---
   useEffect(() => {
     if (isValid) {
-      navigate(from, { replace: true });
+      navigate("/dashboard", { replace: true });
     }
-  }, [isValid, navigate, from]);
+  }, [isValid, navigate]);
 
   // --- Submit Handler ---
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
@@ -47,7 +43,7 @@ const Login = () => {
     const res = await login(username, password);
 
     if (res.success) {
-      navigate(from, { replace: true });
+      navigate("/dashboard", { replace: true });
     } else {
       setToast({
         title: "Otentikasi Gagal",
@@ -83,7 +79,6 @@ const Login = () => {
                 draggable="false"
                 className="w-60 h-50 object-contain"
                 loading="eager"
-                select-none
               />
             </div>
 
@@ -160,7 +155,7 @@ const Login = () => {
               </div>
             </div>
 
-            {/* 🎯 Tombol Submit Bergradien (Sudah Dihapus class pt-1 yang Merusak Posisi Center Vertikal) */}
+            {/* 🎯 Tombol Submit Bergradien */}
             <button
               type="submit"
               disabled={isLoading}

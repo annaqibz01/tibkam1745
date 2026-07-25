@@ -205,7 +205,6 @@ export const ProfileSummaryCard: React.FC<ProfileSummaryCardProps> = ({
                 Informasi Personal & Identitas
               </h3>
             </div>
-            <Sparkles className="w-4 h-4 text-indigo-400/60" />
           </div>
 
           <div className="space-y-3.5">
@@ -255,7 +254,6 @@ export const ProfileSummaryCard: React.FC<ProfileSummaryCardProps> = ({
                 Kredensial & Sistem
               </h3>
             </div>
-            <Lock className="w-4 h-4 text-purple-400/60" />
           </div>
 
           <div className="space-y-3.5">

@@ -4254,7 +4254,7 @@ dependencies = [
 
 [[package]]
 name = "tibkam1745"
-version = "1.0.2"
+version = "1.2.2"
 dependencies = [
  "base64 0.22.1",
  "image",

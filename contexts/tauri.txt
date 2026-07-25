@@ -1,7 +1,78 @@
+# CONTEXT: TAURI
+
+## Included Files:
+- `src-tauri/build.rs`
+- `src-tauri/capabilities/default.json`
+- `src-tauri/Cargo.toml`
+- `src-tauri/src/lib.rs`
+- `src-tauri/src/main.rs`
+- `src-tauri/tauri.conf.json`
+
+---
+
+### `src-tauri/build.rs`
+```rust
+fn main() {
+    tauri_build::build()
+}
+```
+
+### `src-tauri/capabilities/default.json`
+```json
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Default capability for all windows",
+  "windows": ["*"],
+  "permissions": [
+    "core:default",
+    "core:event:default",
+    "core:window:default",
+    "core:webview:default"
+  ]
+}
+```
+
+### `src-tauri/Cargo.toml`
+```toml
+[package]
+name = "tibkam1745"
+version = "1.2.1"
+description = "layanan terpadu tibkam1745"
+authors = ["annaqibz01"]
+license = ""
+repository = ""
+edition = "2021"
+rust-version = "1.77.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.6.3", features = [] }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.11.3", features = [] }
+tauri-plugin-log = "2"
+printers = "2.3.0"
+base64 = "0.22"
+image = "0.25"
+
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-single-instance = "2"
+```
+
+### `src-tauri/src/lib.rs`
+```rust
 use serde::Serialize;
 use std::fs;
 use std::io::Write;
-use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
@@ -98,64 +169,6 @@ fn print_image_silently(
     }
 }
 
-// 📦 [AUTO-BACKUP COMMAND] Menyalin ZIP ke Documents/Tibkam1745_Backups & rotasi 7 file terbaru
-#[tauri::command]
-fn sync_auto_backup(app_handle: tauri::AppHandle, backup_filename: String) -> Result<String, String> {
-    let app_local_data = app_handle
-        .path()
-        .app_local_data_dir()
-        .map_err(|e| format!("Gagal mendapatkan AppData dir: {}", e))?;
-
-    let source_zip = app_local_data
-        .join("pb_data")
-        .join("backups")
-        .join(&backup_filename);
-
-    if !source_zip.exists() {
-        return Err("File backup asal tidak ditemukan di pb_data/backups/".into());
-    }
-
-    let document_dir = app_handle
-        .path()
-        .document_dir()
-        .map_err(|e| format!("Gagal mendapatkan folder Documents: {}", e))?;
-
-    let backup_folder = document_dir.join("Tibkam1745_Backups");
-    if !backup_folder.exists() {
-        fs::create_dir_all(&backup_folder)
-            .map_err(|e| format!("Gagal membuat folder Documents/Tibkam1745_Backups: {}", e))?;
-    }
-
-    let target_zip = backup_folder.join(&backup_filename);
-
-    fs::copy(&source_zip, &target_zip)
-        .map_err(|e| format!("Gagal menyalin backup ke Documents: {}", e))?;
-
-    // Rotasi: Simpan maksimal 7 file ZIP terbaru, hapus sisanya
-    if let Ok(entries) = fs::read_dir(&backup_folder) {
-        let mut backup_files: Vec<PathBuf> = entries
-            .filter_map(|e| e.ok())
-            .map(|e| e.path())
-            .filter(|p| p.is_file() && p.extension().map_or(false, |ext| ext == "zip"))
-            .collect();
-
-        backup_files.sort_by_key(|p| {
-            fs::metadata(p)
-                .and_then(|m| m.modified())
-                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
-        });
-        backup_files.reverse();
-
-        if backup_files.len() > 7 {
-            for old_file in backup_files.iter().skip(7) {
-                let _ = fs::remove_file(old_file);
-            }
-        }
-    }
-
-    Ok(target_zip.to_string_lossy().to_string())
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -169,8 +182,7 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![
             get_available_printers,
-            print_image_silently,
-            sync_auto_backup // 👈 Mendaftarkan fungsi auto-backup
+            print_image_silently
         ])
         .setup(|app| {
             #[cfg(target_os = "windows")]
@@ -211,25 +223,11 @@ pub fn run() {
             let pocketbase_exe = resource_dir.join("bin/pocketbase.exe");
             let template_db_file = resource_dir.join("bin/koleksi_awal.db");
 
-            // 🛠️ PENENTUAN PATH MIGRASI DENGAN FALLBACK CHECK & LOGGING
             let pb_migrations_dir = if cfg!(debug_assertions) {
                 std::path::PathBuf::from("../../backend/pb_migrations")
             } else {
-                let primary_path = resource_dir.join("pb_migrations");
-                let fallback_path = resource_dir.join("backend").join("pb_migrations");
-
-                if primary_path.exists() {
-                    primary_path
-                } else if fallback_path.exists() {
-                    fallback_path
-                } else {
-                    println!("⚠️ [PocketBase] Warning: Folder pb_migrations tidak ditemukan di resource path!");
-                    primary_path
-                }
+                resource_dir.join("pb_migrations")
             };
-
-            println!("📁 [PocketBase] Migrations Dir Target: {:?}", pb_migrations_dir);
-            println!("📁 [PocketBase] Migrations Folder Exists: {}", pb_migrations_dir.exists());
 
             if !target_db_file.exists() && template_db_file.exists() {
                 fs::copy(&template_db_file, &target_db_file)
@@ -268,3 +266,74 @@ pub fn run() {
         _ => {}
     });
 }
+```
+
+### `src-tauri/src/main.rs`
+```rust
+// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
+fn main() {
+    app_lib::run();
+}
+```
+
+### `src-tauri/tauri.conf.json`
+```json
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "tibkam1745",
+  "version": "1.2.1",
+  "identifier": "com.tibkam1745",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Tibkam1745",
+        "width": 800,
+        "height": 600,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true,
+        "minWidth": 600,
+        "minHeight": 450,
+        "maximized": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "bin/pocketbase.exe",
+      "bin/koleksi_awal.db",
+      "bin/printer_service.exe",
+      "../../backend/pb_migrations/*"
+    ],
+    "windows": {
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico"
+      }
+    },
+    "android": {
+      "debugApplicationIdSuffix": ".debug"
+    }
+  }
+}
+```

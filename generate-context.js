@@ -2,13 +2,18 @@ import fs from 'fs';
 import path from 'path';
 
 const OUTPUT_DIR = 'contexts';
+
+// Hapus 'src-tauri' agar folder tersebut di-scan
 const IGNORED_DIRS = new Set([
-  'node_modules', '.git', '.vscode', 'build', 'dist', '.next', 'coverage', 'target', 'src-tauri', OUTPUT_DIR
+  'node_modules', '.git', '.vscode', 'build', 'dist', '.next', 'coverage', 'target', 'gen', OUTPUT_DIR
 ]);
+
+// Gunakan nama file lowercase agar aman terhadap penulisan kapitalisasi (misal: Cargo.lock vs cargo.lock)
 const IGNORED_FILES = new Set([
   'package-lock.json', 'cargo.lock', 'yarn.lock', 'pnpm-lock.yaml', 
-  'generate-context.js', 'generate-context.cjs', '.DS_Store', 'context.txt'
+  'generate-context.js', 'generate-context.cjs', '.ds_store', 'context.txt'
 ]);
+
 const VALID_EXTENSIONS = new Set([
   '.js', '.jsx', '.ts', '.tsx', '.css', '.scss', '.json', '.html', '.rs', '.toml'
 ]);
@@ -62,6 +67,11 @@ function compressCode(content) {
 function determineGroup(relPath) {
   const normalizedPath = relPath.replace(/\\/g, '/');
 
+  // Kelompokkan file src-tauri ke file tauri.txt
+  if (normalizedPath.startsWith('src-tauri/')) {
+    return 'tauri';
+  }
+
   if (normalizedPath.startsWith('src/features/')) {
     const parts = normalizedPath.split('/');
     if (parts.length > 2) {
@@ -82,7 +92,9 @@ function walkDir(dir, callback) {
         walkDir(fullPath, callback);
       }
     } else {
-      if (!IGNORED_FILES.has(file) && VALID_EXTENSIONS.has(path.extname(file).toLowerCase())) {
+      // Pengecekan case-insensitive untuk ignored files
+      const fileNameLower = file.toLowerCase();
+      if (!IGNORED_FILES.has(fileNameLower) && VALID_EXTENSIONS.has(path.extname(file).toLowerCase())) {
         callback(fullPath);
       }
     }

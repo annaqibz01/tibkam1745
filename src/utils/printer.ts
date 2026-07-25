@@ -73,7 +73,7 @@ const convertHtmlToImageBase64 = async (
         }
 
         const dataUrl = await toPng(doc.body, {
-          pixelRatio: 8,
+          pixelRatio: 4,
           backgroundColor: '#ffffff',
         });
 

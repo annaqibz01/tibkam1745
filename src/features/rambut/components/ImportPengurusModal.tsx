@@ -1,9 +1,9 @@
-// src/components/rambut/ImportPengurusModal.tsx
+// src/features/rambut/components/ImportPengurusModal.tsx
 import React, { useState, useRef } from "react";
 import * as XLSX from "xlsx";
 import { pb } from "@/lib/pocketbase";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { parsePocketBaseError } from "@/utils/errorHandler"; // Terpusat & Patuh DRY
+import { parsePocketBaseError } from "@/utils/errorHandler";
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -63,7 +63,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
     onClose();
   };
 
-  // 🎯 PARSER EXCEL + BULK LOOK-UP ENGINE (ANTI-FLOODING)
+  // 🎯 PARSER EXCEL + BULK LOOK-UP ENGINE (CHUNKED LOOKUP 50 ID)
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -118,7 +118,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
         new Set(initialRows.map((r) => r.idPps).filter(Boolean))
       );
 
-      // 2. Fetch Pengurus Existing Map untuk Komparasi Lokal O(1)
+      // 2. Fetch Pengurus Existing Map
       const existingPengurusMap = new Map<string, { recordId: string; jabatan: string }>();
       try {
         const currentPengurusList = await pb.collection("pengurus_santri").getFullList();
@@ -134,10 +134,9 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
         console.warn("[Smart Sync Warning] Gagal sinkronisasi data existing pengurus lokal.", err);
       }
 
-      // 3. 🧠 REFAKTOR: BULK LOOK-UP GABUNGAN (1 SINGLE HTTP REQUEST SEBAGAI GANTI PROMISE.ALL LOOP)
+      // 3. BULK LOOK-UP CHUNKED MASTER SANTRI (Isi 50 ID)
       const santriMap = new Map<string, { id: string; nama: string }>();
       if (uniqueIds.length > 0) {
-        // Kita bagi per-chunk isi 50 ID agar string filter URL PocketBase tidak terlalu panjang
         const chunkSize = 50;
         for (let i = 0; i < uniqueIds.length; i += chunkSize) {
           const chunkIds = uniqueIds.slice(i, i + chunkSize);
@@ -207,57 +206,55 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
     }
   };
 
-  // 🚀 REFAKTOR: HIGH-SPEED BATCH SINKRONISASI TRANSACTION ENGINE
+  // 🚀 HIGH-SPEED CHUNKED BATCH TRANSACTION ENGINE (SETIAP 100 BARIS DATA)
   const handleExecuteImport = async () => {
     const processableRows = parsedRows.filter((r) => r.syncAction !== "invalid" && r.syncAction !== "skip");
-    if (processableRows.length === 0 && parsedRows.filter(r => r.syncAction === "skip").length === 0) return;
+    if (processableRows.length === 0) return;
 
     setIsSubmitting(true);
     setErrorMessage("");
 
-    let createCount = 0;
-    let updateCount = 0;
-    let skipCount = 0;
-
     const updatedRows = [...parsedRows];
-    // Inisialisasi unit transaksi batch PocketBase resmi
-    const batch = pb.createBatch(); 
+    let batch = pb.createBatch();
     let batchActionCount = 0;
 
-    // 1. Susun Antrean Perintah ke dalam Unit Batch Lokal
-    for (let i = 0; i < updatedRows.length; i++) {
-      const row = updatedRows[i];
-      if (row.syncAction === "invalid") continue;
-
-      if (row.syncAction === "skip") {
-        skipCount++;
-        updatedRows[i] = { ...row, status: "skipped", message: "Dilewati (Tidak Berubah)" };
-      } else if (row.syncAction === "update" && row.existingId) {
-        batch.collection("pengurus_santri").update(row.existingId, {
-          jabatan: row.jabatan,
-          status_aktif: true,
-          ...(row.santriId ? { santri: row.santriId } : {}),
-        });
-        updateCount++;
-        batchActionCount++;
-        updatedRows[i] = { ...row, status: "success", message: "Jabatan Diperbarui" };
-      } else if (row.syncAction === "create") {
-        const payload: Record<string, any> = {
-          id_pps: row.idPps,
-          jabatan: row.jabatan,
-          status_aktif: true,
-        };
-        if (row.santriId) payload.santri = row.santriId;
-
-        batch.collection("pengurus_santri").create(payload);
-        createCount++;
-        batchActionCount++;
-        updatedRows[i] = { ...row, status: "success", message: "Berhasil Ditambahkan" };
-      }
-    }
-
     try {
-      // 2. Tembak Seluruh Antrean dalam 1 Single HTTP Request Pasak Transaksi Atomik
+      for (let i = 0; i < updatedRows.length; i++) {
+        const row = updatedRows[i];
+        if (row.syncAction === "invalid") continue;
+
+        if (row.syncAction === "skip") {
+          updatedRows[i] = { ...row, status: "skipped", message: "Dilewati (Tidak Berubah)" };
+        } else if (row.syncAction === "update" && row.existingId) {
+          batch.collection("pengurus_santri").update(row.existingId, {
+            jabatan: row.jabatan,
+            status_aktif: true,
+            ...(row.santriId ? { santri: row.santriId } : {}),
+          });
+          batchActionCount++;
+          updatedRows[i] = { ...row, status: "success", message: "Jabatan Diperbarui" };
+        } else if (row.syncAction === "create") {
+          const payload: Record<string, any> = {
+            id_pps: row.idPps,
+            jabatan: row.jabatan,
+            status_aktif: true,
+          };
+          if (row.santriId) payload.santri = row.santriId;
+
+          batch.collection("pengurus_santri").create(payload);
+          batchActionCount++;
+          updatedRows[i] = { ...row, status: "success", message: "Berhasil Ditambahkan" };
+        }
+
+        // 🎯 PERBAIKAN: EKSEKUSI BATCH SETIAP REACH 100 OPERASI
+        if (batchActionCount >= 100) {
+          await batch.send();
+          batch = pb.createBatch();
+          batchActionCount = 0;
+        }
+      }
+
+      // Kirim sisa antrean batch jika ada
       if (batchActionCount > 0) {
         await batch.send();
       }
@@ -266,12 +263,17 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
       showSuccessImport();
       handleClose();
     } catch (err: any) {
-      // Jika transaksi batch gagal total, beri laporan terpusat
       const pbMsg = parsePocketBaseError(err) || "Gagal memproses transaksi paket batch data.";
       setErrorMessage(`Gagal Sinkronisasi Massal: ${pbMsg}`);
-      
-      // Kembalikan status baris ke error
-      setParsedRows(prev => prev.map(r => r.syncAction !== "invalid" && r.syncAction !== "skip" ? { ...r, status: "error", message: "Gagal transaksi batch" } : r));
+
+      // Set status error pada baris yang belum dilewati
+      setParsedRows((prev) =>
+        prev.map((r) =>
+          r.syncAction !== "invalid" && r.syncAction !== "skip"
+            ? { ...r, status: "error", message: "Gagal transaksi batch" }
+            : r
+        )
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -307,7 +309,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
       maxWidth="max-w-3xl"
     >
       <div className="flex flex-col h-[370px] overflow-hidden justify-between space-y-3 pt-1 text-sm no-scrollbar">
-        
+
         {/* 1. TOP BAR INFO & TEMPLATE DOWNLOAD */}
         <div className="flex items-center justify-between p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
           <div className="text-xs text-gray-400">
@@ -484,7 +486,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
           >
             Batal
           </button>
-          
+
           <button
             type="button"
             onClick={handleExecuteImport}

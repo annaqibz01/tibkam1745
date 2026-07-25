@@ -1,9 +1,10 @@
-// src/components/rambut/CreatePeriodeModal.tsx
+// src/features/rambut/components/CreatePeriodeModal.tsx
 import React, { useState, useEffect, useMemo } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { CustomDatePickerHijriyah } from "@/components/shared/CustomDatePickerHijriyah";
 import NotificationToast, { ToastMessage } from "@/components/shared/NotificationToast";
 import { useTodayHijri } from "@/features/kalender";
+import { toLocalYMD } from "@/utils/dateHelpers";
 import type { CreatePeriodePayload } from "../hooks/useRambut";
 import {
   Calendar,
@@ -43,7 +44,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   isPending,
   existingPeriodes = [],
 }) => {
-  // 🌙 Fetch data Hijriyah hari ini dari database
+  // 🌙 Fetch data Hijriyah hari ini dari database kalender
   const { data: todayHijri } = useTodayHijri();
 
   const [namaPeriode, setNamaPeriode] = useState("");
@@ -60,33 +61,32 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     );
   }, [bulanHijri]);
 
-  // ✨ Reset Form & Auto-Sync langsung ke Bulan aktif saat ini (contoh: Safar)
+  // ✨ Reset Form & Auto-Sync ke Bulan Hijriyah Berjalan
   useEffect(() => {
     if (isOpen) {
-      setNamaPeriode(""); // [UBAH]: Kosongkan nama periode agar diisi manual oleh user
+      setNamaPeriode("");
       setTglMulai("");
       setTglSelesai("");
       setToast(null);
 
-      // Pastikan jika data asinkronus server sudah termuat, langsung setel bulan berjalan
       if (todayHijri) {
-        setBulanHijri(todayHijri.bulan_hijri_angka);
-        setTahunHijri(todayHijri.tahun_hijri);
+        if (todayHijri.bulan_hijri_angka) setBulanHijri(todayHijri.bulan_hijri_angka);
+        if (todayHijri.tahun_hijri) setTahunHijri(todayHijri.tahun_hijri);
       }
     }
   }, [isOpen, todayHijri]);
 
-  // ==================== AREA PENGAMAN & VALIDASI PERBAIKAN ====================
+  // ==================== AREA VALIDASI STRICT ====================
 
-  // 1. PENGAMAN: Validasi Real-Time Tanggal Selesai < Tanggal Mulai
+  // 1. Validasi: Tanggal Selesai < Tanggal Mulai
   const isDateInvalid = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
-    const start = new Date(tglMulai).getTime();
-    const end = new Date(tglSelesai).getTime();
-    return end < start;
+    const startStr = toLocalYMD(tglMulai);
+    const endStr = toLocalYMD(tglSelesai);
+    return endStr < startStr;
   }, [tglMulai, tglSelesai]);
 
-  // 2. PENGAMAN: Cek Duplikasi Nama
+  // 2. Validasi: Cek Duplikasi Nama Periode
   const isNameDuplicate = useMemo(() => {
     if (!namaPeriode.trim()) return false;
     return existingPeriodes.some(
@@ -94,31 +94,23 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     );
   }, [namaPeriode, existingPeriodes]);
 
-  // 3. PENGAMAN FIX: Deteksi Bentrok Tanggal Melalui Pemotongan String ISO / Jam
+  // 3. Validasi: Deteksi Rentang Tanggal Bentrok (Overlapping) Menggunakan Local YMD
   const isDateOverlapping = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
 
-    // Fungsi pembantu untuk menormalkan tanggal ke jam 00:00 lokal tanpa interferensi timezone
-    const normalizeDate = (dateStr: string) => {
-      const cleanStr = dateStr.split("T")[0].split(" ")[0]; // Ambil YYYY-MM-DD saja
-      const d = new Date(cleanStr);
-      d.setHours(0, 0, 0, 0);
-      return d.getTime();
-    };
-
-    const startNew = normalizeDate(tglMulai);
-    const endNew = normalizeDate(tglSelesai);
+    const startNew = toLocalYMD(tglMulai);
+    const endNew = toLocalYMD(tglSelesai);
 
     return existingPeriodes.some((p) => {
-      const startExisting = normalizeDate(p.tanggal_mulai);
-      const endExisting = normalizeDate(p.tanggal_selesai);
-      
-      // Rumus irisan rentang waktu
+      const startExisting = toLocalYMD(p.tanggal_mulai);
+      const endExisting = toLocalYMD(p.tanggal_selesai);
+
+      // Rumus irisan rentang waktu lokal
       return startNew <= endExisting && endNew >= startExisting;
     });
   }, [tglMulai, tglSelesai, existingPeriodes]);
 
-  // Pemicu Toast Otomatis jika melanggar aturan
+  // Pemicu Toast Otomatis saat ada eror validasi
   useEffect(() => {
     if (isDateInvalid) {
       setToast({
@@ -140,8 +132,6 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
       });
     }
   }, [isDateInvalid, isNameDuplicate, isDateOverlapping]);
-
-  // ==================================================================
 
   const handlePrevBulan = () => {
     let nextBulan = bulanHijri - 1;
@@ -178,7 +168,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
       return;
     }
     if (isDateInvalid || isNameDuplicate || isDateOverlapping) {
-      setToast({ title: "Gagal Menyimpan", message: "Harap periksa kembali error pada form.", type: "error" });
+      setToast({ title: "Gagal Menyimpan", message: "Harap periksa kembali eror pada form.", type: "error" });
       return;
     }
 
@@ -201,19 +191,19 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         icon={<Calendar className="w-5 h-5 text-indigo-400" />}
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4">
-          
+        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4 select-none font-mono">
+
           {/* NAMA PERIODE */}
           <div>
-            <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+            <label className="block text-xs font-medium text-gray-300 mb-1.5">
               Nama Periode {isNameDuplicate && <span className="text-rose-400 font-bold ml-1">(Sudah Ada)</span>}
             </label>
             <input
               type="text"
               value={namaPeriode}
               onChange={(e) => setNamaPeriode(e.target.value)}
-              placeholder="Ketik nama periode baru di sini..."
-              className={`w-full h-[42px] px-4 bg-gray-950/60 border rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 shadow-inner transition-all ${
+              placeholder="Contoh: Setoran Rambut Muharram 1448 H"
+              className={`w-full h-[42px] px-4 bg-gray-950/60 border rounded-2xl text-white text-xs focus:outline-none focus:ring-2 shadow-inner transition-all ${
                 isNameDuplicate ? "border-rose-500 focus:ring-rose-500/40" : "border-gray-800 focus:ring-indigo-500/40"
               }`}
               required
@@ -223,14 +213,14 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
           {/* BULAN & TAHUN HIJRIYAH */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Bulan Hijriyah Target
               </label>
               <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
                 <button type="button" onClick={handlePrevBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
-                <div className="flex-1 text-center font-mono text-xs font-bold text-amber-300 truncate px-2 select-none">
+                <div className="flex-1 text-center text-xs font-bold text-amber-300 truncate px-2 select-none">
                   {activeBulan.angka}. {activeBulan.nama}
                 </div>
                 <button type="button" onClick={handleNextBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
@@ -240,7 +230,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
             </div>
 
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tahun Hijriyah
               </label>
               <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
@@ -252,7 +242,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
                   value={tahunHijri}
                   onChange={(e) => handleYearChange(Number(e.target.value))}
                   placeholder="1448"
-                  className="w-full h-full px-2 bg-transparent text-white font-mono text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full h-full px-2 bg-transparent text-white text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
                 <button type="button" onClick={() => handleYearChange(tahunHijri + 1)} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
@@ -265,13 +255,13 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
           {/* TANGGAL MULAI & SELESAI */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tanggal Mulai
               </label>
               <CustomDatePickerHijriyah value={tglMulai} onChange={(val) => setTglMulai(val)} />
             </div>
             <div>
-              <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-gray-300 mb-1.5">
                 Tanggal Selesai {(isDateOverlapping || isDateInvalid) && <span className="text-rose-400 font-bold ml-1">(! Error)</span>}
               </label>
               <CustomDatePickerHijriyah value={tglSelesai} onChange={(val) => setTglSelesai(val)} />
@@ -283,7 +273,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold transition-all active:scale-95"
+              className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-semibold transition-all active:scale-95"
             >
               Batal
             </button>
@@ -298,7 +288,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
                 isNameDuplicate ||
                 isDateOverlapping
               }
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-mono text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
+              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
             >
               {isPending ? (
                 <>

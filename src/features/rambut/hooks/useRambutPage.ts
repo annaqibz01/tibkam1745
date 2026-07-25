@@ -5,6 +5,7 @@ import { pb } from "@/lib/pocketbase";
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/context/ToastContext";
 import { HijriText } from "@/components/shared/HijriText";
+import { toLocalYMD } from "@/utils/dateHelpers";
 import {
   useRambut,
   useRambutStats,
@@ -23,13 +24,12 @@ import type {
 
 const PER_PAGE = 15;
 
-// ✅ REGISTERED MODAL REGISTRY TYPE
-export type RambutModalType = 
-  | "CREATE_PERIODE" 
-  | "MANAGE_PERIODE" 
-  | "MANAGE_PENGURUS" 
-  | "POS" 
-  | "IMPORT_PENGURUS" 
+export type RambutModalType =
+  | "CREATE_PERIODE"
+  | "MANAGE_PERIODE"
+  | "MANAGE_PENGURUS"
+  | "POS"
+  | "IMPORT_PENGURUS"
   | "CONFIRM_GENERATE";
 
 export function useRambutPage() {
@@ -55,10 +55,10 @@ export function useRambutPage() {
 
   const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
 
-  // 🔥 DIET KETAT STATE: 6 State boolean dilebur menjadi 1 Registry State
+  // Unified Modal Registry State
   const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
 
-  // Data-Driven Modals (Tetap dipertahankan karena mempassing object record)
+  // Data-Driven Modals
   const [selectedExecuteItem, setSelectedExecuteItem] = useState<WajibSetorExpanded | null>(null);
   const [selectedDispensasiItem, setSelectedDispensasiItem] = useState<WajibSetorExpanded | null>(null);
   const [selectedDeletePengurus, setSelectedDeletePengurus] = useState<PengurusItem | null>(null);
@@ -116,7 +116,7 @@ export function useRambutPage() {
       const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
       if (dom) {
         const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-        if (firstChar && firstChar >= 'A' && firstChar <= 'Z') set.add(firstChar);
+        if (firstChar && firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
       }
     });
     return Array.from(set).sort();
@@ -172,11 +172,12 @@ export function useRambutPage() {
   // 3. Audit Data
   const { data: historyData = [], isLoading: isHistoryLoading } = useRiwayatSetorList(currentPeriodeId);
 
+  // 🎯 FIX 1: FILTER TANGGAL AUDIT BERBASIS WAKTU LOKAL (Mencegah Shift Jam UTC)
   const availableHijriDateOptions = useMemo(() => {
     if (!historyData) return [];
     const map = new Map<string, string>();
     historyData.forEach((item: any) => {
-      const dateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
+      const dateKey = toLocalYMD(item.tanggal_setor || item.created);
       if (dateKey && !map.has(dateKey)) {
         map.set(dateKey, dateKey);
       }
@@ -202,7 +203,7 @@ export function useRambutPage() {
         petugasNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
         catatan.toLowerCase().includes(auditSearch.toLowerCase());
 
-      const itemDateKey = (item.tanggal_setor || item.created || "").substring(0, 10);
+      const itemDateKey = toLocalYMD(item.tanggal_setor || item.created);
       const matchDate = auditDateFilter === "all" || itemDateKey === auditDateFilter;
 
       return matchSearch && matchDate;
@@ -249,7 +250,7 @@ export function useRambutPage() {
     executeSetorMutation.mutate(
       {
         wajibSetorId: selectedExecuteItem.id,
-        santriId: selectedExecuteItem.santri || "",
+        santriId: selectedExecuteItem.santri || selectedExecuteItem.expand?.santri?.id || "",
         id_pps: selectedExecuteItem.id_pps,
         periodeId: currentPeriodeId,
         catatan,
@@ -264,10 +265,17 @@ export function useRambutPage() {
     );
   };
 
+  // 🎯 FIX 2: SINKRONISASI PAYLOAD LENGKAP MUTASI DISPENSASI (Agar Tercatat di Audit Log)
   const handleConfirmDispensasi = (catatan: string) => {
-    if (!selectedDispensasiItem) return;
+    if (!selectedDispensasiItem || !currentPeriodeId) return;
     dispensasiMutation.mutate(
-      { wajibSetorId: selectedDispensasiItem.id, catatan },
+      {
+        wajibSetorId: selectedDispensasiItem.id,
+        santriId: selectedDispensasiItem.santri || selectedDispensasiItem.expand?.santri?.id || "",
+        id_pps: selectedDispensasiItem.id_pps,
+        periodeId: currentPeriodeId,
+        catatan,
+      },
       {
         onSuccess: () => {
           showSuccess(`Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`, "Dispensasi Disimpan");
@@ -296,7 +304,6 @@ export function useRambutPage() {
   const handleConfirmGenerateQueue = () => {
     if (!currentPeriodeId) return;
 
-    // ✨ Cek apakah antrean sudah ada atau masih kosong sebelum mutasi
     const hasExistingQueue = stats.total > 0;
 
     setActiveModal(null);
@@ -305,11 +312,9 @@ export function useRambutPage() {
         const addedCount = res?.addedCount ?? 0;
 
         if (hasExistingQueue) {
-          // Toast untuk Smart Sync (Antrean Sudah Ada)
           const msg = addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
           showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
         } else {
-          // Toast untuk Generate Awal (Antrean Masih Kosong)
           showSuccess(
             `Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`,
             "Generate Antrean Berhasil"
