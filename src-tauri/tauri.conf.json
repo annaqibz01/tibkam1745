@@ -41,7 +41,8 @@
       "bin/pocketbase.exe": "bin/pocketbase.exe",
       "bin/koleksi_awal.db": "bin/koleksi_awal.db",
       "bin/printer_service.exe": "bin/printer_service.exe",
-      "../../backend/pb_migrations/*": "pb_migrations/"
+      "../../backend/pb_migrations/*": "pb_migrations/",
+      "../../backend/pb_hooks/*": "pb_hooks/"
     },
     "windows": {
       "nsis": {

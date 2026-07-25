@@ -98,21 +98,18 @@ fn print_image_silently(
     }
 }
 
-// 📦 [AUTO-BACKUP COMMAND] Menyalin ZIP ke Documents/Tibkam1745_Backups & rotasi 7 file terbaru
+// 📦 [PURE NATIVE AUTO-BACKUP] Menyalin data.db langsung ke Documents/Tibkam1745_Backups
 #[tauri::command]
-fn sync_auto_backup(app_handle: tauri::AppHandle, backup_filename: String) -> Result<String, String> {
+fn execute_native_auto_backup(app_handle: tauri::AppHandle, date_str: String) -> Result<String, String> {
     let app_local_data = app_handle
         .path()
         .app_local_data_dir()
         .map_err(|e| format!("Gagal mendapatkan AppData dir: {}", e))?;
 
-    let source_zip = app_local_data
-        .join("pb_data")
-        .join("backups")
-        .join(&backup_filename);
+    let source_db = app_local_data.join("pb_data").join("data.db");
 
-    if !source_zip.exists() {
-        return Err("File backup asal tidak ditemukan di pb_data/backups/".into());
+    if !source_db.exists() {
+        return Err("File database (data.db) tidak ditemukan di AppData!".into());
     }
 
     let document_dir = app_handle
@@ -123,20 +120,21 @@ fn sync_auto_backup(app_handle: tauri::AppHandle, backup_filename: String) -> Re
     let backup_folder = document_dir.join("Tibkam1745_Backups");
     if !backup_folder.exists() {
         fs::create_dir_all(&backup_folder)
-            .map_err(|e| format!("Gagal membuat folder Documents/Tibkam1745_Backups: {}", e))?;
+            .map_err(|e| format!("Gagal membuat folder backup: {}", e))?;
     }
 
-    let target_zip = backup_folder.join(&backup_filename);
+    let backup_filename = format!("backup_tibkam_{}.db", date_str);
+    let target_db = backup_folder.join(&backup_filename);
 
-    fs::copy(&source_zip, &target_zip)
-        .map_err(|e| format!("Gagal menyalin backup ke Documents: {}", e))?;
+    fs::copy(&source_db, &target_db)
+        .map_err(|e| format!("Gagal menyalin file database: {}", e))?;
 
-    // Rotasi: Simpan maksimal 7 file ZIP terbaru, hapus sisanya
+    // Rotasi Otomatis: Simpan maksimal 7 file backup terbaru
     if let Ok(entries) = fs::read_dir(&backup_folder) {
         let mut backup_files: Vec<PathBuf> = entries
             .filter_map(|e| e.ok())
             .map(|e| e.path())
-            .filter(|p| p.is_file() && p.extension().map_or(false, |ext| ext == "zip"))
+            .filter(|p| p.is_file() && p.extension().map_or(false, |ext| ext == "db"))
             .collect();
 
         backup_files.sort_by_key(|p| {
@@ -153,13 +151,13 @@ fn sync_auto_backup(app_handle: tauri::AppHandle, backup_filename: String) -> Re
         }
     }
 
-    Ok(target_zip.to_string_lossy().to_string())
+    println!("✅ [Auto-Backup] Berhasil disimpan di: {:?}", target_db);
+    Ok(target_db.to_string_lossy().to_string())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
-        // 🎯 SINGLE INSTANCE CONFIGURATION
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -170,7 +168,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             get_available_printers,
             print_image_silently,
-            sync_auto_backup // 👈 Mendaftarkan fungsi auto-backup
+            execute_native_auto_backup // 👈 Native backup command
         ])
         .setup(|app| {
             #[cfg(target_os = "windows")]
@@ -211,7 +209,6 @@ pub fn run() {
             let pocketbase_exe = resource_dir.join("bin/pocketbase.exe");
             let template_db_file = resource_dir.join("bin/koleksi_awal.db");
 
-            // 🛠️ PENENTUAN PATH MIGRASI DENGAN FALLBACK CHECK & LOGGING
             let pb_migrations_dir = if cfg!(debug_assertions) {
                 std::path::PathBuf::from("../../backend/pb_migrations")
             } else {
@@ -223,13 +220,9 @@ pub fn run() {
                 } else if fallback_path.exists() {
                     fallback_path
                 } else {
-                    println!("⚠️ [PocketBase] Warning: Folder pb_migrations tidak ditemukan di resource path!");
                     primary_path
                 }
             };
-
-            println!("📁 [PocketBase] Migrations Dir Target: {:?}", pb_migrations_dir);
-            println!("📁 [PocketBase] Migrations Folder Exists: {}", pb_migrations_dir.exists());
 
             if !target_db_file.exists() && template_db_file.exists() {
                 fs::copy(&template_db_file, &target_db_file)

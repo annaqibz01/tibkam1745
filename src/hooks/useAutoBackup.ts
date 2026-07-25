@@ -12,38 +12,29 @@ export function useAutoBackup() {
       if (isExecutingRef.current) return;
 
       try {
-        // 1. Cek apakah user sudah terautentikasi di PocketBase
+        // 1. Cek autentikasi user
         if (!pb.authStore.isValid) return;
 
-        const todayStr = new Date().toISOString().slice(0, 10); // Format YYYY-MM-DD
+        const todayStr = new Date().toISOString().slice(0, 10);
         const lastBackupDate = localStorage.getItem(LAST_BACKUP_KEY);
 
-        // 2. Jika hari ini sudah pernah backup, batalkan (cukup 1x sehari)
+        // 2. Jika hari ini sudah backup, bypass
         if (lastBackupDate === todayStr) {
           return;
         }
 
         isExecutingRef.current = true;
-        console.log("🔄 [Auto-Backup] Memulai pembuatan cadangan otomatis...");
+        console.log("🔄 [Auto-Backup] Memproses cadangan data otomatis...");
 
-        const backupFileName = `auto_backup_${todayStr}.zip`;
-
-        // 3. Minta PocketBase buat snapshot ZIP secara aman
-        try {
-          await pb.backups.create(backupFileName);
-        } catch {
-          // Abaikan jika file snapshot harian sudah terbentuk di PocketBase
-        }
-
-        // 4. Minta Rust menyalin ke Documents/Tibkam1745_Backups & rotasi 7 file
+        // 3. Panggil Rust untuk copy data.db langsung ke Documents
         if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
-          const savedPath = await invoke<string>("sync_auto_backup", {
-            backupFilename: backupFileName,
+          const savedPath = await invoke<string>("execute_native_auto_backup", {
+            dateStr: todayStr,
           });
-          console.log(`✅ [Auto-Backup] Berhasil disinkronkan ke Documents: ${savedPath}`);
+          console.log(`✅ [Auto-Backup Sukses] File tersimpan di: ${savedPath}`);
         }
 
-        // 5. Catat penanda sukses hari ini
+        // 4. Catat tanggal sukses
         localStorage.setItem(LAST_BACKUP_KEY, todayStr);
       } catch (err) {
         console.warn("⚠️ [Auto-Backup Error]:", err);
@@ -52,7 +43,7 @@ export function useAutoBackup() {
       }
     };
 
-    // Beri jeda 3 detik setelah login/dashboard terbuka agar loading utama selesai dulu
+    // Jalankan 3 detik setelah aplikasi terbuka
     const timer = setTimeout(() => {
       runSilentAutoBackup();
     }, 3000);
