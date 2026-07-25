@@ -44,7 +44,6 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   isPending,
   existingPeriodes = [],
 }) => {
-  // 🌙 Fetch data Hijriyah hari ini dari database kalender
   const { data: todayHijri } = useTodayHijri();
 
   const [namaPeriode, setNamaPeriode] = useState("");
@@ -61,7 +60,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     );
   }, [bulanHijri]);
 
-  // ✨ Reset Form & Auto-Sync ke Bulan Hijriyah Berjalan
+  // 🎯 FIX 1: Reset Form & Toast baik saat BUKA maupun saat TUTUP modal
   useEffect(() => {
     if (isOpen) {
       setNamaPeriode("");
@@ -73,12 +72,17 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         if (todayHijri.bulan_hijri_angka) setBulanHijri(todayHijri.bulan_hijri_angka);
         if (todayHijri.tahun_hijri) setTahunHijri(todayHijri.tahun_hijri);
       }
+    } else {
+      // Bersihkan state total ketika modal tertutup agar tidak membocorkan toast ke halaman utama
+      setNamaPeriode("");
+      setTglMulai("");
+      setTglSelesai("");
+      setToast(null);
     }
   }, [isOpen, todayHijri]);
 
   // ==================== AREA VALIDASI STRICT ====================
 
-  // 1. Validasi: Tanggal Selesai < Tanggal Mulai
   const isDateInvalid = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
     const startStr = toLocalYMD(tglMulai);
@@ -86,32 +90,36 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
     return endStr < startStr;
   }, [tglMulai, tglSelesai]);
 
-  // 2. Validasi: Cek Duplikasi Nama Periode
   const isNameDuplicate = useMemo(() => {
-    if (!namaPeriode.trim()) return false;
+    if (!namaPeriode.trim() || !Array.isArray(existingPeriodes)) return false;
+    const target = namaPeriode.trim().toLowerCase();
     return existingPeriodes.some(
-      (p) => p.nama_periode.trim().toLowerCase() === namaPeriode.trim().toLowerCase()
+      (p) => (p?.nama_periode || "").trim().toLowerCase() === target
     );
   }, [namaPeriode, existingPeriodes]);
 
-  // 3. Validasi: Deteksi Rentang Tanggal Bentrok (Overlapping) Menggunakan Local YMD
   const isDateOverlapping = useMemo(() => {
-    if (!tglMulai || !tglSelesai) return false;
+    if (!tglMulai || !tglSelesai || !Array.isArray(existingPeriodes)) return false;
 
     const startNew = toLocalYMD(tglMulai);
     const endNew = toLocalYMD(tglSelesai);
 
     return existingPeriodes.some((p) => {
+      if (!p?.tanggal_mulai || !p?.tanggal_selesai) return false;
       const startExisting = toLocalYMD(p.tanggal_mulai);
       const endExisting = toLocalYMD(p.tanggal_selesai);
 
-      // Rumus irisan rentang waktu lokal
       return startNew <= endExisting && endNew >= startExisting;
     });
   }, [tglMulai, tglSelesai, existingPeriodes]);
 
-  // Pemicu Toast Otomatis saat ada eror validasi
+  // 🎯 FIX 2: Pemicu Toast HANYA berjalan jika modal sedang TERBUKA (`isOpen === true`)
   useEffect(() => {
+    if (!isOpen) {
+      setToast(null);
+      return;
+    }
+
     if (isDateInvalid) {
       setToast({
         title: "Tanggal Tidak Valid",
@@ -130,8 +138,10 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         message: "Rentang tanggal bertabrakan dengan periode yang sudah ada!",
         type: "error",
       });
+    } else {
+      setToast(null);
     }
-  }, [isDateInvalid, isNameDuplicate, isDateOverlapping]);
+  }, [isOpen, isDateInvalid, isNameDuplicate, isDateOverlapping]);
 
   const handlePrevBulan = () => {
     let nextBulan = bulanHijri - 1;
@@ -306,7 +316,10 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         </form>
       </BaseModal>
 
-      <NotificationToast toast={toast} onClose={() => setToast(null)} duration={4000} />
+      {/* 🎯 FIX 3: Hanya render Toast jika modal sedang aktif/terbuka */}
+      {isOpen && (
+        <NotificationToast toast={toast} onClose={() => setToast(null)} duration={4000} />
+      )}
     </>
   );
 };
