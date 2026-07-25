@@ -16,3 +16,5 @@ target/
 
 # Jika kamu tidak ingin file mentah binary (.exe) masuk ke GitHub
 bin/*
+
+cargo.lock

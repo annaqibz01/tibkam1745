@@ -1,8 +1,8 @@
-// src/pages/Dashboard.tsx
+// src/features/dashboard/pages/Dashboard.tsx
 import React from 'react';
 import { useAuth } from '@/features/auth';
 import { useUsers } from '@/features/users';
-import { useDashboardSantriStats } from '../hooks/useDashboard'; // ✅ Menggunakan hook sehat yang baru
+import { useDashboardSantriStats } from '../hooks/useDashboard';
 import { WelcomeBanner } from '../components/WelcomeBanner';
 import { AdminStatsGrid } from '../components/AdminStatsGrid';
 import { RecentActivityLog } from '../components/RecentActivityLog';
@@ -17,14 +17,21 @@ interface User {
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth() as { user: User | null };
+  const isAdmin = user?.role === 'admin';
+
+  // 🛡️ OPSI OPTIMASI: Panggil query users, tetapi gunakan guard logic
   const { getUsers } = useUsers();
   const { data: users, isLoading: isUsersLoading } = getUsers;
 
-  // ⚡ SEHAT & RAMPING: Panggil data statistik langsung matang dari server cache layer
+  // ⚡ Panggil data statistik santri (ringan & ter-cache di level server query)
   const { data: santriStats, isLoading: isSantriLoading } = useDashboardSantriStats();
 
-  // ⏳ State Loading Mewah Khusus Sinkronisasi Awal
-  if (!user || isUsersLoading) {
+  // ⏳ State Loading Khusus:
+  // Jika role Admin -> Tunggu user data & users list
+  // Jika Non-Admin -> Cukup tunggu user data saja (Langsung render cepat!)
+  const isInitialLoading = !user || (isAdmin && isUsersLoading);
+
+  if (isInitialLoading) {
     return (
       <div className="relative min-h-screen flex items-center justify-center bg-gray-950 text-indigo-400 p-4">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-600/15 rounded-full blur-[100px] pointer-events-none" />
@@ -40,10 +47,9 @@ const Dashboard: React.FC = () => {
 
   // 🎯 Konten Tambahan Khusus Berdasarkan Role
   const renderRoleSpecificContent = () => {
-    const safeUsers = users || [];
-
     switch (user.role) {
-      case 'admin':
+      case 'admin': {
+        const safeUsers = users || [];
         return (
           <div className="space-y-6 pt-2">
             <AdminStatsGrid users={safeUsers} />
@@ -52,6 +58,7 @@ const Dashboard: React.FC = () => {
             </div>
           </div>
         );
+      }
 
       case 'rambut':
         return (
@@ -79,7 +86,7 @@ const Dashboard: React.FC = () => {
       {/* 1. Welcome Banner (Shared untuk Semua Role) */}
       <WelcomeBanner user={user} />
 
-      {/* 2. Ringkasan Statistik Santri Matang (Tanpa lag re-render komponen) */}
+      {/* 2. Ringkasan Statistik Santri Matang */}
       <SantriStatsSummary data={santriStats} isLoading={isSantriLoading} />
 
       {/* 3. Konten Tambahan Khusus Role */}
