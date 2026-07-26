@@ -1,6 +1,6 @@
 [package]
 name = "tibkam1745"
-version = "1.2.4"
+version = "1.2.5"
 description = "layanan terpadu tibkam1745"
 authors = ["annaqibz01"]
 license = ""
@@ -29,3 +29,9 @@ image = "0.25"
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-single-instance = "2"
+
+[profile.dev]
+debug = 1 
+
+[profile.release]
+panic = "abort" 

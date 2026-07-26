@@ -37,7 +37,7 @@ fn main() {
 ```toml
 [package]
 name = "tibkam1745"
-version = "1.2.1"
+version = "1.2.4"
 description = "layanan terpadu tibkam1745"
 authors = ["annaqibz01"]
 license = ""
@@ -73,6 +73,7 @@ tauri-plugin-single-instance = "2"
 use serde::Serialize;
 use std::fs;
 use std::io::Write;
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use tauri::Manager;
@@ -169,10 +170,66 @@ fn print_image_silently(
     }
 }
 
+// 📦 [PURE NATIVE AUTO-BACKUP] Menyalin data.db langsung ke Documents/Tibkam1745_Backups
+#[tauri::command]
+fn execute_native_auto_backup(app_handle: tauri::AppHandle, date_str: String) -> Result<String, String> {
+    let app_local_data = app_handle
+        .path()
+        .app_local_data_dir()
+        .map_err(|e| format!("Gagal mendapatkan AppData dir: {}", e))?;
+
+    let source_db = app_local_data.join("pb_data").join("data.db");
+
+    if !source_db.exists() {
+        return Err("File database (data.db) tidak ditemukan di AppData!".into());
+    }
+
+    let document_dir = app_handle
+        .path()
+        .document_dir()
+        .map_err(|e| format!("Gagal mendapatkan folder Documents: {}", e))?;
+
+    let backup_folder = document_dir.join("Tibkam1745_Backups");
+    if !backup_folder.exists() {
+        fs::create_dir_all(&backup_folder)
+            .map_err(|e| format!("Gagal membuat folder backup: {}", e))?;
+    }
+
+    let backup_filename = format!("backup_tibkam_{}.db", date_str);
+    let target_db = backup_folder.join(&backup_filename);
+
+    fs::copy(&source_db, &target_db)
+        .map_err(|e| format!("Gagal menyalin file database: {}", e))?;
+
+    // Rotasi Otomatis: Simpan maksimal 7 file backup terbaru
+    if let Ok(entries) = fs::read_dir(&backup_folder) {
+        let mut backup_files: Vec<PathBuf> = entries
+            .filter_map(|e| e.ok())
+            .map(|e| e.path())
+            .filter(|p| p.is_file() && p.extension().map_or(false, |ext| ext == "db"))
+            .collect();
+
+        backup_files.sort_by_key(|p| {
+            fs::metadata(p)
+                .and_then(|m| m.modified())
+                .unwrap_or(std::time::SystemTime::UNIX_EPOCH)
+        });
+        backup_files.reverse();
+
+        if backup_files.len() > 7 {
+            for old_file in backup_files.iter().skip(7) {
+                let _ = fs::remove_file(old_file);
+            }
+        }
+    }
+
+    println!("✅ [Auto-Backup] Berhasil disimpan di: {:?}", target_db);
+    Ok(target_db.to_string_lossy().to_string())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
-        // 🎯 SINGLE INSTANCE CONFIGURATION
         .plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
             if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
@@ -182,7 +239,8 @@ pub fn run() {
         }))
         .invoke_handler(tauri::generate_handler![
             get_available_printers,
-            print_image_silently
+            print_image_silently,
+            execute_native_auto_backup // 👈 Native backup command
         ])
         .setup(|app| {
             #[cfg(target_os = "windows")]
@@ -226,7 +284,16 @@ pub fn run() {
             let pb_migrations_dir = if cfg!(debug_assertions) {
                 std::path::PathBuf::from("../../backend/pb_migrations")
             } else {
-                resource_dir.join("pb_migrations")
+                let primary_path = resource_dir.join("pb_migrations");
+                let fallback_path = resource_dir.join("backend").join("pb_migrations");
+
+                if primary_path.exists() {
+                    primary_path
+                } else if fallback_path.exists() {
+                    fallback_path
+                } else {
+                    primary_path
+                }
             };
 
             if !target_db_file.exists() && template_db_file.exists() {
@@ -283,7 +350,7 @@ fn main() {
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "tibkam1745",
-  "version": "1.2.1",
+  "version": "1.2.4",
   "identifier": "com.tibkam1745",
   "build": {
     "frontendDist": "../dist",
@@ -319,12 +386,13 @@ fn main() {
       "icons/icon.icns",
       "icons/icon.ico"
     ],
-    "resources": [
-      "bin/pocketbase.exe",
-      "bin/koleksi_awal.db",
-      "bin/printer_service.exe",
-      "../../backend/pb_migrations/*"
-    ],
+    "resources": {
+      "bin/pocketbase.exe": "bin/pocketbase.exe",
+      "bin/koleksi_awal.db": "bin/koleksi_awal.db",
+      "bin/printer_service.exe": "bin/printer_service.exe",
+      "../../backend/pb_migrations/*": "pb_migrations/",
+      "../../backend/pb_hooks/*": "pb_hooks/"
+    },
     "windows": {
       "nsis": {
         "installMode": "currentUser",
