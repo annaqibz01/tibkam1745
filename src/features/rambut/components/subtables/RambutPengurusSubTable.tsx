@@ -7,6 +7,8 @@ import { UserCheck, User, ShieldCheck, MapPin, Home, CheckCircle2, Trash2 } from
 interface Props {
   items: PengurusItem[];
   isLoading: boolean;
+  page?: number;
+  perPage?: number;
   onDeletePengurus?: (item: PengurusItem) => void;
 }
 
@@ -16,7 +18,13 @@ const getAlamatStr = (santri: any) => {
   return parts.length > 0 ? parts.join(", ") : "-";
 };
 
-export const RambutPengurusSubTable: React.FC<Props> = ({ items, isLoading, onDeletePengurus }) => {
+export const RambutPengurusSubTable: React.FC<Props> = ({
+  items,
+  isLoading,
+  page = 1,        // 👈 1. Destruktur & beri default value
+  perPage = 15,    // 👈 1. Destruktur & beri default value
+  onDeletePengurus,
+}) => {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
   }, [items]);
@@ -57,12 +65,13 @@ export const RambutPengurusSubTable: React.FC<Props> = ({ items, isLoading, onDe
           </tr>
         ) : (
           sortedItems.map((p, idx) => {
+            const rowNo = (page - 1) * perPage + idx + 1; // 👈 2. Hitung nomor urut di sini
             const santriData = p.expand?.santri;
             const isAktif = p.status_aktif !== false;
 
             return (
               <tr key={p.id} className="group transition-colors duration-150 hover:bg-purple-500/[0.04]">
-                <td className="px-2.5 py-2 text-center text-gray-500">{idx + 1}</td>
+                <td className="px-2.5 py-2 text-center text-gray-500">{rowNo}</td>
 
                 <td className="px-2.5 py-2 font-bold text-purple-400 whitespace-nowrap">
                   <span className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">{p.id_pps}</span>

@@ -126,7 +126,7 @@ execSync(cmd, { stdio: 'inherit' });
 {
   "name": "tibkam1745",
   "private": true,
-  "version": "1.2.4",
+  "version": "1.2.6",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -2661,6 +2661,7 @@ export const parsePocketBaseError = (error: any): string => {
 
 ### `src/utils/printer.ts`
 ```typescript
+// src/utils/printer.ts
 import { toPng } from 'html-to-image';
 import { invoke } from '@tauri-apps/api/core';
 import type { PrintJobOptions } from '@/types/printer';
@@ -2729,16 +2730,30 @@ const convertHtmlToImageBase64 = async (
     doc.write(htmlStr);
     doc.close();
 
+    // Waktu tunggu standar untuk pemuatan font & CSS di iframe
     setTimeout(async () => {
       try {
         if (iframe.contentWindow?.document.fonts) {
           await iframe.contentWindow.document.fonts.ready;
         }
 
-        const dataUrl = await toPng(doc.body, {
+        // Render Pertama
+        let dataUrl = await toPng(doc.body, {
           pixelRatio: 4,
           backgroundColor: '#ffffff',
         });
+
+        // 🛡️ SOLUSI CETAKAN PERTAMA (Cold Start Guard):
+        // Struk bergambar yang valid umumnya memiliki panjang Base64 > 10.000 karakter.
+        // Jika panjangnya < 3000, artinya canvas/font di cetak #1 belum siap (putih polos).
+        // Kita beri jeda mikro 100ms lalu ekstrak ulang otomatis!
+        if (dataUrl.length < 3000) {
+          await new Promise((r) => setTimeout(r, 100));
+          dataUrl = await toPng(doc.body, {
+            pixelRatio: 4,
+            backgroundColor: '#ffffff',
+          });
+        }
 
         document.body.removeChild(iframe);
         resolve(dataUrl);
@@ -2748,28 +2763,24 @@ const convertHtmlToImageBase64 = async (
         }
         reject(err);
       }
-    }, 200);
+    }, 250); // Dinaikkan sedikit dari 200ms ke 250ms agar lebih stabil
   });
 };
 
 export const executeSilentPrintTauri = async (
-  elementOrHtml: HTMLElement | string,
-  printerName?: string
+  elementOrHtml: HTMLElement | string
 ) => {
   if (!isTauriEnvironment()) {
     console.warn('⚠️ [Global Printer] Silent Print disimulasikan (bukan di lingkungan Tauri).');
     return;
   }
 
-  const targetPrinter =
-    printerName ||
-    localStorage.getItem(LOCAL_STORAGE_PRINTER_KEY) ||
-    '';
-
+  // Konversi HTML ke Gambar Base64
   const base64Image = await convertHtmlToImageBase64(elementOrHtml);
 
+  // 🎯 Kosongkan printerName ("") agar Go sidecar otomatis mendeteksi printer default Windows
   await invoke('print_image_silently', {
-    printerName: targetPrinter,
+    printerName: '',
     imageBase64: base64Image,
   });
 };
@@ -2784,7 +2795,7 @@ export const executePrint = async (
 
   if (options.mode === 'silent') {
     try {
-      await executeSilentPrintTauri(elementOrHtml, options.printerName);
+      await executeSilentPrintTauri(elementOrHtml);
     } catch (err) {
       console.error('❌ [Silent Print Error]:', err);
     }

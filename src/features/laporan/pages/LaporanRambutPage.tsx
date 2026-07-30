@@ -1,9 +1,8 @@
 // src/features/laporan/pages/LaporanRambutPage.tsx
-import React, { useRef } from "react";
-import { useReactToPrint } from "react-to-print";
+import React from "react";
 import { useToast } from "@/context/ToastContext";
 
-// ✨ REUSE KONTROLS & COMPONENTS DARI PUBLIC API INDEX.TS
+// Reuse Controls & Components
 import { RambutStats } from "@/features/rambut";
 import { MasterPagination } from "@/features/master";
 
@@ -12,11 +11,9 @@ import { exportRambutToExcel } from "../utils/exportRambutExcel";
 import { LaporanHeader } from "../components/LaporanHeader";
 import { LaporanToolbar } from "../components/LaporanToolbar";
 import { LaporanTable } from "../components/LaporanTable";
-import { RambutReportPrint } from "../components/RambutReportPrint";
 
 export const LaporanRambutPage: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const printableRef = useRef<HTMLDivElement>(null);
 
   const {
     periodeList,
@@ -26,6 +23,9 @@ export const LaporanRambutPage: React.FC = () => {
     setReportType,
     filterKategori,
     setFilterKategori,
+    filterDaerah,
+    setFilterDaerah,
+    daerahOptions,
     searchQuery,
     setSearchQuery,
     page,
@@ -40,12 +40,6 @@ export const LaporanRambutPage: React.FC = () => {
     isLoading,
     onRefresh,
   } = useLaporanRambut();
-
-  const handlePrint = useReactToPrint({
-    contentRef: printableRef,
-    documentTitle: `Laporan_Rambut_${selectedPeriode?.nama_periode || "PP_Sidogiri"}`,
-    onAfterPrint: () => showSuccess("Laporan berhasil dicetak ke PDF!", "Cetak PDF"),
-  });
 
   const handleExportExcel = () => {
     try {
@@ -67,10 +61,9 @@ export const LaporanRambutPage: React.FC = () => {
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
-        onPrintPDF={() => handlePrint()}
       />
 
-      {/* 2. REUSE: Kartu Statistik Presisi (100% Identik dengan Halaman Rambut) */}
+      {/* 2. Kartu Statistik Presisi */}
       <RambutStats stats={stats} isLoading={isLoading} />
 
       {/* 3. Toolbar Filter Glassmorphism */}
@@ -82,6 +75,9 @@ export const LaporanRambutPage: React.FC = () => {
         onChangeReportType={setReportType}
         filterKategori={filterKategori}
         onChangeFilterKategori={setFilterKategori}
+        filterDaerah={filterDaerah}
+        onChangeFilterDaerah={setFilterDaerah}
+        daerahOptions={daerahOptions}
         searchQuery={searchQuery}
         onChangeSearchQuery={setSearchQuery}
         onRefresh={onRefresh}
@@ -97,7 +93,7 @@ export const LaporanRambutPage: React.FC = () => {
         perPage={PER_PAGE}
       />
 
-      {/* 5. REUSE: Pagination Global */}
+      {/* 5. Pagination Global */}
       {totalItems > 0 && (
         <MasterPagination
           page={page}
@@ -107,17 +103,6 @@ export const LaporanRambutPage: React.FC = () => {
           onPageChange={setPage}
         />
       )}
-
-      {/* 6. Layout Cetak Hidden */}
-      <RambutReportPrint
-        ref={printableRef}
-        periode={selectedPeriode}
-        queueData={filteredQueueData}
-        riwayatData={filteredAuditData}
-        stats={stats}
-        reportType={reportType}
-        filterKategori={filterKategori}
-      />
     </div>
   );
 };

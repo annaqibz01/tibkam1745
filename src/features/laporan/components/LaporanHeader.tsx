@@ -1,19 +1,16 @@
 // src/features/laporan/components/LaporanHeader.tsx
 import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, FileSpreadsheet, Printer, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 interface LaporanHeaderProps {
   selectedPeriode: PeriodeRambutResponse | null;
   onExportExcel: () => void;
-  onPrintPDF: () => void;
 }
 
 export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
   selectedPeriode,
   onExportExcel,
-  onPrintPDF,
 }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
@@ -27,7 +24,6 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         {/* Sisi Kiri: Deskripsi & Badge */}
         <div className="space-y-3">
-
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
               <FileText className="w-3.5 h-3.5 text-indigo-400" />
@@ -59,7 +55,7 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
           </p>
         </div>
 
-        {/* Sisi Kanan: Action Buttons */}
+        {/* Sisi Kanan: Action Button (Murni Export Excel) */}
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-center flex-shrink-0">
           <button
             type="button"

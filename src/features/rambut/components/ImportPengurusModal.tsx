@@ -1,9 +1,7 @@
 // src/features/rambut/components/ImportPengurusModal.tsx
-import React, { useState, useRef } from "react";
-import * as XLSX from "xlsx";
-import { pb } from "@/lib/pocketbase";
+import React from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { parsePocketBaseError } from "@/utils/errorHandler";
+import { useImportPengurus } from "../hooks/useImportPengurus";
 import {
   FileSpreadsheet,
   UploadCloud,
@@ -26,284 +24,37 @@ interface ImportPengurusModalProps {
   onSuccessImport: () => void;
 }
 
-interface ParsedPengurusRow {
-  rowNum: number;
-  idPps: string;
-  namaSantri: string;
-  santriId?: string;
-  jabatan: string;
-  existingId?: string;
-  oldJabatan?: string;
-  syncAction: "create" | "update" | "skip" | "invalid";
-  status: "pending" | "success" | "error" | "skipped";
-  message: string;
-}
-
 export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
   isOpen,
   onClose,
   onSuccessImport,
 }) => {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [parsedRows, setParsedRows] = useState<ParsedPengurusRow[]>([]);
-  const [isParsing, setIsParsing] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const {
+    fileInputRef,
+    selectedFile,
+    parsedRows,
+    isParsing,
+    isSubmitting,
+    errorMessage,
+    createRowsCount,
+    updateRowsCount,
+    skipRowsCount,
+    totalProcessable,
+    handleFileUpload,
+    handleExecuteImport,
+    handleReset,
+    handleDownloadTemplate,
+  } = useImportPengurus(onSuccessImport);
 
-  const handleReset = () => {
-    setSelectedFile(null);
-    setParsedRows([]);
-    setErrorMessage("");
-    if (fileInputRef.current) fileInputRef.current.value = "";
-  };
-
-  const handleClose = () => {
+  const handleCloseModal = () => {
     handleReset();
     onClose();
   };
 
-  // 🎯 PARSER EXCEL + BULK LOOK-UP ENGINE (CHUNKED LOOKUP 50 ID)
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    setSelectedFile(file);
-    setIsParsing(true);
-    setErrorMessage("");
-    setParsedRows([]);
-
-    try {
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" });
-      const firstSheetName = workbook.SheetNames[0];
-      const worksheet = workbook.Sheets[firstSheetName];
-
-      const rawJson = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, {
-        defval: "",
-      });
-
-      if (rawJson.length === 0) {
-        throw new Error("File Excel kosong atau tidak memiliki baris data.");
-      }
-
-      const sampleRow = rawJson[0];
-      const availableHeaders = Object.keys(sampleRow);
-
-      const idPpsHeader = availableHeaders.find((h) => h.trim().toUpperCase() === "ID PPS");
-      const jabatanHeader = availableHeaders.find((h) => h.trim().toUpperCase() === "JABATAN");
-
-      if (!idPpsHeader || !jabatanHeader) {
-        throw new Error("Header kolom tidak valid! Pastikan Excel memiliki kolom 'ID PPS' dan 'JABATAN'.");
-      }
-
-      // 1. Map Awal Data Excel ke Array Lokal
-      const initialRows = rawJson.map((row, idx) => {
-        const rawIdPps = String(row[idPpsHeader] || "").trim();
-        const rawJabatan = String(row[jabatanHeader] || "").trim();
-        const isValid = rawIdPps.length > 0 && rawJabatan.length > 0;
-
-        return {
-          rowNum: idx + 2,
-          idPps: rawIdPps,
-          namaSantri: "Mencari data...",
-          jabatan: rawJabatan,
-          syncAction: isValid ? ("create" as const) : ("invalid" as const),
-          status: "pending" as const,
-          message: !rawIdPps ? "ID PPS Kosong" : !rawJabatan ? "Jabatan Kosong" : "",
-        };
-      });
-
-      const uniqueIds = Array.from(
-        new Set(initialRows.map((r) => r.idPps).filter(Boolean))
-      );
-
-      // 2. Fetch Pengurus Existing Map
-      const existingPengurusMap = new Map<string, { recordId: string; jabatan: string }>();
-      try {
-        const currentPengurusList = await pb.collection("pengurus_santri").getFullList();
-        currentPengurusList.forEach((rec) => {
-          if (rec.id_pps) {
-            existingPengurusMap.set(String(rec.id_pps).trim(), {
-              recordId: rec.id,
-              jabatan: String(rec.jabatan || "").trim(),
-            });
-          }
-        });
-      } catch (err) {
-        console.warn("[Smart Sync Warning] Gagal sinkronisasi data existing pengurus lokal.", err);
-      }
-
-      // 3. BULK LOOK-UP CHUNKED MASTER SANTRI (Isi 50 ID)
-      const santriMap = new Map<string, { id: string; nama: string }>();
-      if (uniqueIds.length > 0) {
-        const chunkSize = 50;
-        for (let i = 0; i < uniqueIds.length; i += chunkSize) {
-          const chunkIds = uniqueIds.slice(i, i + chunkSize);
-          const filterQuery = chunkIds.map((id) => `id_pps = "${id}"`).join(" || ");
-
-          try {
-            const masterRecords = await pb.collection("master").getFullList({
-              filter: filterQuery,
-              fields: "id,id_pps,nama",
-            });
-
-            masterRecords.forEach((rec) => {
-              if (rec.id_pps) {
-                santriMap.set(rec.id_pps.trim(), {
-                  id: rec.id,
-                  nama: rec.nama || "Tanpa Nama",
-                });
-              }
-            });
-          } catch (err) {
-            console.error("Gagal mengeksekusi bulk lookup master data:", err);
-          }
-        }
-      }
-
-      // 4. Matching Aksi Sinkronisasi Cerdas
-      const finalMappedRows: ParsedPengurusRow[] = initialRows.map((row) => {
-        if (row.syncAction === "invalid") {
-          return { ...row, namaSantri: "-" };
-        }
-
-        const foundSantri = santriMap.get(row.idPps);
-        const existingPengurus = existingPengurusMap.get(row.idPps);
-
-        let action: "create" | "update" | "skip" = "create";
-        let msg = "Akan Ditambahkan";
-
-        if (existingPengurus) {
-          const isSameJabatan =
-            existingPengurus.jabatan.trim().toLowerCase() === row.jabatan.trim().toLowerCase();
-
-          if (isSameJabatan) {
-            action = "skip";
-            msg = "Sama (Dilewati)";
-          } else {
-            action = "update";
-            msg = `Ubah: "${existingPengurus.jabatan}" ➔ "${row.jabatan}"`;
-          }
-        }
-
-        return {
-          ...row,
-          santriId: foundSantri?.id,
-          namaSantri: foundSantri?.nama || "Santri Tidak Ditemukan",
-          existingId: existingPengurus?.recordId,
-          oldJabatan: existingPengurus?.jabatan,
-          syncAction: action,
-          message: msg,
-        };
-      });
-
-      setParsedRows(finalMappedRows);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Gagal membaca file Excel.");
-    } finally {
-      setIsParsing(false);
-    }
-  };
-
-  // 🚀 HIGH-SPEED CHUNKED BATCH TRANSACTION ENGINE (SETIAP 100 BARIS DATA)
-  const handleExecuteImport = async () => {
-    const processableRows = parsedRows.filter((r) => r.syncAction !== "invalid" && r.syncAction !== "skip");
-    if (processableRows.length === 0) return;
-
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    const updatedRows = [...parsedRows];
-    let batch = pb.createBatch();
-    let batchActionCount = 0;
-
-    try {
-      for (let i = 0; i < updatedRows.length; i++) {
-        const row = updatedRows[i];
-        if (row.syncAction === "invalid") continue;
-
-        if (row.syncAction === "skip") {
-          updatedRows[i] = { ...row, status: "skipped", message: "Dilewati (Tidak Berubah)" };
-        } else if (row.syncAction === "update" && row.existingId) {
-          batch.collection("pengurus_santri").update(row.existingId, {
-            jabatan: row.jabatan,
-            status_aktif: true,
-            ...(row.santriId ? { santri: row.santriId } : {}),
-          });
-          batchActionCount++;
-          updatedRows[i] = { ...row, status: "success", message: "Jabatan Diperbarui" };
-        } else if (row.syncAction === "create") {
-          const payload: Record<string, any> = {
-            id_pps: row.idPps,
-            jabatan: row.jabatan,
-            status_aktif: true,
-          };
-          if (row.santriId) payload.santri = row.santriId;
-
-          batch.collection("pengurus_santri").create(payload);
-          batchActionCount++;
-          updatedRows[i] = { ...row, status: "success", message: "Berhasil Ditambahkan" };
-        }
-
-        // 🎯 PERBAIKAN: EKSEKUSI BATCH SETIAP REACH 100 OPERASI
-        if (batchActionCount >= 100) {
-          await batch.send();
-          batch = pb.createBatch();
-          batchActionCount = 0;
-        }
-      }
-
-      // Kirim sisa antrean batch jika ada
-      if (batchActionCount > 0) {
-        await batch.send();
-      }
-
-      setParsedRows(updatedRows);
-      showSuccessImport();
-      handleClose();
-    } catch (err: any) {
-      const pbMsg = parsePocketBaseError(err) || "Gagal memproses transaksi paket batch data.";
-      setErrorMessage(`Gagal Sinkronisasi Massal: ${pbMsg}`);
-
-      // Set status error pada baris yang belum dilewati
-      setParsedRows((prev) =>
-        prev.map((r) =>
-          r.syncAction !== "invalid" && r.syncAction !== "skip"
-            ? { ...r, status: "error", message: "Gagal transaksi batch" }
-            : r
-        )
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const showSuccessImport = () => {
-    onSuccessImport();
-  };
-
-  const handleDownloadTemplate = () => {
-    const templateData = [
-      { "ID PPS": "14400367", JABATAN: "Kesehatan Daerah L" },
-      { "ID PPS": "14422341", JABATAN: "Operator Daerah L" },
-      { "ID PPS": "14390923", JABATAN: "Wakil Persada L" },
-    ];
-    const ws = XLSX.utils.json_to_sheet(templateData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Pengurus");
-    XLSX.writeFile(wb, "Template_Import_Pengurus_Petugas.xlsx");
-  };
-
-  const createRowsCount = parsedRows.filter((r) => r.syncAction === "create").length;
-  const updateRowsCount = parsedRows.filter((r) => r.syncAction === "update").length;
-  const skipRowsCount = parsedRows.filter((r) => r.syncAction === "skip").length;
-  const totalProcessable = createRowsCount + updateRowsCount;
-
   return (
     <BaseModal
       isOpen={isOpen}
-      onClose={handleClose}
+      onClose={handleCloseModal}
       title="Import Pengurus via Excel"
       icon={<FileSpreadsheet className="w-5 h-5 text-emerald-400" />}
       maxWidth="max-w-3xl"
@@ -443,7 +194,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
                               </span>
                             ) : row.status === "skipped" ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-400 bg-gray-800/80 border border-gray-700">
-                                <MinusCircle className="w-3 h-3 text-gray-500" /> Dilewati (Sama)
+                                <MinusCircle className="w-3 h-3 text-gray-500" /> {row.message}
                               </span>
                             ) : row.syncAction === "create" ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
@@ -481,7 +232,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
         <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-800/80 shrink-0">
           <button
             type="button"
-            onClick={handleClose}
+            onClick={handleCloseModal}
             className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white font-mono text-xs font-bold transition-all"
           >
             Batal
@@ -489,7 +240,7 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
 
           <button
             type="button"
-            onClick={handleExecuteImport}
+            onClick={() => handleExecuteImport(onClose)}
             disabled={totalProcessable === 0 || isSubmitting}
             className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all border border-emerald-400/30 disabled:opacity-50"
           >

@@ -82,26 +82,30 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   }, [isOpen, isProcessing, focusInput]);
 
   const handleProcessScan = async (codeToProcess: string) => {
-    const queryCode = codeToProcess.trim();
-    if (!queryCode || isProcessing) return;
+  const queryCode = codeToProcess.trim();
+  if (!queryCode || isProcessing) return;
 
-    setIsProcessing(true);
-    setBarcodeInput("");
+  setIsProcessing(true);
+  setBarcodeInput("");
 
-    try {
-      // 🛡️ PENGAMAN 1: Validasi Ketersediaan & Status Periode
-      if (!periodeId) {
-        throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
-      }
+  try {
+    const currentUser = pb.authStore.record || pb.authStore.model;
+    const isAdmin = currentUser?.role === "admin";
 
-      const periode = await pb
-        .collection("periode_rambut")
-        .getOne<PeriodeRambutResponse>(periodeId);
+    if (!periodeId) {
+      throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
+    }
 
-      if (!periode) {
-        throw new Error("Data periode tidak ditemukan di sistem.");
-      }
+    const periode = await pb
+      .collection("periode_rambut")
+      .getOne<PeriodeRambutResponse>(periodeId);
 
+    if (!periode) {
+      throw new Error("Data periode tidak ditemukan di sistem.");
+    }
+
+    // 🛡️ Buka proteksi POS jika role adalah ADMIN
+    if (!isAdmin) {
       if (periode.status_periode !== "aktif") {
         throw new Error(`POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
       }
@@ -109,6 +113,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
         throw new Error(`POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
       }
+    }
 
       // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
       const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
@@ -137,7 +142,6 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const nowIso = new Date().toISOString();
       const detailWis = dapatkanDetailWis();
-      const currentUser = pb.authStore.record || pb.authStore.model;
       const currentUserId = currentUser?.id || "";
       const penerimaNama = (currentUser?.username || "PETUGAS TIBKAM").toUpperCase();
 

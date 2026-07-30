@@ -5,7 +5,7 @@ import { pb } from "@/lib/pocketbase";
 import { useAuth } from "@/features/auth";
 import { useToast } from "@/context/ToastContext";
 import { HijriText } from "@/components/shared/HijriText";
-import { toLocalYMD } from "@/utils/dateHelpers";
+import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
 import {
   useRambut,
   useRambutStats,
@@ -43,7 +43,9 @@ export function useRambutPage() {
   // Filter States - Queue
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<"all" | WajibSetorRambutStatusSetorOptions>("all");
+  const [statusFilter, setStatusFilter] = useState<
+    "all" | WajibSetorRambutStatusSetorOptions
+  >("all");
 
   // Filter States - Pengurus
   const [pengurusSearch, setPengurusSearch] = useState("");
@@ -53,15 +55,19 @@ export function useRambutPage() {
   const [auditSearch, setAuditSearch] = useState("");
   const [auditDateFilter, setAuditDateFilter] = useState("all");
 
-  const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
+  const [selectedPeriode, setSelectedPeriode] =
+    useState<PeriodeRambutResponse | null>(null);
 
   // Unified Modal Registry State
   const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
 
   // Data-Driven Modals
-  const [selectedExecuteItem, setSelectedExecuteItem] = useState<WajibSetorExpanded | null>(null);
-  const [selectedDispensasiItem, setSelectedDispensasiItem] = useState<WajibSetorExpanded | null>(null);
-  const [selectedDeletePengurus, setSelectedDeletePengurus] = useState<PengurusItem | null>(null);
+  const [selectedExecuteItem, setSelectedExecuteItem] =
+    useState<WajibSetorExpanded | null>(null);
+  const [selectedDispensasiItem, setSelectedDispensasiItem] =
+    useState<WajibSetorExpanded | null>(null);
+  const [selectedDeletePengurus, setSelectedDeletePengurus] =
+    useState<PengurusItem | null>(null);
   const [isDeletingPengurus, setIsDeletingPengurus] = useState(false);
 
   const {
@@ -78,8 +84,20 @@ export function useRambutPage() {
   } = useRambut();
 
   const { data: activePeriode } = useActivePeriode();
-  const { data: periodeList = [], isLoading: isPeriodeListLoading } = usePeriodeList();
+  const { data: periodeList = [], isLoading: isPeriodeListLoading } =
+    usePeriodeList();
   const deletePeriodeMutation = useDeletePeriode();
+  const [pengurusPage, setPengurusPage] = useState(1);
+
+  useEffect(() => {
+    setPengurusPage(1);
+  }, [pengurusSearch, pengurusDaerahFilter]);
+
+  const [auditPage, setAuditPage] = useState(1);
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSearch, auditDateFilter]);
 
   useEffect(() => {
     if (activePeriode && !selectedPeriode) {
@@ -94,6 +112,22 @@ export function useRambutPage() {
   const generateQueueMutation = useGenerateWajibSetor();
   const executeSetorMutation = useExecuteSetorRambut();
   const dispensasiMutation = useDispensasiRambut();
+
+  // Hitung status aktif & tanggal operasional
+  const targetPeriode = selectedPeriode || activePeriode;
+  const isPeriodeAktif = targetPeriode?.status_periode === "aktif";
+  const isWithinDateRange = targetPeriode
+    ? isDateWithinRange(
+        new Date(),
+        targetPeriode.tanggal_mulai,
+        targetPeriode.tanggal_selesai,
+      )
+    : false;
+
+  // Admin selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
+  const canExecute =
+    isAdmin ||
+    (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
 
   // 1. Pengurus Data
   const {
@@ -113,10 +147,12 @@ export function useRambutPage() {
   const daerahOptions = useMemo(() => {
     const set = new Set<string>();
     rawPengurusData.forEach((p) => {
-      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
+      const dom =
+        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
       if (dom) {
         const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-        if (firstChar && firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
+        if (firstChar && firstChar >= "A" && firstChar <= "Z")
+          set.add(firstChar);
       }
     });
     return Array.from(set).sort();
@@ -131,13 +167,23 @@ export function useRambutPage() {
         santriNama.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
         p.jabatan.toLowerCase().includes(pengurusSearch.toLowerCase());
 
-      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
+      const dom =
+        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
       const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-      const matchDaerah = pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
+      const matchDaerah =
+        pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
 
       return matchSearch && matchDaerah;
     });
   }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
+
+  const totalPengurusItems = filteredPengurusData.length;
+  const totalPengurusPages = Math.ceil(totalPengurusItems / PER_PAGE);
+
+  const paginatedPengurusItems = useMemo(() => {
+    const start = (pengurusPage - 1) * PER_PAGE;
+    return filteredPengurusData.slice(start, start + PER_PAGE);
+  }, [filteredPengurusData, pengurusPage]);
 
   // 2. Queue Data
   const {
@@ -154,12 +200,15 @@ export function useRambutPage() {
         item.id_pps.toLowerCase().includes(search.toLowerCase()) ||
         santriNama.toLowerCase().includes(search.toLowerCase());
 
-      const matchStatus = statusFilter === "all" || item.status_setor === statusFilter;
+      const matchStatus =
+        statusFilter === "all" || item.status_setor === statusFilter;
 
       return matchSearch && matchStatus;
     });
 
-    return list.sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps),
+    );
   }, [fullQueueData, search, statusFilter]);
 
   const totalItems = filteredSortedQueue.length;
@@ -170,7 +219,8 @@ export function useRambutPage() {
   }, [filteredSortedQueue, page]);
 
   // 3. Audit Data
-  const { data: historyData = [], isLoading: isHistoryLoading } = useRiwayatSetorList(currentPeriodeId);
+  const { data: historyData = [], isLoading: isHistoryLoading } =
+    useRiwayatSetorList(currentPeriodeId);
 
   // 🎯 FIX 1: FILTER TANGGAL AUDIT BERBASIS WAKTU LOKAL (Mencegah Shift Jam UTC)
   const availableHijriDateOptions = useMemo(() => {
@@ -193,7 +243,9 @@ export function useRambutPage() {
     return historyData.filter((item: any) => {
       const santriNama = item.expand?.santri?.nama || "";
       const petugasNama =
-        item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "";
+        item.expand?.petugas_eksekutor?.name ||
+        item.expand?.petugas_eksekutor?.username ||
+        "";
       const catatan = item.catatan_operasional || item.catatan || "";
 
       const matchSearch =
@@ -204,34 +256,54 @@ export function useRambutPage() {
         catatan.toLowerCase().includes(auditSearch.toLowerCase());
 
       const itemDateKey = toLocalYMD(item.tanggal_setor || item.created);
-      const matchDate = auditDateFilter === "all" || itemDateKey === auditDateFilter;
+      const matchDate =
+        auditDateFilter === "all" || itemDateKey === auditDateFilter;
 
       return matchSearch && matchDate;
     });
   }, [historyData, auditSearch, auditDateFilter]);
 
+  const totalAuditItems = filteredAuditItems.length;
+  const totalAuditPages = Math.ceil(totalAuditItems / PER_PAGE);
+
+  const paginatedAuditItems = useMemo(() => {
+    const start = (auditPage - 1) * PER_PAGE;
+    return filteredAuditItems.slice(start, start + PER_PAGE);
+  }, [filteredAuditItems, auditPage]);
+
   // 4. Stats
-  const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
+  const { data: statsData, isLoading: isStatsLoading } =
+    useRambutStats(currentPeriodeId);
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
   // Handlers
   const handleCreatePeriode = (payload: CreatePeriodePayload) => {
     createPeriodeMutation.mutate(payload, {
       onSuccess: () => {
-        showSuccess(`Periode ${payload.nama_periode} berhasil dibuat!`, "Periode Baru");
+        showSuccess(
+          `Periode ${payload.nama_periode} berhasil dibuat!`,
+          "Periode Baru",
+        );
         setActiveModal(null);
       },
       onError: (err) => showError(err.message, "Gagal Buat Periode"),
     });
   };
 
-  const handleUpdateStatusPeriode = (periodeId: string, status: PeriodeRambutStatusPeriodeOptions) => {
+  const handleUpdateStatusPeriode = (
+    periodeId: string,
+    status: PeriodeRambutStatusPeriodeOptions,
+  ) => {
     updateStatusPeriodeMutation.mutate(
       { periodeId, status },
       {
-        onSuccess: () => showSuccess(`Status periode diubah ke ${status.toUpperCase()}`, "Status Diperbarui"),
+        onSuccess: () =>
+          showSuccess(
+            `Status periode diubah ke ${status.toUpperCase()}`,
+            "Status Diperbarui",
+          ),
         onError: (err) => showError(err.message, "Gagal Ubah Status"),
-      }
+      },
     );
   };
 
@@ -250,18 +322,24 @@ export function useRambutPage() {
     executeSetorMutation.mutate(
       {
         wajibSetorId: selectedExecuteItem.id,
-        santriId: selectedExecuteItem.santri || selectedExecuteItem.expand?.santri?.id || "",
+        santriId:
+          selectedExecuteItem.santri ||
+          selectedExecuteItem.expand?.santri?.id ||
+          "",
         id_pps: selectedExecuteItem.id_pps,
         periodeId: currentPeriodeId,
         catatan,
       },
       {
         onSuccess: () => {
-          showSuccess(`Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`, "Verifikasi Sukses");
+          showSuccess(
+            `Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`,
+            "Verifikasi Sukses",
+          );
           setSelectedExecuteItem(null);
         },
         onError: (err) => showError(err.message, "Gagal Verifikasi"),
-      }
+      },
     );
   };
 
@@ -271,18 +349,24 @@ export function useRambutPage() {
     dispensasiMutation.mutate(
       {
         wajibSetorId: selectedDispensasiItem.id,
-        santriId: selectedDispensasiItem.santri || selectedDispensasiItem.expand?.santri?.id || "",
+        santriId:
+          selectedDispensasiItem.santri ||
+          selectedDispensasiItem.expand?.santri?.id ||
+          "",
         id_pps: selectedDispensasiItem.id_pps,
         periodeId: currentPeriodeId,
         catatan,
       },
       {
         onSuccess: () => {
-          showSuccess(`Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`, "Dispensasi Disimpan");
+          showSuccess(
+            `Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`,
+            "Dispensasi Disimpan",
+          );
           setSelectedDispensasiItem(null);
         },
         onError: (err) => showError(err.message, "Gagal Dispensasi"),
-      }
+      },
     );
   };
 
@@ -291,7 +375,10 @@ export function useRambutPage() {
     setIsDeletingPengurus(true);
     try {
       await pb.collection("pengurus_santri").delete(selectedDeletePengurus.id);
-      showSuccess(`Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`, "Berhasil Hapus");
+      showSuccess(
+        `Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`,
+        "Berhasil Hapus",
+      );
       setSelectedDeletePengurus(null);
       refetchPengurus();
     } catch {
@@ -312,12 +399,13 @@ export function useRambutPage() {
         const addedCount = res?.addedCount ?? 0;
 
         if (hasExistingQueue) {
-          const msg = addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
+          const msg =
+            addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
           showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
         } else {
           showSuccess(
             `Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`,
-            "Generate Antrean Berhasil"
+            "Generate Antrean Berhasil",
           );
         }
 
@@ -326,7 +414,7 @@ export function useRambutPage() {
       onError: (err) =>
         showError(
           err.message,
-          hasExistingQueue ? "Gagal Sync Antrean" : "Gagal Generate Antrean"
+          hasExistingQueue ? "Gagal Sync Antrean" : "Gagal Generate Antrean",
         ),
     });
   };
@@ -335,7 +423,7 @@ export function useRambutPage() {
     if (!currentPeriodeId) {
       showError(
         "Gagal memproses! Tidak ada periode yang sedang aktif atau ditinjau.",
-        "Periode Tidak Ditemukan"
+        "Periode Tidak Ditemukan",
       );
       return;
     }
@@ -391,6 +479,16 @@ export function useRambutPage() {
     selectedDeletePengurus,
     setSelectedDeletePengurus,
     isDeletingPengurus,
+    pengurusPage,
+    setPengurusPage,
+    totalPengurusItems,
+    totalPengurusPages,
+    paginatedPengurusItems,
+    auditPage,
+    setAuditPage,
+    totalAuditItems,
+    totalAuditPages,
+    paginatedAuditItems,
     // Callbacks
     refetchAll: () => {
       refetchQueue();

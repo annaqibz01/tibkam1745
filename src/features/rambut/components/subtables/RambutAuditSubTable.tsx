@@ -7,6 +7,8 @@ import { History, Moon, User, MapPin, Home } from "lucide-react";
 interface Props {
   items: RiwayatSetorExpanded[];
   isLoading: boolean;
+  page?: number;
+  perPage?: number;
 }
 
 const getAlamatStr = (santri: any) => {
@@ -15,14 +17,18 @@ const getAlamatStr = (santri: any) => {
   return parts.length > 0 ? parts.join(", ") : "-";
 };
 
-export const RambutAuditSubTable: React.FC<Props> = ({ items, isLoading }) => {
+export const RambutAuditSubTable: React.FC<Props> = ({
+  items,
+  isLoading,
+  page = 1,        // 👈 1. Destruktur prop page dengan default 1
+  perPage = 15,    // 👈 1. Destruktur prop perPage dengan default 15
+}) => {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
   }, [items]);
 
   return (
     <div className="overflow-x-auto hide-scrollbar">
-      {/* ⚡ KUNCI PERBAIKAN: Menggunakan table-fixed dan min-w agar kolom terkunci sejajar */}
       <table className="w-full min-w-[1200px] text-xs text-left border-collapse table-fixed">
         <thead>
           <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
@@ -61,13 +67,14 @@ export const RambutAuditSubTable: React.FC<Props> = ({ items, isLoading }) => {
             </tr>
           ) : (
             sortedItems.map((logItem, idx) => {
+              const rowNo = (page - 1) * perPage + idx + 1; // 👈 2. Kalkulasi nomor urut lintas halaman
               const log = logItem as any;
               const santriData = log.expand?.santri;
               const petugasData = log.expand?.petugas_eksekutor;
 
               return (
                 <tr key={log.id} className="group transition-colors duration-150 hover:bg-amber-500/[0.04]">
-                  <td className="px-2.5 py-2 text-center text-gray-500">{idx + 1}</td>
+                  <td className="px-2.5 py-2 text-center text-gray-500">{rowNo}</td>
 
                   <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap overflow-hidden">
                     <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-fit">
@@ -113,7 +120,6 @@ export const RambutAuditSubTable: React.FC<Props> = ({ items, isLoading }) => {
                     {petugasData?.name || petugasData?.username || "Sistem"}
                   </td>
                   
-                  {/* ⚡ KUNCI PERBAIKAN: Tambahkan truncate agar teks catatan panjang tidak merusak kelebaran kolom */}
                   <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
                     {log.catatan_operasional || log.catatan || "-"}
                   </td>

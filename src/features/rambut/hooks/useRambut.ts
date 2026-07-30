@@ -102,24 +102,18 @@ export function useRambutStats(periodeId?: string) {
         pb
           .collection("wajib_setor_rambut")
           .getList(1, 1, { filter: `periode = "${periodeId}"`, fields: "id" }),
-        pb
-          .collection("wajib_setor_rambut")
-          .getList(1, 1, {
-            filter: `periode = "${periodeId}" && status_setor = "sudah"`,
-            fields: "id",
-          }),
-        pb
-          .collection("wajib_setor_rambut")
-          .getList(1, 1, {
-            filter: `periode = "${periodeId}" && status_setor = "belum"`,
-            fields: "id",
-          }),
-        pb
-          .collection("wajib_setor_rambut")
-          .getList(1, 1, {
-            filter: `periode = "${periodeId}" && status_setor = "dispensasi"`,
-            fields: "id",
-          }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "sudah"`,
+          fields: "id",
+        }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "belum"`,
+          fields: "id",
+        }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "dispensasi"`,
+          fields: "id",
+        }),
       ]);
 
       return {
@@ -383,33 +377,38 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (payload: ExecuteSetorPayload) => {
         try {
-          // 🛡️ PENGAMAN 1: Cek Status Periode & Rentang Tanggal
+          const currentUser = pb.authStore.record || pb.authStore.model;
+          const isAdmin = currentUser?.role === "admin";
+
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          if (periode.status_periode !== "aktif") {
-            throw new Error(
-              `Setor ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
-            );
-          }
+          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
+          if (!isAdmin) {
+            if (periode.status_periode !== "aktif") {
+              throw new Error(
+                `Setor ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+              );
+            }
 
-          if (
-            !isDateWithinRange(
-              new Date(),
-              periode.tanggal_mulai,
-              periode.tanggal_selesai,
-            )
-          ) {
-            throw new Error(
-              `Setor ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
-            );
+            if (
+              !isDateWithinRange(
+                new Date(),
+                periode.tanggal_mulai,
+                periode.tanggal_selesai,
+              )
+            ) {
+              throw new Error(
+                `Setor ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+              );
+            }
           }
 
           const nowIso = new Date().toISOString();
           const detailWis = dapatkanDetailWis();
-          const currentUserId = pb.authStore.model?.id || "";
+          const currentUserId = currentUser?.id || "";
 
           const updatedWajibSetor = await pb
             .collection("wajib_setor_rambut")
@@ -467,35 +466,39 @@ export function useRambut() {
     return useMutation({
       mutationFn: async (payload: DispensasiPayload) => {
         try {
-          // 🛡️ PENGAMAN 1: Cek Status Periode & Rentang Tanggal
+          const currentUser = pb.authStore.record || pb.authStore.model;
+          const isAdmin = currentUser?.role === "admin";
+
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          if (periode.status_periode !== "aktif") {
-            throw new Error(
-              `Pemberian izin ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
-            );
-          }
+          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
+          if (!isAdmin) {
+            if (periode.status_periode !== "aktif") {
+              throw new Error(
+                `Pemberian izin ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+              );
+            }
 
-          if (
-            !isDateWithinRange(
-              new Date(),
-              periode.tanggal_mulai,
-              periode.tanggal_selesai,
-            )
-          ) {
-            throw new Error(
-              `Pemberian izin ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
-            );
+            if (
+              !isDateWithinRange(
+                new Date(),
+                periode.tanggal_mulai,
+                periode.tanggal_selesai,
+              )
+            ) {
+              throw new Error(
+                `Pemberian izin ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+              );
+            }
           }
 
           const nowIso = new Date().toISOString();
           const detailWis = dapatkanDetailWis();
-          const currentUserId = pb.authStore.model?.id || "";
+          const currentUserId = currentUser?.id || "";
 
-          // 1. Update status_setor di wajib_setor_rambut
           const updatedWajibSetor = await pb
             .collection("wajib_setor_rambut")
             .update(payload.wajibSetorId, {
@@ -503,7 +506,6 @@ export function useRambut() {
               tanggal_setor: nowIso,
             });
 
-          // 2. 🌟 BUAT LOG AUDIT TRAIL DI riwayat_setor_rambut
           await pb.collection("riwayat_setor_rambut").create({
             wajib_setor: payload.wajibSetorId,
             santri: payload.santriId,

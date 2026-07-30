@@ -19,11 +19,12 @@ export function useLaporanRambut() {
   const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
   const [reportType, setReportType] = useState<ReportType>("all");
   const [filterKategori, setFilterKategori] = useState<string>("all");
+  const [filterDaerah, setFilterDaerah] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // 1. Auto-select periode aktif/terbaru saat pertama dimuat
+  // Auto-select periode aktif/terbaru saat pertama dimuat
   useEffect(() => {
     if (!selectedPeriode) {
       if (activePeriode) {
@@ -36,19 +37,36 @@ export function useLaporanRambut() {
 
   const currentPeriodeId = selectedPeriode?.id || activePeriode?.id || "";
 
-  // 2. Query data antrean & riwayat berdasarkan periode terpilih
+  // Query data antrean & riwayat berdasarkan periode terpilih
   const { data: fullQueueData = [], isLoading: isQueueLoading, refetch: refetchQueue } = useWajibSetorFullList(currentPeriodeId);
   const { data: fullRiwayatData = [], isLoading: isRiwayatLoading, refetch: refetchRiwayat } = useRiwayatSetorList(currentPeriodeId);
   const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
 
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
-  // 3. Filter Queue Data
+  // Opsi Filter Daerah Domisili Ekstrak Otomatis (A - Z)
+  const daerahOptions = useMemo(() => {
+    const set = new Set<string>();
+    fullQueueData.forEach((item) => {
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili;
+      if (dom) {
+        const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+        if (firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
+      }
+    });
+    return Array.from(set).sort();
+  }, [fullQueueData]);
+
+  // Filter Queue Data
   const filteredQueueData = useMemo(() => {
     return fullQueueData.filter((item) => {
       if (reportType === "belum_setor" && item.status_setor !== "belum") return false;
       if (reportType === "sudah_setor" && item.status_setor !== "sudah") return false;
       if (filterKategori !== "all" && item.kategori_wajib !== filterKategori) return false;
+
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -59,23 +77,27 @@ export function useLaporanRambut() {
 
       return true;
     });
-  }, [fullQueueData, reportType, filterKategori, searchQuery]);
+  }, [fullQueueData, reportType, filterKategori, filterDaerah, searchQuery]);
 
-  // 4. Filter Audit Data
+  // Filter Audit Data
   const filteredAuditData = useMemo(() => {
     return fullRiwayatData.filter((item) => {
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
+
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const nama = (item.expand?.santri?.nama || "").toLowerCase();
         const idPps = (item.id_pps || "").toLowerCase();
-        const petugas = (item.expand?.petugas_eksekutor?.name || "").toLowerCase();
+        const petugas = (item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "").toLowerCase();
         return nama.includes(query) || idPps.includes(query) || petugas.includes(query);
       }
       return true;
     });
-  }, [fullRiwayatData, searchQuery]);
+  }, [fullRiwayatData, filterDaerah, searchQuery]);
 
-  // 5. Pagination Data
+  // Pagination Data
   const activeDataset = reportType === "riwayat" ? filteredAuditData : filteredQueueData;
   const totalItems = activeDataset.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);
@@ -102,6 +124,12 @@ export function useLaporanRambut() {
       setFilterKategori(k);
       setPage(1);
     },
+    filterDaerah,
+    setFilterDaerah: (d: string) => {
+      setFilterDaerah(d);
+      setPage(1);
+    },
+    daerahOptions,
     searchQuery,
     setSearchQuery: (q: string) => {
       setSearchQuery(q);

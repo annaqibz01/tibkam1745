@@ -8,6 +8,13 @@
 - `src/features/laporan/hooks/useLaporanRambut.ts`
 - `src/features/laporan/index.ts`
 - `src/features/laporan/pages/LaporanRambutPage.tsx`
+- `src/features/laporan/utils/excel/excelHelpers.ts`
+- `src/features/laporan/utils/excel/generateBarcode.ts`
+- `src/features/laporan/utils/excel/generateChart.ts`
+- `src/features/laporan/utils/excel/sheets/pengurusSheet.ts`
+- `src/features/laporan/utils/excel/sheets/queueSheet.ts`
+- `src/features/laporan/utils/excel/sheets/riwayatSheet.ts`
+- `src/features/laporan/utils/excel/sheets/summarySheet.ts`
 - `src/features/laporan/utils/exportRambutExcel.ts`
 
 ---
@@ -16,20 +23,17 @@
 ```tsx
 // src/features/laporan/components/LaporanHeader.tsx
 import React from "react";
-import { Link } from "react-router-dom";
-import { ArrowLeft, FileSpreadsheet, Printer, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 interface LaporanHeaderProps {
   selectedPeriode: PeriodeRambutResponse | null;
   onExportExcel: () => void;
-  onPrintPDF: () => void;
 }
 
 export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
   selectedPeriode,
   onExportExcel,
-  onPrintPDF,
 }) => {
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
@@ -43,7 +47,6 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
       <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
         {/* Sisi Kiri: Deskripsi & Badge */}
         <div className="space-y-3">
-
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
               <FileText className="w-3.5 h-3.5 text-indigo-400" />
@@ -75,7 +78,7 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
           </p>
         </div>
 
-        {/* Sisi Kanan: Action Buttons */}
+        {/* Sisi Kanan: Action Button (Murni Export Excel) */}
         <div className="flex flex-wrap items-center gap-3 self-start lg:self-center flex-shrink-0">
           <button
             type="button"
@@ -98,7 +101,8 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
 import React from "react";
 import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut";
 import type { ReportType } from "../hooks/useLaporanRambut";
-import { CheckCircle2, Clock, ShieldAlert, FileText, User } from "lucide-react";
+import { CheckCircle2, Clock, ShieldAlert, FileText, User, MapPin, Home, Moon } from "lucide-react";
+import { HijriText } from "@/components/shared/HijriText";
 
 interface LaporanTableProps {
   reportType: ReportType;
@@ -107,6 +111,14 @@ interface LaporanTableProps {
   page?: number;
   perPage?: number;
 }
+
+const getAlamatStr = (santri: any) => {
+  if (!santri) return "-";
+  const parts = [santri.desa, santri.kecamatan, santri.kabupaten]
+    .map((v) => v?.toString().trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "-";
+};
 
 export const LaporanTable: React.FC<LaporanTableProps> = ({
   reportType,
@@ -121,33 +133,35 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
     <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
 
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto custom-scrollbar">
         {!isRiwayat ? (
-          <table className="w-full text-xs text-left border-collapse table-auto font-mono">
+          <table className="w-full min-w-[1100px] text-xs text-left border-collapse table-fixed font-mono">
             <thead>
               <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-                <th className="px-5 py-4 w-12 text-center">No</th>
-                <th className="px-5 py-4 w-28">ID PPS</th>
-                <th className="px-5 py-4 min-w-[200px] font-sans">Nama Santri</th>
-                <th className="px-5 py-4 w-36 text-center">Kategori</th>
-                <th className="px-5 py-4 w-32 font-sans">Domisili</th>
-                <th className="px-5 py-4 w-32 text-center">Status</th>
+                <th className="px-3 py-3.5 w-[4%] text-center">No</th>
+                <th className="px-3 py-3.5 w-[10%]">ID PPS</th>
+                <th className="px-3 py-3.5 w-[20%] font-sans">Nama Santri</th>
+                <th className="px-3 py-3.5 w-[12%] text-center">Kategori</th>
+                <th className="px-3 py-3.5 w-[14%]">Tingkat / Kelas</th>
+                <th className="px-3 py-3.5 w-[12%] font-sans">Domisili</th>
+                <th className="px-3 py-3.5 w-[16%] font-sans">Alamat</th>
+                <th className="px-3 py-3.5 w-[12%] text-center">Status</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, idx) => (
                   <tr key={`skel-q-${idx}`} className="animate-pulse border-b border-gray-800/40">
-                    {Array.from({ length: 6 }).map((_, c) => (
-                      <td key={c} className="px-5 py-3.5">
-                        <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
+                    {Array.from({ length: 8 }).map((_, c) => (
+                      <td key={c} className="px-3 py-3.5">
+                        <div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center font-sans">
+                  <td colSpan={8} className="px-6 py-16 text-center font-sans">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
                         <FileText className="w-6 h-6 text-gray-400" />
@@ -162,30 +176,57 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                 items.map((row: WajibSetorExpanded, index) => {
                   const rowNo = (page - 1) * perPage + index + 1;
                   const santriData = row.expand?.santri;
+                  const namaSantri = santriData?.nama || "Santri";
+                  const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
+                  const alamatStr = getAlamatStr(santriData);
+                  const tingkatKelasStr = `${santriData?.tingkatan || "-"} / ${santriData?.kelas || "-"}`;
 
                   return (
                     <tr key={row.id} className="group transition-colors duration-150 hover:bg-indigo-500/[0.04]">
-                      <td className="px-5 py-3.5 text-center text-gray-500">{rowNo}</td>
-                      <td className="px-5 py-3.5 font-bold text-indigo-400">
-                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+                      <td className="px-3 py-3.5 text-center text-gray-500">{rowNo}</td>
+
+                      <td className="px-3 py-3.5 font-bold text-indigo-400 whitespace-nowrap overflow-hidden">
+                        <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 inline-block">
                           {row.id_pps}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-sans whitespace-nowrap">
-                        <div className="flex items-center gap-2">
+
+                      <td className="px-3 py-3.5 font-sans overflow-hidden">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                          <span className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">
-                            {santriData?.nama || "Santri"}
+                          <span className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors truncate" title={namaSantri}>
+                            {namaSantri}
                           </span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-center uppercase text-[10px] font-bold text-gray-400">
-                        {row.kategori_wajib?.replace("_", " ")}
+
+                      <td className="px-3 py-3.5 text-center uppercase text-[10px] font-bold text-gray-400 overflow-hidden">
+                        <span className="truncate block" title={row.kategori_wajib?.replace(/_/g, " ")}>
+                          {row.kategori_wajib?.replace(/_/g, " ")}
+                        </span>
                       </td>
-                      <td className="px-5 py-3.5 font-sans text-gray-300">
-                        {santriData?.domisili || santriData?.status_domisili || "-"}
+
+                      <td className="px-3 py-3.5 text-gray-300 overflow-hidden">
+                        <span className="truncate block" title={tingkatKelasStr}>
+                          {tingkatKelasStr}
+                        </span>
                       </td>
-                      <td className="px-5 py-3.5 text-center font-sans">
+
+                      <td className="px-3 py-3.5 font-sans text-indigo-300 overflow-hidden">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
+                          <span className="truncate" title={domisiliStr}>{domisiliStr}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3.5 font-sans text-gray-400 overflow-hidden">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <Home className="w-3 h-3 text-gray-500 shrink-0" />
+                          <span className="truncate" title={alamatStr}>{alamatStr}</span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3.5 text-center font-sans whitespace-nowrap overflow-hidden">
                         {row.status_setor === "sudah" ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
                             <CheckCircle2 className="w-3 h-3" /> Sudah
@@ -207,31 +248,33 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
             </tbody>
           </table>
         ) : (
-          <table className="w-full text-xs text-left border-collapse table-auto font-mono">
+          <table className="w-full min-w-[1200px] text-xs text-left border-collapse table-fixed font-mono">
             <thead>
               <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-                <th className="px-5 py-4 w-12 text-center">No</th>
-                <th className="px-5 py-4 w-28">ID PPS</th>
-                <th className="px-5 py-4 min-w-[200px] font-sans">Nama Santri</th>
-                <th className="px-5 py-4 min-w-[160px] font-sans">Petugas Eksekutor</th>
-                <th className="px-5 py-4 w-36 text-center">Waktu WIS</th>
-                <th className="px-5 py-4 min-w-[180px]">Catatan Operasional</th>
+                <th className="px-3 py-3.5 w-[4%] text-center">No</th>
+                <th className="px-3 py-3.5 w-[14%]">Tgl Hijriyah</th>
+                <th className="px-3 py-3.5 w-[10%]">ID PPS</th>
+                <th className="px-3 py-3.5 w-[18%] font-sans">Nama Santri</th>
+                <th className="px-3 py-3.5 w-[12%] font-sans">Domisili</th>
+                <th className="px-3 py-3.5 w-[14%] font-sans">Petugas Eksekutor</th>
+                <th className="px-3 py-3.5 w-[10%] text-center">Waktu WIS</th>
+                <th className="px-3 py-3.5 w-[18%]">Catatan Operasional</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
               {isLoading ? (
                 Array.from({ length: 8 }).map((_, idx) => (
                   <tr key={`skel-a-${idx}`} className="animate-pulse border-b border-gray-800/40">
-                    {Array.from({ length: 6 }).map((_, c) => (
-                      <td key={c} className="px-5 py-3.5">
-                        <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
+                    {Array.from({ length: 8 }).map((_, c) => (
+                      <td key={c} className="px-3 py-3.5">
+                        <div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" />
                       </td>
                     ))}
                   </tr>
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={6} className="px-6 py-16 text-center font-sans">
+                  <td colSpan={8} className="px-6 py-16 text-center font-sans">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
                         <FileText className="w-6 h-6 text-gray-400" />
@@ -247,28 +290,53 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                   const rowNo = (page - 1) * perPage + index + 1;
                   const santriData = row.expand?.santri;
                   const petugasData = row.expand?.petugas_eksekutor;
+                  const namaSantri = santriData?.nama || "Santri";
+                  const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
+                  const petugasNama = petugasData?.name || petugasData?.username || "-";
+                  const catatanStr = row.catatan || "-";
 
                   return (
                     <tr key={row.id} className="group transition-colors duration-150 hover:bg-amber-500/[0.04]">
-                      <td className="px-5 py-3.5 text-center text-gray-500">{rowNo}</td>
-                      <td className="px-5 py-3.5 font-bold text-amber-400">
-                        <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
+                      <td className="px-3 py-3.5 text-center text-gray-500">{rowNo}</td>
+
+                      <td className="px-3 py-3.5 text-amber-300 whitespace-nowrap overflow-hidden">
+                        <div className="flex items-center gap-1 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 w-fit">
+                          <Moon className="w-3 h-3 text-amber-400 shrink-0" />
+                          <span className="font-bold text-[11px]">
+                            <HijriText date={row.tanggal_setor || row.created} />
+                          </span>
+                        </div>
+                      </td>
+
+                      <td className="px-3 py-3.5 font-bold text-amber-400 whitespace-nowrap overflow-hidden">
+                        <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/20 inline-block">
                           {row.id_pps}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-sans whitespace-nowrap">
-                        <span className="font-semibold text-gray-200 group-hover:text-amber-300 transition-colors">
-                          {santriData?.nama || "Santri"}
+
+                      <td className="px-3 py-3.5 font-sans overflow-hidden">
+                        <span className="font-semibold text-gray-200 group-hover:text-amber-300 transition-colors truncate block" title={namaSantri}>
+                          {namaSantri}
                         </span>
                       </td>
-                      <td className="px-5 py-3.5 font-sans text-gray-300">
-                        {petugasData?.name || petugasData?.username || "-"}
+
+                      <td className="px-3 py-3.5 text-amber-300 font-sans overflow-hidden">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
+                          <span className="truncate" title={domisiliStr}>{domisiliStr}</span>
+                        </div>
                       </td>
-                      <td className="px-5 py-3.5 text-center font-bold text-emerald-400">
+
+                      <td className="px-3 py-3.5 font-sans text-gray-300 overflow-hidden">
+                        <span className="truncate block" title={petugasNama}>{petugasNama}</span>
+                      </td>
+
+                      <td className="px-3 py-3.5 text-center font-bold text-emerald-400 whitespace-nowrap overflow-hidden">
                         {row.waktu_wis || "-"}
                       </td>
-                      <td className="px-5 py-3.5 text-gray-400 italic">
-                        {row.catatan || "-"}
+
+                      <td className="px-3 py-3.5 text-gray-400 italic overflow-hidden">
+                        <span className="truncate block" title={catatanStr}>{catatanStr}</span>
                       </td>
                     </tr>
                   );
@@ -286,7 +354,7 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
 ### `src/features/laporan/components/LaporanToolbar.tsx`
 ```tsx
 // src/features/laporan/components/LaporanToolbar.tsx
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ChevronDown,
@@ -294,6 +362,7 @@ import {
   CalendarDays,
   FileText,
   Layers,
+  MapPin,
 } from "lucide-react";
 import { BaseToolbar } from "@/components/shared/BaseToolbar";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
@@ -307,6 +376,9 @@ interface LaporanToolbarProps {
   onChangeReportType: (type: ReportType) => void;
   filterKategori: string;
   onChangeFilterKategori: (kat: string) => void;
+  filterDaerah: string;
+  onChangeFilterDaerah: (daerah: string) => void;
+  daerahOptions: string[];
   searchQuery: string;
   onChangeSearchQuery: (query: string) => void;
   onRefresh: () => void;
@@ -321,17 +393,17 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
   onChangeReportType,
   filterKategori,
   onChangeFilterKategori,
+  filterDaerah,
+  onChangeFilterDaerah,
+  daerahOptions,
   searchQuery,
   onChangeSearchQuery,
   onRefresh,
   isLoading,
 }) => {
-  // State untuk melacak dropdown mana yang sedang terbuka
-  const [openDropdown, setOpenDropdown] = useState<"periode" | "report" | "kategori" | null>(null);
-
+  const [openDropdown, setOpenDropdown] = useState<"periode" | "report" | "kategori" | "daerah" | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // 🛡️ Auto Close Dropdown jika mengklik di luar area toolbar
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -342,11 +414,10 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const toggleDropdown = (key: "periode" | "report" | "kategori") => {
+  const toggleDropdown = (key: "periode" | "report" | "kategori" | "daerah") => {
     setOpenDropdown((prev) => (prev === key ? null : key));
   };
 
-  // Opsi Jenis Rekapitulasi Laporan
   const reportOptions: { value: ReportType; label: string }[] = [
     { value: "all", label: "Semua Target Wajib Setor" },
     { value: "belum_setor", label: "Daftar Belum Setor" },
@@ -354,7 +425,6 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
     { value: "riwayat", label: "Log Riwayat Transaksi" },
   ];
 
-  // Opsi Kategori Wajib Setor
   const kategoriOptions: { value: string; label: string }[] = [
     { value: "all", label: "Semua Kategori" },
     { value: "aliyah", label: "Aliyah" },
@@ -378,10 +448,8 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
         isLoading={isLoading}
         searchIconColorClass="text-indigo-400"
       >
-        {/* ========================================================= */}
-        {/* 1. CUSTOM GLASS DROPDOWN: PILIH PERIODE                    */}
-        {/* ========================================================= */}
-        <div className="relative min-w-[210px] flex-1 sm:flex-initial">
+        {/* 1. DROPDOWN PERIODE */}
+        <div className="relative min-w-[200px] flex-1 sm:flex-initial">
           <button
             type="button"
             onClick={() => toggleDropdown("periode")}
@@ -397,11 +465,7 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
                 {selectedPeriode ? selectedPeriode.nama_periode : "Pilih Periode"}
               </span>
             </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
-                openDropdown === "periode" ? "rotate-180 text-indigo-400" : ""
-              }`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${openDropdown === "periode" ? "rotate-180 text-indigo-400" : ""}`} />
           </button>
 
           <AnimatePresence>
@@ -410,7 +474,7 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
                 initial={{ opacity: 0, y: -8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.15 }}
                 className="absolute left-0 sm:right-0 z-30 mt-2 w-full min-w-[240px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
               >
                 <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
@@ -432,18 +496,7 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
                           : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
                       }`}
                     >
-                      <div className="flex items-center gap-2 truncate min-w-0">
-                        <span className="truncate">{p.nama_periode}</span>
-                        <span
-                          className={`text-[9px] px-1.5 py-0.5 rounded border uppercase shrink-0 ${
-                            p.status_periode === "aktif"
-                              ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
-                              : "bg-gray-800 text-gray-400 border-gray-700"
-                          }`}
-                        >
-                          {p.status_periode}
-                        </span>
-                      </div>
+                      <span className="truncate">{p.nama_periode}</span>
                       {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400 shrink-0 ml-1.5" />}
                     </button>
                   );
@@ -453,10 +506,8 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* ========================================================= */}
-        {/* 2. CUSTOM GLASS DROPDOWN: JENIS REKAPITULASI            */}
-        {/* ========================================================= */}
-        <div className="relative min-w-[210px] flex-1 sm:flex-initial">
+        {/* 2. DROPDOWN JENIS REKAPITULASI */}
+        <div className="relative min-w-[200px] flex-1 sm:flex-initial">
           <button
             type="button"
             onClick={() => toggleDropdown("report")}
@@ -470,11 +521,7 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
               <FileText className="w-4 h-4 text-purple-400 shrink-0" />
               <span className="truncate">{currentReportLabel}</span>
             </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
-                openDropdown === "report" ? "rotate-180 text-purple-400" : ""
-              }`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${openDropdown === "report" ? "rotate-180 text-purple-400" : ""}`} />
           </button>
 
           <AnimatePresence>
@@ -483,7 +530,7 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
                 initial={{ opacity: 0, y: -8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                transition={{ duration: 0.15 }}
                 className="absolute left-0 sm:right-0 z-30 mt-2 w-full min-w-[230px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
               >
                 <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
@@ -515,60 +562,129 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
           </AnimatePresence>
         </div>
 
-        {/* ========================================================= */}
-        {/* 3. CUSTOM GLASS DROPDOWN: KATEGORI WAJIB                */}
-        {/* ========================================================= */}
-        <div className="relative min-w-[190px] flex-1 sm:flex-initial">
+        {/* 3. DROPDOWN KATEGORI WAJIB (Sembunyikan jika mode Riwayat) */}
+        {reportType !== "riwayat" && (
+          <div className="relative min-w-[180px] flex-1 sm:flex-initial">
+            <button
+              type="button"
+              onClick={() => toggleDropdown("kategori")}
+              className={`w-full h-12 px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg flex items-center justify-between gap-2.5 ${
+                openDropdown === "kategori" || filterKategori !== "all"
+                  ? "border-amber-500/60 ring-2 ring-amber-500/20 text-amber-200"
+                  : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+              }`}
+            >
+              <div className="flex items-center gap-2 truncate min-w-0">
+                <Layers className="w-4 h-4 text-amber-400 shrink-0" />
+                <span className="truncate">{currentKategoriLabel}</span>
+              </div>
+              <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${openDropdown === "kategori" ? "rotate-180 text-amber-400" : ""}`} />
+            </button>
+
+            <AnimatePresence>
+              {openDropdown === "kategori" && (
+                <motion.div
+                  initial={{ opacity: 0, y: -8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -8, scale: 0.98 }}
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 z-30 mt-2 w-full min-w-[210px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
+                >
+                  <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
+                    Filter Kategori Wajib
+                  </div>
+                  {kategoriOptions.map((opt) => {
+                    const isSelected = filterKategori === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => {
+                          onChangeFilterKategori(opt.value);
+                          setOpenDropdown(null);
+                        }}
+                        className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                          isSelected
+                            ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30"
+                            : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                        }`}
+                      >
+                        <span className="truncate">{opt.label}</span>
+                        {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1.5" />}
+                      </button>
+                    );
+                  })}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+
+        {/* 4. DROPDOWN FILTER DAERAH DOMISILI */}
+        <div className="relative min-w-[160px] flex-1 sm:flex-initial">
           <button
             type="button"
-            onClick={() => toggleDropdown("kategori")}
+            onClick={() => toggleDropdown("daerah")}
             className={`w-full h-12 px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg flex items-center justify-between gap-2.5 ${
-              openDropdown === "kategori" || filterKategori !== "all"
-                ? "border-amber-500/60 ring-2 ring-amber-500/20 text-amber-200"
+              openDropdown === "daerah" || filterDaerah !== "all"
+                ? "border-emerald-500/60 ring-2 ring-emerald-500/20 text-emerald-200"
                 : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
             }`}
           >
             <div className="flex items-center gap-2 truncate min-w-0">
-              <Layers className="w-4 h-4 text-amber-400 shrink-0" />
-              <span className="truncate">{currentKategoriLabel}</span>
+              <MapPin className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span className="truncate">
+                {filterDaerah === "all" ? "Semua Daerah" : `Daerah ${filterDaerah}`}
+              </span>
             </div>
-            <ChevronDown
-              className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${
-                openDropdown === "kategori" ? "rotate-180 text-amber-400" : ""
-              }`}
-            />
+            <ChevronDown className={`w-4 h-4 text-gray-400 transition-transform duration-200 shrink-0 ${openDropdown === "daerah" ? "rotate-180 text-emerald-400" : ""}`} />
           </button>
 
           <AnimatePresence>
-            {openDropdown === "kategori" && (
+            {openDropdown === "daerah" && (
               <motion.div
                 initial={{ opacity: 0, y: -8, scale: 0.98 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -8, scale: 0.98 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="absolute right-0 z-30 mt-2 w-full min-w-[210px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 z-30 mt-2 w-full min-w-[180px] max-h-60 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
               >
                 <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
-                  Filter Kategori Wajib
+                  Filter Daerah Domisili
                 </div>
-                {kategoriOptions.map((opt) => {
-                  const isSelected = filterKategori === opt.value;
+                <button
+                  type="button"
+                  onClick={() => {
+                    onChangeFilterDaerah("all");
+                    setOpenDropdown(null);
+                  }}
+                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors ${
+                    filterDaerah === "all"
+                      ? "bg-emerald-600/20 text-emerald-300 font-bold border border-emerald-500/30"
+                      : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                  }`}
+                >
+                  <span>Semua Daerah</span>
+                  {filterDaerah === "all" && <Check className="w-3.5 h-3.5 text-emerald-400" />}
+                </button>
+                {daerahOptions.map((d) => {
+                  const isSelected = filterDaerah === d;
                   return (
                     <button
-                      key={opt.value}
+                      key={d}
                       type="button"
                       onClick={() => {
-                        onChangeFilterKategori(opt.value);
+                        onChangeFilterDaerah(d);
                         setOpenDropdown(null);
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors duration-150 ${
+                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors ${
                         isSelected
-                          ? "bg-amber-500/20 text-amber-300 font-bold border border-amber-500/30"
+                          ? "bg-emerald-600/20 text-emerald-300 font-bold border border-emerald-500/30"
                           : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
                       }`}
                     >
-                      <span className="truncate">{opt.label}</span>
-                      {isSelected && <Check className="w-3.5 h-3.5 text-amber-400 shrink-0 ml-1.5" />}
+                      <span>Daerah {d}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-emerald-400" />}
                     </button>
                   );
                 })}
@@ -596,10 +712,11 @@ interface RambutReportPrintProps {
   stats: { total: number; sudah: number; belum: number; dispensasi: number };
   reportType: "all" | "belum_setor" | "sudah_setor" | "riwayat";
   filterKategori: string;
+  filterDaerah: string;
 }
 
 export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPrintProps>(
-  ({ periode, queueData, riwayatData, stats, reportType, filterKategori }, ref) => {
+  ({ periode, queueData, riwayatData, stats, reportType, filterKategori, filterDaerah }, ref) => {
     const todayStr = new Date().toLocaleDateString("id-ID", {
       weekday: "long",
       day: "numeric",
@@ -619,14 +736,14 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
     return (
       <div className="hidden">
         <div ref={ref} className="p-8 bg-white text-black font-sans text-xs leading-normal">
-          {/* KOP SURAT RESMI */}
-          <div className="text-center border-b-2 border-black pb-4 mb-4">
+          {/* KOP SURAT RESMI SIDOGIRI */}
+          <div className="text-center border-b-2 border-black pb-3 mb-4">
             <h2 className="text-base font-bold uppercase tracking-wider">PONDOK PESANTREN SIDOGIRI</h2>
             <h1 className="text-lg font-black uppercase tracking-tight text-indigo-950">
               KETERTIBAN DAN KEAMANAN (TIBKAM 1745)
             </h1>
-            <p className="text-[10px] text-gray-600">
-              Sidogiri Krakatau Probolinggo Jawa Timur | Modul Laporan Rambut Santri
+            <p className="text-[10px] text-gray-600 font-mono">
+              Sidogiri Kraton Pasuruan Jawa Timur 67183 | Modul Laporan Rambut Santri
             </p>
           </div>
 
@@ -635,23 +752,23 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
             <h3 className="text-sm font-bold text-center underline uppercase mb-3">
               {getJudulLaporan()}
             </h3>
-            <table className="w-full text-xs mb-3 border-collapse">
+            <table className="w-full text-xs mb-3 border-collapse font-mono">
               <tbody>
                 <tr>
                   <td className="w-28 font-bold py-0.5">Periode Ditinjau</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5">{periode?.nama_periode || "Semua Periode"}</td>
-                  <td className="w-28 font-bold py-0.5">Filter Kategori</td>
+                  <td className="py-0.5 font-bold">{periode?.nama_periode || "Semua Periode"}</td>
+                  <td className="w-28 font-bold py-0.5">Filter Daerah</td>
                   <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 uppercase">{filterKategori}</td>
+                  <td className="py-0.5 font-bold uppercase">{filterDaerah === "all" ? "Semua Daerah" : `Daerah ${filterDaerah}`}</td>
                 </tr>
                 <tr>
                   <td className="font-bold py-0.5">Tanggal Cetak</td>
                   <td className="py-0.5">:</td>
                   <td className="py-0.5">{todayStr}</td>
-                  <td className="font-bold py-0.5">Total Target</td>
+                  <td className="font-bold py-0.5">Filter Kategori</td>
                   <td className="py-0.5">:</td>
-                  <td className="py-0.5">{stats.total} Santri</td>
+                  <td className="py-0.5 uppercase">{filterKategori === "all" ? "Semua Kategori" : filterKategori.replace("_", " ")}</td>
                 </tr>
               </tbody>
             </table>
@@ -659,29 +776,31 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
 
           {/* TABEL DATA CETAK */}
           {reportType !== "riwayat" ? (
-            <table className="w-full border-collapse border border-black text-[11px] mb-6">
+            <table className="w-full border-collapse border border-black text-[10px] mb-6 font-sans">
               <thead>
-                <tr className="bg-gray-200 text-black border-b border-black">
+                <tr className="bg-gray-200 text-black border-b border-black font-bold">
                   <th className="border border-black p-1.5 text-center w-8">NO</th>
                   <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
                   <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
                   <th className="border border-black p-1.5 text-center w-24">KATEGORI</th>
-                  <th className="border border-black p-1.5 text-center w-28">DOMISILI</th>
-                  <th className="border border-black p-1.5 text-center w-24">STATUS</th>
+                  <th className="border border-black p-1.5 text-center w-24">TINGKAT/KELAS</th>
+                  <th className="border border-black p-1.5 text-center w-24">DOMISILI</th>
+                  <th className="border border-black p-1.5 text-center w-20">STATUS</th>
                 </tr>
               </thead>
               <tbody>
                 {queueData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-4 italic border border-black">Data kosong.</td>
+                    <td colSpan={7} className="text-center p-4 italic border border-black">Data kosong.</td>
                   </tr>
                 ) : (
                   queueData.map((item, idx) => (
                     <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 text-center font-mono">{idx + 1}</td>
                       <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
-                      <td className="border border-black p-1 uppercase">{item.expand?.santri?.nama || "-"}</td>
-                      <td className="border border-black p-1 text-center capitalize">{item.kategori_wajib?.replace("_", " ")}</td>
+                      <td className="border border-black p-1 uppercase font-semibold">{item.expand?.santri?.nama || "-"}</td>
+                      <td className="border border-black p-1 text-center capitalize">{item.kategori_wajib?.replace(/_/g, " ")}</td>
+                      <td className="border border-black p-1 text-center">{item.expand?.santri?.tingkatan || "-"} / {item.expand?.santri?.kelas || "-"}</td>
                       <td className="border border-black p-1 text-center">{item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "-"}</td>
                       <td className="border border-black p-1 text-center font-bold uppercase">{item.status_setor}</td>
                     </tr>
@@ -690,12 +809,13 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
               </tbody>
             </table>
           ) : (
-            <table className="w-full border-collapse border border-black text-[11px] mb-6">
+            <table className="w-full border-collapse border border-black text-[10px] mb-6 font-sans">
               <thead>
-                <tr className="bg-gray-200 text-black border-b border-black">
+                <tr className="bg-gray-200 text-black border-b border-black font-bold">
                   <th className="border border-black p-1.5 text-center w-8">NO</th>
                   <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
                   <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
+                  <th className="border border-black p-1.5 text-center w-24">DOMISILI</th>
                   <th className="border border-black p-1.5 text-left">PETUGAS</th>
                   <th className="border border-black p-1.5 text-center w-28">WAKTU ISTIWA</th>
                   <th className="border border-black p-1.5 text-left">CATATAN</th>
@@ -704,14 +824,15 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
               <tbody>
                 {riwayatData.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center p-4 italic border border-black">Data riwayat kosong.</td>
+                    <td colSpan={7} className="text-center p-4 italic border border-black">Data riwayat kosong.</td>
                   </tr>
                 ) : (
                   riwayatData.map((item, idx) => (
                     <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border border-black p-1 text-center">{idx + 1}</td>
+                      <td className="border border-black p-1 text-center font-mono">{idx + 1}</td>
                       <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
-                      <td className="border border-black p-1 uppercase">{item.expand?.santri?.nama || "-"}</td>
+                      <td className="border border-black p-1 uppercase font-semibold">{item.expand?.santri?.nama || "-"}</td>
+                      <td className="border border-black p-1 text-center">{item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "-"}</td>
                       <td className="border border-black p-1">{item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "-"}</td>
                       <td className="border border-black p-1 text-center font-mono">{item.waktu_wis || "-"}</td>
                       <td className="border border-black p-1">{item.catatan || "-"}</td>
@@ -723,7 +844,7 @@ export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPr
           )}
 
           {/* AREA TANDA TANGAN */}
-          <div className="mt-8 flex justify-between items-end text-center">
+          <div className="mt-8 flex justify-between items-end text-center font-mono">
             <div className="w-48">
               <p className="mb-12">Mengetahui,<br /><strong>Kepala Ketertiban</strong></p>
               <p className="font-bold underline">( .................................... )</p>
@@ -765,11 +886,12 @@ export function useLaporanRambut() {
   const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
   const [reportType, setReportType] = useState<ReportType>("all");
   const [filterKategori, setFilterKategori] = useState<string>("all");
+  const [filterDaerah, setFilterDaerah] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // 1. Auto-select periode aktif/terbaru saat pertama dimuat
+  // Auto-select periode aktif/terbaru saat pertama dimuat
   useEffect(() => {
     if (!selectedPeriode) {
       if (activePeriode) {
@@ -782,19 +904,36 @@ export function useLaporanRambut() {
 
   const currentPeriodeId = selectedPeriode?.id || activePeriode?.id || "";
 
-  // 2. Query data antrean & riwayat berdasarkan periode terpilih
+  // Query data antrean & riwayat berdasarkan periode terpilih
   const { data: fullQueueData = [], isLoading: isQueueLoading, refetch: refetchQueue } = useWajibSetorFullList(currentPeriodeId);
   const { data: fullRiwayatData = [], isLoading: isRiwayatLoading, refetch: refetchRiwayat } = useRiwayatSetorList(currentPeriodeId);
   const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
 
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
-  // 3. Filter Queue Data
+  // Opsi Filter Daerah Domisili Ekstrak Otomatis (A - Z)
+  const daerahOptions = useMemo(() => {
+    const set = new Set<string>();
+    fullQueueData.forEach((item) => {
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili;
+      if (dom) {
+        const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+        if (firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
+      }
+    });
+    return Array.from(set).sort();
+  }, [fullQueueData]);
+
+  // Filter Queue Data
   const filteredQueueData = useMemo(() => {
     return fullQueueData.filter((item) => {
       if (reportType === "belum_setor" && item.status_setor !== "belum") return false;
       if (reportType === "sudah_setor" && item.status_setor !== "sudah") return false;
       if (filterKategori !== "all" && item.kategori_wajib !== filterKategori) return false;
+
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
 
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
@@ -805,23 +944,27 @@ export function useLaporanRambut() {
 
       return true;
     });
-  }, [fullQueueData, reportType, filterKategori, searchQuery]);
+  }, [fullQueueData, reportType, filterKategori, filterDaerah, searchQuery]);
 
-  // 4. Filter Audit Data
+  // Filter Audit Data
   const filteredAuditData = useMemo(() => {
     return fullRiwayatData.filter((item) => {
+      const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
+
       if (searchQuery.trim()) {
         const query = searchQuery.toLowerCase();
         const nama = (item.expand?.santri?.nama || "").toLowerCase();
         const idPps = (item.id_pps || "").toLowerCase();
-        const petugas = (item.expand?.petugas_eksekutor?.name || "").toLowerCase();
+        const petugas = (item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "").toLowerCase();
         return nama.includes(query) || idPps.includes(query) || petugas.includes(query);
       }
       return true;
     });
-  }, [fullRiwayatData, searchQuery]);
+  }, [fullRiwayatData, filterDaerah, searchQuery]);
 
-  // 5. Pagination Data
+  // Pagination Data
   const activeDataset = reportType === "riwayat" ? filteredAuditData : filteredQueueData;
   const totalItems = activeDataset.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);
@@ -848,6 +991,12 @@ export function useLaporanRambut() {
       setFilterKategori(k);
       setPage(1);
     },
+    filterDaerah,
+    setFilterDaerah: (d: string) => {
+      setFilterDaerah(d);
+      setPage(1);
+    },
+    daerahOptions,
     searchQuery,
     setSearchQuery: (q: string) => {
       setSearchQuery(q);
@@ -880,11 +1029,10 @@ export * from "./pages/LaporanRambutPage";
 ### `src/features/laporan/pages/LaporanRambutPage.tsx`
 ```tsx
 // src/features/laporan/pages/LaporanRambutPage.tsx
-import React, { useRef } from "react";
-import { useReactToPrint } from "react-to-print";
+import React from "react";
 import { useToast } from "@/context/ToastContext";
 
-// ✨ REUSE KONTROLS & COMPONENTS DARI PUBLIC API INDEX.TS
+// Reuse Controls & Components
 import { RambutStats } from "@/features/rambut";
 import { MasterPagination } from "@/features/master";
 
@@ -893,11 +1041,9 @@ import { exportRambutToExcel } from "../utils/exportRambutExcel";
 import { LaporanHeader } from "../components/LaporanHeader";
 import { LaporanToolbar } from "../components/LaporanToolbar";
 import { LaporanTable } from "../components/LaporanTable";
-import { RambutReportPrint } from "../components/RambutReportPrint";
 
 export const LaporanRambutPage: React.FC = () => {
   const { showSuccess, showError } = useToast();
-  const printableRef = useRef<HTMLDivElement>(null);
 
   const {
     periodeList,
@@ -907,6 +1053,9 @@ export const LaporanRambutPage: React.FC = () => {
     setReportType,
     filterKategori,
     setFilterKategori,
+    filterDaerah,
+    setFilterDaerah,
+    daerahOptions,
     searchQuery,
     setSearchQuery,
     page,
@@ -921,12 +1070,6 @@ export const LaporanRambutPage: React.FC = () => {
     isLoading,
     onRefresh,
   } = useLaporanRambut();
-
-  const handlePrint = useReactToPrint({
-    contentRef: printableRef,
-    documentTitle: `Laporan_Rambut_${selectedPeriode?.nama_periode || "PP_Sidogiri"}`,
-    onAfterPrint: () => showSuccess("Laporan berhasil dicetak ke PDF!", "Cetak PDF"),
-  });
 
   const handleExportExcel = () => {
     try {
@@ -948,10 +1091,9 @@ export const LaporanRambutPage: React.FC = () => {
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
-        onPrintPDF={() => handlePrint()}
       />
 
-      {/* 2. REUSE: Kartu Statistik Presisi (100% Identik dengan Halaman Rambut) */}
+      {/* 2. Kartu Statistik Presisi */}
       <RambutStats stats={stats} isLoading={isLoading} />
 
       {/* 3. Toolbar Filter Glassmorphism */}
@@ -963,6 +1105,9 @@ export const LaporanRambutPage: React.FC = () => {
         onChangeReportType={setReportType}
         filterKategori={filterKategori}
         onChangeFilterKategori={setFilterKategori}
+        filterDaerah={filterDaerah}
+        onChangeFilterDaerah={setFilterDaerah}
+        daerahOptions={daerahOptions}
         searchQuery={searchQuery}
         onChangeSearchQuery={setSearchQuery}
         onRefresh={onRefresh}
@@ -978,7 +1123,7 @@ export const LaporanRambutPage: React.FC = () => {
         perPage={PER_PAGE}
       />
 
-      {/* 5. REUSE: Pagination Global */}
+      {/* 5. Pagination Global */}
       {totalItems > 0 && (
         <MasterPagination
           page={page}
@@ -988,77 +1133,48 @@ export const LaporanRambutPage: React.FC = () => {
           onPageChange={setPage}
         />
       )}
-
-      {/* 6. Layout Cetak Hidden */}
-      <RambutReportPrint
-        ref={printableRef}
-        periode={selectedPeriode}
-        queueData={filteredQueueData}
-        riwayatData={filteredAuditData}
-        stats={stats}
-        reportType={reportType}
-        filterKategori={filterKategori}
-      />
     </div>
   );
 };
 ```
 
-### `src/features/laporan/utils/exportRambutExcel.ts`
+### `src/features/laporan/utils/excel/excelHelpers.ts`
 ```typescript
-// src/features/laporan/utils/exportRambutExcel.ts
+// src/features/laporan/utils/excel/excelHelpers.ts
 import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
 import { fetchHijriByDate } from "@/features/kalender";
-import type {
-  PeriodeRambutResponse,
-  WajibSetorRambutKategoriWajibOptions,
-  WajibSetorRambutStatusSetorOptions,
-} from "@/types/pocketbase-types";
-import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
-// 🎨 PALET WARNA & STYLES PREMIUM (Tema Sidogiri Emerald & Slate)
-const COLOR_PRIMARY = "1B4D3E";     // Dark Emerald Green (Header Utama)
-const COLOR_SECONDARY = "0F766E";   // Deep Teal (Header Sub-Tabel)
-const COLOR_ZEBRA_FILL = "F8FAFC";  // Slate-50 Soft Gray
-const COLOR_BORDER = "CBD5E1";      // Slate-300 Clear Border
+export const COLOR_PRIMARY = "1B4D3E";
+export const COLOR_SECONDARY = "0F766E";
+export const COLOR_ZEBRA_FILL = "F8FAFC";
+export const COLOR_BORDER = "CBD5E1";
 
-// Warna Badge Status
-const STATUS_STYLES = {
-  sudah: { fill: "DCFCE7", color: "15803D" },      // Soft Green
-  belum: { fill: "FEE2E2", color: "B91C1C" },      // Soft Red
-  dispensasi: { fill: "FEF3C7", color: "B45309" }, // Soft Amber/Yellow
+export const STATUS_STYLES = {
+  sudah: { fill: "DCFCE7", color: "15803D" },
+  belum: { fill: "FEE2E2", color: "B91C1C" },
+  dispensasi: { fill: "FEF3C7", color: "B45309" },
 } as const;
 
-// Border Tipis Slate
-const THIN_BORDER: Partial<ExcelJS.Borders> = {
+export const THIN_BORDER: Partial<ExcelJS.Borders> = {
   top: { style: "thin", color: { argb: COLOR_BORDER } },
   left: { style: "thin", color: { argb: COLOR_BORDER } },
   bottom: { style: "thin", color: { argb: COLOR_BORDER } },
   right: { style: "thin", color: { argb: COLOR_BORDER } },
 };
 
-// 🖨️ HELPER: PENGATURAN CETAK KERTAS A4
-const applyA4PrintSetup = (
+export const applyA4PrintSetup = (
   worksheet: ExcelJS.Worksheet,
   orientation: "portrait" | "landscape" = "landscape",
   headerRowNumber: number = 4,
   strictSinglePage: boolean = false
 ) => {
   worksheet.pageSetup = {
-    paperSize: 9, // 9 = Kertas A4
-    orientation: orientation,
+    paperSize: 9,
+    orientation,
     fitToPage: true,
     fitToWidth: 1,
-    fitToHeight: strictSinglePage ? 1 : 0, // Strict 1 Halaman Pas untuk Rekapitulasi
-    margins: {
-      left: 0.4,
-      right: 0.4,
-      top: 0.5,
-      bottom: 0.5,
-      header: 0.2,
-      footer: 0.2,
-    },
+    fitToHeight: strictSinglePage ? 1 : 0,
+    margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
     printTitlesRow: `${headerRowNumber}:${headerRowNumber}`,
   };
 
@@ -1068,8 +1184,17 @@ const applyA4PrintSetup = (
   };
 };
 
-// 📏 HELPER: AUTO FIT LEBAR KOLOM DINAMIS
-const autoFitColumnWidths = (
+export const applyHeaderStyle = (row: ExcelJS.Row, bgHex: string = COLOR_PRIMARY) => {
+  row.height = 22;
+  row.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgHex } };
+    cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFF" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = THIN_BORDER;
+  });
+};
+
+export const autoFitColumnWidths = (
   worksheet: ExcelJS.Worksheet,
   minWidthMap: Record<number, number> = {},
   maxWidthMap: Record<number, number> = {}
@@ -1079,225 +1204,708 @@ const autoFitColumnWidths = (
     let maxLen = 0;
 
     column.eachCell?.({ includeEmpty: true }, (cell, rowNum) => {
-      if (rowNum <= 3) return; // Abaikan baris judul Kop atas
-
-      const cellValue = cell.value ? cell.value.toString() : "";
-      if (cellValue.length > maxLen) {
-        maxLen = cellValue.length;
-      }
+      if (rowNum <= 3) return;
+      const val = cell.value ? cell.value.toString() : "";
+      if (val.length > maxLen) maxLen = val.length;
     });
 
     const minW = minWidthMap[colNum] ?? 10;
     const maxW = maxWidthMap[colNum] ?? 35;
-
-    const calculatedWidth = Math.max(maxLen + 4, minW);
-    column.width = Math.min(calculatedWidth, maxW);
+    column.width = Math.min(Math.max(maxLen + 3, minW), maxW);
   });
 };
 
-// 🛠️ HELPER UTILITIES DATA & CACHING HIJRIYAH
-const KATEGORI_LABEL_MAP: Record<string, string> = {
-  aliyah: "Aliyah",
-  kuliah_syariah: "Kuliah Syariah",
-  pengurus_petugas: "Pengurus / Petugas",
-};
+export const capitalizeText = (str?: string | null) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : "-");
+export const parseIdPps = (val?: string | number | null) => (!val ? "-" : !isNaN(Number(val)) ? Number(val) : String(val));
+export const sanitizeFileName = (str: string) => str.replace(/[^a-zA-Z0-9_-]/g, "_");
 
-const STATUS_LABEL_MAP: Record<string, string> = {
-  sudah: "SUDAH SETOR",
-  belum: "BELUM SETOR",
-  dispensasi: "DISPENSASI",
-};
-
-const capitalizeText = (str?: string | null): string => {
-  if (!str) return "-";
-  return str.charAt(0).toUpperCase() + str.slice(1);
-};
-
-const formatKategoriLabel = (kat?: WajibSetorRambutKategoriWajibOptions): string =>
-  kat ? KATEGORI_LABEL_MAP[kat] ?? capitalizeText(kat) : "-";
-
-const formatStatusLabel = (status?: WajibSetorRambutStatusSetorOptions | string): string =>
-  status ? STATUS_LABEL_MAP[status] ?? String(status).toUpperCase() : "-";
-
-const formatDateClean = (dateStr?: string | null): string => {
-  if (!dateStr) return "-";
-  const date = new Date(dateStr);
-  if (isNaN(date.getTime())) return "-";
-
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+export const getAlamatStr = (santri: any) => {
+  if (!santri) return "-";
+  const parts = [santri.desa, santri.kecamatan, santri.kabupaten].map((v) => v?.toString().trim()).filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "-";
 };
 
 const hijriCache = new Map<string, string | null>();
-
-const getHijriDateString = async (dateInput?: string | Date | null): Promise<string | null> => {
-  if (!dateInput) return null;
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return null;
-
-  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-
-  if (!hijriCache.has(dateKey)) {
-    const res = await fetchHijriByDate(d);
-    hijriCache.set(dateKey, res?.string_hijri || null);
-  }
-
-  return hijriCache.get(dateKey) || null;
-};
-
-const formatDateHijri = async (
-  dateStr?: string | null,
-  includeTime: boolean = false
-): Promise<string> => {
+export const formatDateHijri = async (dateStr?: string | null): Promise<string> => {
   if (!dateStr) return "-";
   const d = new Date(dateStr);
   if (isNaN(d.getTime())) return "-";
 
-  const stringHijri = await getHijriDateString(d);
-  const hours = String(d.getHours()).padStart(2, "0");
-  const minutes = String(d.getMinutes()).padStart(2, "0");
-  const timeStr = `${hours}:${minutes}`;
+  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (!hijriCache.has(dateKey)) {
+    const res = await fetchHijriByDate(d);
+    hijriCache.set(dateKey, res?.string_hijri || null);
+  }
+  return hijriCache.get(dateKey) || `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+};
+```
 
-  if (stringHijri) {
-    return includeTime ? `${stringHijri} (${timeStr})` : stringHijri;
+### `src/features/laporan/utils/excel/generateBarcode.ts`
+```typescript
+// src/features/laporan/utils/excel/generateBarcode.ts
+export const generateBarcodeBase64 = (text: string): string => {
+  if (typeof document === "undefined") return "";
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const code39Patterns: Record<string, string> = {
+      '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
+      '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
+      '8': '110100101101', '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
+      'C': '110110100101', 'D': '101011001011', 'E': '110101100101', 'F': '101101100101',
+      'G': '101010011011', 'H': '110101001101', 'I': '101101001101', 'J': '101011001101',
+      'K': '110101010011', 'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
+      'O': '110101101001', 'P': '101101101001', 'Q': '101010110011', 'R': '110101011001',
+      'S': '101101011001', 'T': '101011011001', 'U': '110010101011', 'V': '100110101011',
+      'W': '110011010101', 'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
+      '-': '100101011011', '.': '110010101101', ' ': '100110101101', '*': '100101101101'
+    };
+
+    const cleanText = `*${text.toUpperCase().replace(/[^0-9A-Z\-.\s]/g, '')}*`;
+    let bitString = "";
+    for (let i = 0; i < cleanText.length; i++) {
+      bitString += (code39Patterns[cleanText[i]] || code39Patterns['*']) + "0";
+    }
+
+    const barWidth = 2;
+    const height = 48;
+    const padding = 8;
+    const width = bitString.length * barWidth + padding * 2;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "#000000";
+    for (let i = 0; i < bitString.length; i++) {
+      if (bitString[i] === "1") {
+        ctx.fillRect(padding + i * barWidth, 4, barWidth, height - 8);
+      }
+    }
+
+    return canvas.toDataURL("image/png");
+  } catch (err) {
+    return "";
+  }
+};
+```
+
+### `src/features/laporan/utils/excel/generateChart.ts`
+```typescript
+// src/features/laporan/utils/excel/generateChart.ts
+
+/**
+ * 📊 Generator Donut Chart Base64 PNG via HTML5 Canvas API (Tanpa Teks Bentrok)
+ */
+export const generateChartBase64 = (
+  sudah: number,
+  belum: number,
+  dispensasi: number
+): string => {
+  if (typeof document === "undefined") return "";
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const total = sudah + belum + dispensasi;
+
+    // Dimensi Canvas Wide Presisi A4
+    const width = 560;
+    const height = 180;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background & Frame Border
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = "#CBD5E1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, width - 2, height - 2);
+
+    const items = [
+      { label: "Sudah Setor", value: sudah, color: "#16A34A", bg: "#DCFCE7" },
+      { label: "Belum Setor", value: belum, color: "#DC2626", bg: "#FEE2E2" },
+      { label: "Dispensasi Khusus", value: dispensasi, color: "#D97706", bg: "#FEF3C7" },
+    ];
+
+    // Geometri Donut Chart
+    const cx = 115;
+    const cy = 90;
+    const outerRadius = 62;
+    const innerRadius = 36;
+
+    let startAngle = -Math.PI / 2;
+
+    if (total === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#E2E8F0";
+      ctx.fill();
+    } else {
+      items.forEach((item) => {
+        if (item.value <= 0) return;
+        const sliceAngle = (item.value / total) * (Math.PI * 2);
+        const endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRadius, startAngle, endAngle);
+        ctx.arc(cx, cy, innerRadius, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+
+        startAngle = endAngle;
+      });
+    }
+
+    // Donut Hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+
+    // Teks Tengah Donut
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.font = "bold 14px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#0F172A";
+    ctx.fillText(total.toLocaleString("id-ID"), cx, cy - 6);
+
+    ctx.font = "8px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#64748B";
+    ctx.fillText("TOTAL SANTRI", cx, cy + 8);
+
+    // Judul Legenda
+    const lx = 240;
+    ctx.textAlign = "left";
+    ctx.font = "bold 10.5px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#1B4D3E";
+    ctx.fillText("DISTRIBUSI STATUS SETOR RAMBUT", lx, 22);
+
+    // Garis Pemisah
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lx, 28);
+    ctx.lineTo(width - 20, 28);
+    ctx.stroke();
+
+    // Stat Box 2-Baris (Mencegah Overlap Teks)
+    let ly = 38;
+    items.forEach((item) => {
+      const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) + "%" : "0.0%";
+      const boxWidth = width - lx - 20;
+      const boxHeight = 40;
+
+      // Stat Box Fill & Border
+      ctx.fillStyle = item.bg;
+      ctx.fillRect(lx, ly, boxWidth, boxHeight);
+      ctx.strokeStyle = item.color + "50";
+      ctx.strokeRect(lx, ly, boxWidth, boxHeight);
+
+      // Color Badge Indicator
+      ctx.fillStyle = item.color;
+      ctx.fillRect(lx + 8, ly + 8, 10, 24);
+
+      // Baris 1: Label Nama Status
+      ctx.font = "bold 10px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#1E293B";
+      ctx.fillText(item.label, lx + 26, ly + 15);
+
+      // Baris 2: Nilai & Persentase
+      ctx.font = "bold 11px 'Segoe UI', monospace";
+      ctx.fillStyle = item.color;
+      ctx.fillText(`${item.value.toLocaleString("id-ID")} Santri (${pct})`, lx + 26, ly + 30);
+
+      ly += 45;
+    });
+
+    return canvas.toDataURL("image/png");
+  } catch (err) {
+    return "";
+  }
+};
+```
+
+### `src/features/laporan/utils/excel/sheets/pengurusSheet.ts`
+```typescript
+// src/features/laporan/utils/excel/sheets/pengurusSheet.ts
+import ExcelJS from "exceljs";
+import { pb } from "@/lib/pocketbase";
+import {
+  COLOR_PRIMARY,
+  COLOR_SECONDARY,
+  COLOR_ZEBRA_FILL,
+  THIN_BORDER,
+  applyA4PrintSetup,
+  applyHeaderStyle,
+  autoFitColumnWidths,
+  getAlamatStr,
+  parseIdPps,
+} from "../excelHelpers";
+import { generateBarcodeBase64 } from "../generateBarcode";
+
+export const buildPengurusSheet = async (
+  workbook: ExcelJS.Workbook,
+  namaPeriode: string,
+  tanggalExport: string,
+  pengurusData?: any[]
+) => {
+  const ws = workbook.addWorksheet("Pengurus & Petugas", {
+    views: [{ showGridLines: true, state: "frozen", ySplit: 4 }],
+  });
+
+  applyA4PrintSetup(ws, "landscape", 4, false);
+
+  ws.addRow(["DAFTAR PENGURUS DAN PETUGAS WAJIB SETOR PONDOK PESANTREN SIDOGIRI"]).font = {
+    name: "Segoe UI",
+    size: 16,
+    bold: true,
+    color: { argb: COLOR_PRIMARY },
+  };
+  ws.addRow([`Periode: ${namaPeriode} | Tanggal Export: ${tanggalExport}`]).font = {
+    name: "Segoe UI",
+    size: 10,
+    italic: true,
+    color: { argb: "64748B" },
+  };
+  ws.addRow([]);
+
+  const headers = [
+    "No",
+    "ID PPS",
+    "Nama",
+    "Jabatan",
+    "Domisili",
+    "Alamat",
+    "Status",
+    "Barcode ID PPS",
+  ];
+  applyHeaderStyle(ws.addRow(headers), COLOR_SECONDARY);
+
+  // Ambil data pengurus jika tidak disediakan oleh caller
+  let listPengurus = pengurusData;
+  if (!listPengurus || listPengurus.length === 0) {
+    try {
+      listPengurus = await pb.collection("pengurus_santri").getFullList<any>({
+        expand: "santri",
+        sort: "-created",
+      });
+    } catch (e) {
+      listPengurus = [];
+    }
   }
 
-  return formatDateClean(dateStr);
-};
+  listPengurus.forEach((p, index) => {
+    const currentRowIdx = index + 5;
+    const santri = p.expand?.santri;
+    const isAktif = p.status_aktif !== false;
 
-const parseIdPps = (val?: string | number | null): string | number => {
-  if (!val) return "-";
-  const num = Number(val);
-  return !isNaN(num) ? num : String(val);
-};
+    const row = ws.addRow([
+      { formula: `SUBTOTAL(103, $B$5:B${currentRowIdx})` },
+      parseIdPps(p.id_pps),
+      santri?.nama || "Pengurus / Petugas",
+      p.jabatan || "Petugas Cukur",
+      santri?.domisili || santri?.status_domisili || "-",
+      getAlamatStr(santri),
+      isAktif ? "AKTIF" : "PURNA",
+      "", // Tempat gambar Barcode
+    ]);
 
-const sanitizeFileName = (str: string): string => str.replace(/[^a-zA-Z0-9_-]/g, "_");
+    // 🌟 TINGGI BARIS DISAMAKAN: 17pt (Identik dengan Sheet 2 & 3)
+    row.height = 17;
 
-// 🚀 EXPORT MAIN FUNCTION
-export interface ExportRambutParams {
-  periode: PeriodeRambutResponse | null;
-  queueData: WajibSetorExpanded[];
-  riwayatData: RiwayatSetorExpanded[];
-  stats: {
-    total: number;
-    sudah: number;
-    belum: number;
-    dispensasi: number;
-  };
-}
-
-export const exportRambutToExcel = async ({
-  periode,
-  queueData,
-  riwayatData,
-  stats,
-}: ExportRambutParams): Promise<void> => {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Pondok Pesantren Sidogiri - TIBKAM 1745";
-  workbook.created = new Date();
-
-  const namaPeriode = capitalizeText(periode?.nama_periode || "Semua Periode");
-
-  const todayHijri = await getHijriDateString(new Date());
-  const todayMasehi = new Date().toLocaleDateString("id-ID", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
-  const tanggalExport = todayHijri ? `${todayHijri} (${todayMasehi})` : todayMasehi;
-
-  const applyHeaderStyle = (row: ExcelJS.Row, bgHex: string = COLOR_PRIMARY) => {
-    row.height = 28;
-    row.eachCell((cell) => {
-      cell.fill = {
-        type: "pattern",
-        pattern: "solid",
-        fgColor: { argb: bgHex },
-      };
-      cell.font = { name: "Segoe UI", size: 10.5, bold: true, color: { argb: "FFFFFF" } };
-      cell.alignment = { horizontal: "center", vertical: "middle" };
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: "Segoe UI", size: 9, color: { argb: "1E293B" } };
       cell.border = THIN_BORDER;
-    });
-  };
 
-  // SHEET 1: REKAPITULASI (EXECUTIVE REPORT - 1 LEMBAR A4 LANDSCAPE)
-
-  const wsSummary = workbook.addWorksheet("Rekapitulasi", {
-    views: [{ showGridLines: true }],
-  });
-
-  // Strict 1 Halaman A4 Landscape Pas
-  applyA4PrintSetup(wsSummary, "landscape", 1, true);
-
-  // 1. KOP JUDUL UTAMA
-  wsSummary.addRow(["LAPORAN REKAPITULASI SETORAN RAMBUT SANTRI"]).font = {
-    name: "Segoe UI", size: 16, bold: true, color: { argb: COLOR_PRIMARY },
-  };
-  wsSummary.addRow([`PONDOK PESANTREN SIDOGIRI - TIBKAM 1745  |  Periode: ${namaPeriode}  |  Tanggal Export: ${tanggalExport}`]).font = {
-    name: "Segoe UI", size: 10, italic: true, color: { argb: "475569" },
-  };
-  wsSummary.addRow([]); // Blank Row 3
-
-  // 2. KELOMPOK TABEL I: METRIK KINERJA UTAMA (Baris 4-9)
-  wsSummary.addRow(["I. RINGKASAN METRIK KINERJA UTAMA"]).font = {
-    name: "Segoe UI", size: 11, bold: true, color: { argb: COLOR_PRIMARY },
-  };
-
-  const headerTable1 = wsSummary.addRow(["Status Setor", "Jumlah (Santri)", "Persentase (%)", "", "", ""]);
-  applyHeaderStyle(headerTable1, COLOR_PRIMARY);
-
-  // Merge Header Tabel I agar Melebar Rapi
-  wsSummary.mergeCells("A5:C5");
-  wsSummary.mergeCells("D5:F5");
-  headerTable1.getCell(1).value = "Status Setor Santri";
-  headerTable1.getCell(2).value = "Jumlah (Santri)";
-  headerTable1.getCell(3).value = "Persentase (%)";
-
-  const t1Data = [
-    ["Sudah Setor", stats.sudah, stats.total > 0 ? stats.sudah / stats.total : 0],
-    ["Belum Setor", stats.belum, stats.total > 0 ? stats.belum / stats.total : 0],
-    ["Dispensasi", stats.dispensasi, stats.total > 0 ? stats.dispensasi / stats.total : 0],
-    ["Total Target Wajib Setor", stats.total, 1],
-  ];
-
-  t1Data.forEach((r, idx) => {
-    const row = wsSummary.addRow([r[0], "", r[1], "", r[2], ""]);
-    row.height = 22;
-    const isTotal = idx === 3;
-    const rNum = row.number;
-
-    wsSummary.mergeCells(`A${rNum}:B${rNum}`);
-    wsSummary.mergeCells(`C${rNum}:D${rNum}`);
-    wsSummary.mergeCells(`E${rNum}:F${rNum}`);
-
-    const c1 = row.getCell(1);
-    const c3 = row.getCell(3);
-    const c5 = row.getCell(5);
-
-    c1.font = { name: "Segoe UI", size: 10, bold: isTotal };
-    c3.font = { name: "Segoe UI", size: 10, bold: isTotal };
-    c5.font = { name: "Segoe UI", size: 10, bold: isTotal };
-
-    c1.alignment = { horizontal: "left", vertical: "middle" };
-    c3.alignment = { horizontal: "right", vertical: "middle" };
-    c5.alignment = { horizontal: "right", vertical: "middle" };
-
-    c3.numFmt = "#,##0";
-    c5.numFmt = "0.0%";
-
-    row.eachCell({ includeEmpty: true }, (cell) => {
-      cell.border = THIN_BORDER;
-      if (isTotal) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E2E8F0" } };
-      } else if (idx % 2 === 1) {
+      if (index % 2 === 1) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      }
+
+      if ([1, 2, 5, 7].includes(colNum)) {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      } else {
+        cell.alignment = { horizontal: "left", vertical: "middle" };
+      }
+
+      if (colNum === 7) {
+        cell.font = {
+          name: "Segoe UI",
+          size: 8.5,
+          bold: true,
+          color: { argb: isAktif ? "15803D" : "64748B" },
+        };
+      }
+    });
+
+    // Tempelkan gambar Barcode PNG ke kolom H (Disesuaikan untuk tinggi baris 17pt)
+    const barcodeBase64 = generateBarcodeBase64(String(p.id_pps || ""));
+    if (barcodeBase64) {
+      const imageId = workbook.addImage({
+        base64: barcodeBase64,
+        extension: "png",
+      });
+
+      ws.addImage(imageId, {
+        tl: { col: 7.05, row: currentRowIdx - 1 + 0.05 },
+        ext: { width: 110, height: 20 }, // Ukuran barcode presisi untuk tinggi sel 17pt
+        editAs: "oneCell",
+      });
+    }
+  });
+
+  autoFitColumnWidths(
+    ws,
+    { 1: 5, 2: 10, 3: 22, 4: 18, 5: 10, 6: 18, 7: 10, 8: 20 },
+    { 1: 6, 2: 14, 3: 35, 4: 28, 5: 14, 6: 30, 7: 12, 8: 24 }
+  );
+};
+```
+
+### `src/features/laporan/utils/excel/sheets/queueSheet.ts`
+```typescript
+// src/features/laporan/utils/excel/sheets/queueSheet.ts
+import ExcelJS from "exceljs";
+import {
+  COLOR_PRIMARY,
+  COLOR_ZEBRA_FILL,
+  STATUS_STYLES,
+  THIN_BORDER,
+  applyA4PrintSetup,
+  applyHeaderStyle,
+  autoFitColumnWidths,
+  formatDateHijri,
+  getAlamatStr,
+  parseIdPps,
+} from "../excelHelpers";
+import type { WajibSetorExpanded } from "@/features/rambut/hooks/useRambut";
+
+export const buildQueueSheet = async (
+  workbook: ExcelJS.Workbook,
+  namaPeriode: string,
+  tanggalExport: string,
+  queueData: WajibSetorExpanded[]
+) => {
+  const ws = workbook.addWorksheet("Daftar Wajib Setor", { views: [{ showGridLines: true, state: "frozen", ySplit: 4 }] });
+  applyA4PrintSetup(ws, "landscape", 4, false);
+
+  ws.addRow(["DAFTAR WAJIB SETOR RAMBUT SANTRI PONDOK PESANTREN SIDOGIRI"]).font = { name: "Segoe UI", size: 16, bold: true, color: { argb: COLOR_PRIMARY } };
+  ws.addRow([`Periode: ${namaPeriode} | Tanggal Export: ${tanggalExport}`]).font = { name: "Segoe UI", size: 10, italic: true, color: { argb: "64748B" } };
+  ws.addRow([]);
+
+  const headers = ["No", "ID PPS", "Nama", "Alamat", "Tingkatan", "Kelas", "Domisili", "Status Setor", "Tanggal Setor", "Keterangan"];
+  applyHeaderStyle(ws.addRow(headers), COLOR_PRIMARY);
+
+  const exportData = await Promise.all(
+    queueData.map(async (item) => {
+      const santri = item.expand?.santri;
+      return {
+        idPps: parseIdPps(item.id_pps),
+        nama: santri?.nama || "-",
+        alamat: getAlamatStr(santri),
+        tingkatan: santri?.tingkatan || "-",
+        kelas: santri?.kelas || "-",
+        domisili: santri?.domisili || santri?.status_domisili || "-",
+        statusText: item.status_setor === "sudah" ? "SUDAH SETOR" : item.status_setor === "dispensasi" ? "DISPENSASI" : "BELUM SETOR",
+        statusStyle: STATUS_STYLES[item.status_setor as keyof typeof STATUS_STYLES],
+        keterangan: (item as any).catatan || (item as any).keterangan || "-",
+        tanggalSetor: await formatDateHijri(item.tanggal_setor),
+      };
+    })
+  );
+
+  exportData.forEach((item, index) => {
+    const currentRowIdx = index + 5;
+    const row = ws.addRow([
+      { formula: `SUBTOTAL(103, $B$5:B${currentRowIdx})` },
+      item.idPps,
+      item.nama,
+      item.alamat,
+      item.tingkatan,
+      item.kelas,
+      item.domisili,
+      item.statusText,
+      item.tanggalSetor,
+      item.keterangan,
+    ]);
+
+    row.height = 17;
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: "Segoe UI", size: 9, color: { argb: "1E293B" } };
+      cell.border = THIN_BORDER;
+      if (index % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      cell.alignment = { horizontal: [1, 2, 5, 6, 7, 8, 9].includes(colNum) ? "center" : "left", vertical: "middle" };
+
+      if (colNum === 8 && item.statusStyle) {
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.statusStyle.fill } };
+        cell.font = { name: "Segoe UI", size: 8.5, bold: true, color: { argb: item.statusStyle.color } };
       }
     });
   });
 
-  wsSummary.addRow([]); // Blank Row 11
+  autoFitColumnWidths(ws, { 1: 5, 2: 10, 3: 22, 4: 18, 5: 14, 6: 8, 7: 8, 8: 14, 9: 16, 10: 22 }, { 1: 6, 2: 14, 3: 32, 4: 30, 5: 18, 6: 12, 7: 12, 8: 16, 9: 20, 10: 40 });
+};
+```
 
-  // 3. KALKULASI & KELOMPOK TABEL II: RINCIAN PER KATEGORI (Baris 12-18)
+### `src/features/laporan/utils/excel/sheets/riwayatSheet.ts`
+```typescript
+// src/features/laporan/utils/excel/sheets/riwayatSheet.ts
+import ExcelJS from "exceljs";
+import {
+  COLOR_PRIMARY,
+  COLOR_SECONDARY,
+  COLOR_ZEBRA_FILL,
+  THIN_BORDER,
+  applyA4PrintSetup,
+  applyHeaderStyle,
+  autoFitColumnWidths,
+  formatDateHijri,
+  getAlamatStr,
+  parseIdPps,
+} from "../excelHelpers";
+import type { RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
+
+export const buildRiwayatSheet = async (
+  workbook: ExcelJS.Workbook,
+  namaPeriode: string,
+  tanggalExport: string,
+  riwayatData: RiwayatSetorExpanded[]
+) => {
+  const ws = workbook.addWorksheet("Riwayat Setor Rambut", { views: [{ showGridLines: true, state: "frozen", ySplit: 4 }] });
+  applyA4PrintSetup(ws, "landscape", 4, false);
+
+  ws.addRow(["LOG RIWAYAT AUDIT SETOR RAMBUT"]).font = { name: "Segoe UI", size: 16, bold: true, color: { argb: COLOR_PRIMARY } };
+  ws.addRow([`Periode: ${namaPeriode} | Tanggal Export: ${tanggalExport}`]).font = { name: "Segoe UI", size: 10, italic: true, color: { argb: "64748B" } };
+  ws.addRow([]);
+
+  const headers = ["No", "ID PPS", "Nama", "Alamat", "Domisili", "Petugas Eksekutor", "Tanggal (Hijriyah)", "Waktu WIS", "Catatan Operasional"];
+  applyHeaderStyle(ws.addRow(headers), COLOR_SECONDARY);
+
+  const exportData = await Promise.all(
+    riwayatData.map(async (item) => {
+      const santri = item.expand?.santri;
+      const eksekutor = item.expand?.petugas_eksekutor;
+      return {
+        idPps: parseIdPps(item.id_pps),
+        nama: santri?.nama || "-",
+        alamat: getAlamatStr(santri),
+        domisili: santri?.domisili || santri?.status_domisili || "-",
+        eksekutor: eksekutor?.name || eksekutor?.username || "-",
+        tanggalHijri: await formatDateHijri(item.tanggal_setor),
+        waktuWis: item.waktu_wis || "-",
+        catatan: item.catatan || "-",
+      };
+    })
+  );
+
+  exportData.forEach((item, index) => {
+    const currentRowIdx = index + 5;
+    const row = ws.addRow([
+      { formula: `SUBTOTAL(103, $B$5:B${currentRowIdx})` },
+      item.idPps,
+      item.nama,
+      item.alamat,
+      item.domisili,
+      item.eksekutor,
+      item.tanggalHijri,
+      item.waktuWis,
+      item.catatan,
+    ]);
+
+    row.height = 17;
+    row.eachCell((cell, colNum) => {
+      cell.font = { name: "Segoe UI", size: 9, color: { argb: "1E293B" } };
+      cell.border = THIN_BORDER;
+      if (index % 2 === 1) cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
+      cell.alignment = { horizontal: [1, 2, 5, 7, 8].includes(colNum) ? "center" : "left", vertical: "middle" };
+    });
+  });
+
+  autoFitColumnWidths(ws, { 1: 5, 2: 10, 3: 22, 4: 18, 5: 10, 6: 16, 7: 16, 8: 14, 9: 25 }, { 1: 6, 2: 14, 3: 35, 4: 30, 5: 14, 6: 22, 7: 20, 8: 18, 9: 45 });
+};
+```
+
+### `src/features/laporan/utils/excel/sheets/summarySheet.ts`
+```typescript
+// src/features/laporan/utils/excel/sheets/summarySheet.ts
+import ExcelJS from "exceljs";
+import {
+  COLOR_PRIMARY,
+  COLOR_SECONDARY,
+  COLOR_ZEBRA_FILL,
+  THIN_BORDER,
+  applyA4PrintSetup,
+  applyHeaderStyle,
+} from "../excelHelpers";
+import { generateChartBase64 } from "../generateChart";
+import type { WajibSetorExpanded } from "@/features/rambut/hooks/useRambut";
+
+const renderKpiCard = (
+  ws: ExcelJS.Worksheet,
+  startCol: string,
+  endCol: string,
+  startRow: number,
+  title: string,
+  value: number,
+  subtext: string,
+  bgHex: string,
+  textHex: string,
+  borderHex: string
+) => {
+  const rowVal = startRow + 1;
+  const rowSub = startRow + 2;
+
+  ws.mergeCells(`${startCol}${startRow}:${endCol}${startRow}`);
+  ws.mergeCells(`${startCol}${rowVal}:${endCol}${rowVal}`);
+  ws.mergeCells(`${startCol}${rowSub}:${endCol}${rowSub}`);
+
+  const cTitle = ws.getCell(`${startCol}${startRow}`);
+  cTitle.value = title.toUpperCase();
+  cTitle.font = { name: "Segoe UI", size: 8.5, bold: true, color: { argb: textHex } };
+  cTitle.alignment = { horizontal: "center", vertical: "middle" };
+
+  const cVal = ws.getCell(`${startCol}${rowVal}`);
+  cVal.value = value;
+  cVal.font = { name: "Segoe UI", size: 18, bold: true, color: { argb: textHex } };
+  cVal.alignment = { horizontal: "center", vertical: "middle" };
+  cVal.numFmt = "#,##0";
+
+  const cSub = ws.getCell(`${startCol}${rowSub}`);
+  cSub.value = subtext;
+  cSub.font = { name: "Segoe UI", size: 8.5, italic: true, color: { argb: textHex } };
+  cSub.alignment = { horizontal: "center", vertical: "middle" };
+
+  const startColIdx = startCol.charCodeAt(0) - 64;
+  const endColIdx = endCol.charCodeAt(0) - 64;
+
+  const cardBorder: Partial<ExcelJS.Borders> = {
+    top: { style: "thin", color: { argb: borderHex } },
+    left: { style: "thin", color: { argb: borderHex } },
+    bottom: { style: "thin", color: { argb: borderHex } },
+    right: { style: "thin", color: { argb: borderHex } },
+  };
+
+  for (let r = startRow; r <= rowSub; r++) {
+    for (let c = startColIdx; c <= endColIdx; c++) {
+      const cell = ws.getCell(r, c);
+      cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgHex } };
+      cell.border = {
+        top: r === startRow ? cardBorder.top : undefined,
+        bottom: r === rowSub ? cardBorder.bottom : undefined,
+        left: c === startColIdx ? cardBorder.left : undefined,
+        right: c === endColIdx ? cardBorder.right : undefined,
+      };
+    }
+  }
+};
+
+export const buildSummarySheet = (
+  workbook: ExcelJS.Workbook,
+  namaPeriode: string,
+  tanggalExport: string,
+  stats: { total: number; sudah: number; belum: number; dispensasi: number },
+  queueData: WajibSetorExpanded[]
+) => {
+  const ws = workbook.addWorksheet("Rekapitulasi", { views: [{ showGridLines: true }] });
+
+  applyA4PrintSetup(ws, "landscape", 1, true);
+
+  // Set Widths A-H (Total ~112 units)
+  ws.getColumn(1).width = 28; // Col A: Kategori Wajib Setor
+  ws.getColumn(2).width = 12; // Col B: Sub/Padding
+  ws.getColumn(3).width = 14; // Col C: Sudah Setor
+  ws.getColumn(4).width = 14; // Col D: Belum Setor
+  ws.getColumn(5).width = 14; // Col E: Dispensasi
+  ws.getColumn(6).width = 16; // Col F: Total Target
+  ws.getColumn(7).width = 16; // Col G: Capaian %
+  ws.getColumn(8).width = 14; // Col H: Extra
+
+  // 1. KOP JUDUL
+  ws.addRow(["PONDOK PESANTREN SIDOGIRI — TIBKAM 1745"]).font = {
+    name: "Segoe UI", size: 9, bold: true, color: { argb: "64748B" },
+  };
+  ws.addRow(["LAPORAN REKAPITULASI & METRIK SETORAN RAMBUT SANTRI"]).font = {
+    name: "Segoe UI", size: 15, bold: true, color: { argb: COLOR_PRIMARY },
+  };
+  ws.addRow([`Periode: ${namaPeriode}   |   Tanggal Export: ${tanggalExport}`]).font = {
+    name: "Segoe UI", size: 9.5, italic: true, color: { argb: "475569" },
+  };
+  ws.addRow([]); // Blank Row 4
+
+  // 2. VISUAL KPI CARDS (Baris 5-7)
+  const pctSudah = stats.total > 0 ? ((stats.sudah / stats.total) * 100).toFixed(1) : "0.0";
+  const pctBelum = stats.total > 0 ? ((stats.belum / stats.total) * 100).toFixed(1) : "0.0";
+  const pctDispensasi = stats.total > 0 ? ((stats.dispensasi / stats.total) * 100).toFixed(1) : "0.0";
+
+  renderKpiCard(ws, "A", "B", 5, "TOTAL TARGET WAJIB SETOR", stats.total, "100.0% Target Terdaftar", "F1F5F9", "1E293B", "94A3B8");
+  renderKpiCard(ws, "C", "D", 5, "SUDAH SETOR", stats.sudah, `${pctSudah}% Capaian Tuntas`, "DCFCE7", "15803D", "86EFAC");
+  renderKpiCard(ws, "E", "F", 5, "BELUM SETOR", stats.belum, `${pctBelum}% Belum Tindakan`, "FEE2E2", "B91C1C", "FCA5A5");
+  renderKpiCard(ws, "G", "H", 5, "DISPENSASI KHUSUS", stats.dispensasi, `${pctDispensasi}% Izin Berhalangan`, "FEF3C7", "B45309", "FDE047");
+
+  ws.getRow(5).height = 15;
+  ws.getRow(6).height = 26;
+  ws.getRow(7).height = 15;
+
+  ws.addRow([]); // Blank Row 8
+
+  // 3. SECTION I: DIAGRAM DISTRIBUSI (Baris 9)
+  ws.addRow(["I. VISUALISASI DIAGRAM DISTRIBUSI SETORAN"]).font = {
+    name: "Segoe UI", size: 10.5, bold: true, color: { argb: COLOR_PRIMARY },
+  };
+
+  // Embed Donut Chart Image
+  const chartBase64 = generateChartBase64(stats.sudah, stats.belum, stats.dispensasi);
+  if (chartBase64) {
+    const chartImgId = workbook.addImage({
+      base64: chartBase64,
+      extension: "png",
+    });
+    ws.addImage(chartImgId, {
+      tl: { col: 0.8, row: 9.2 },
+      ext: { width: 560, height: 170 }, // Tinggi disesuaikan 170px
+      editAs: "oneCell",
+    });
+  }
+
+  // 11 Baris Kosong khusus untuk menampung gambar chart tanpa menimpa Section II
+  for (let i = 0; i < 11; i++) {
+    const r = ws.addRow([]);
+    r.height = 18;
+  }
+
+  // 4. SECTION II: TABEL RINCIAN PER KATEGORI (Dimulai dari Baris 21)
+  ws.addRow(["II. RINCIAN METRIK PER KATEGORI WAJIB SETOR"]).font = {
+    name: "Segoe UI", size: 10.5, bold: true, color: { argb: COLOR_PRIMARY },
+  };
+
+  const headerTable = ws.addRow([
+    "Kategori Wajib Setor", "",
+    "Sudah Setor",
+    "Belum Setor",
+    "Dispensasi",
+    "Total Target",
+    "% Capaian Tuntas", ""
+  ]);
+
+  applyHeaderStyle(headerTable, COLOR_PRIMARY);
+  ws.mergeCells(`A${headerTable.number}:B${headerTable.number}`);
+  ws.mergeCells(`G${headerTable.number}:H${headerTable.number}`);
+
+  headerTable.getCell(1).value = "Kategori Wajib Setor";
+  headerTable.getCell(3).value = "Sudah Setor";
+  headerTable.getCell(4).value = "Belum Setor";
+  headerTable.getCell(5).value = "Dispensasi";
+  headerTable.getCell(6).value = "Total Target";
+  headerTable.getCell(7).value = "% Capaian Tuntas";
+
   const katMap: Record<string, { sudah: number; belum: number; dispensasi: number; total: number }> = {
     aliyah: { sudah: 0, belum: 0, dispensasi: 0, total: 0 },
     kuliah_syariah: { sudah: 0, belum: 0, dispensasi: 0, total: 0 },
@@ -1313,253 +1921,139 @@ export const exportRambutToExcel = async ({
     else katMap[k].belum++;
   });
 
-  wsSummary.addRow(["II. RINCIAN PER KATEGORI WAJIB SETOR"]).font = {
-    name: "Segoe UI", size: 11, bold: true, color: { argb: COLOR_PRIMARY },
+  const labels: Record<string, string> = {
+    aliyah: "Aliyah",
+    kuliah_syariah: "Kuliah Syariah",
+    pengurus_petugas: "Pengurus / Petugas",
   };
 
-  const headerTable2 = wsSummary.addRow(["Kategori Wajib Setor", "Sudah Setor", "Belum Setor", "Dispensasi", "Total Target", "Capaian (%)"]);
-  applyHeaderStyle(headerTable2, COLOR_SECONDARY);
-
-  const katListKeys: Array<keyof typeof katMap> = ["aliyah", "kuliah_syariah", "pengurus_petugas"];
-  katListKeys.forEach((key, idx) => {
+  ["aliyah", "kuliah_syariah", "pengurus_petugas"].forEach((key, idx) => {
     const d = katMap[key];
     const capaianKat = d.total > 0 ? d.sudah / d.total : 0;
-    const row = wsSummary.addRow([
-      KATEGORI_LABEL_MAP[key] || key,
+
+    const row = ws.addRow([
+      labels[key], "",
       d.sudah,
       d.belum,
       d.dispensasi,
       d.total,
-      capaianKat,
+      capaianKat, ""
     ]);
-    row.height = 22;
+    row.height = 20;
+    const rNum = row.number;
 
-    row.eachCell((cell, colNum) => {
-      cell.font = { name: "Segoe UI", size: 10 };
+    ws.mergeCells(`A${rNum}:B${rNum}`);
+    ws.mergeCells(`G${rNum}:H${rNum}`);
+
+    const c1 = row.getCell(1);
+    const c3 = row.getCell(3);
+    const c4 = row.getCell(4);
+    const c5 = row.getCell(5);
+    const c6 = row.getCell(6);
+    const c7 = row.getCell(7);
+
+    c1.font = { name: "Segoe UI", size: 9.5 };
+    c3.font = { name: "Segoe UI", size: 9.5 };
+    c4.font = { name: "Segoe UI", size: 9.5 };
+    c5.font = { name: "Segoe UI", size: 9.5 };
+    c6.font = { name: "Segoe UI", size: 9.5, bold: true };
+    c7.font = { name: "Segoe UI", size: 9.5, bold: true };
+
+    c1.alignment = { horizontal: "left", vertical: "middle" };
+    c3.alignment = { horizontal: "right", vertical: "middle" };
+    c4.alignment = { horizontal: "right", vertical: "middle" };
+    c5.alignment = { horizontal: "right", vertical: "middle" };
+    c6.alignment = { horizontal: "right", vertical: "middle" };
+    c7.alignment = { horizontal: "right", vertical: "middle" };
+
+    c3.numFmt = "#,##0";
+    c4.numFmt = "#,##0";
+    c5.numFmt = "#,##0";
+    c6.numFmt = "#,##0";
+    c7.numFmt = "0.0%";
+
+    row.eachCell({ includeEmpty: true }, (cell) => {
       cell.border = THIN_BORDER;
-      if (colNum === 1) cell.alignment = { horizontal: "left", vertical: "middle" };
-      else cell.alignment = { horizontal: "right", vertical: "middle" };
-
-      if ([2, 3, 4, 5].includes(colNum)) cell.numFmt = "#,##0";
-      if (colNum === 6) cell.numFmt = "0.0%";
-
       if (idx % 2 === 1) {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
       }
     });
   });
 
-  // Baris Total Tabel II
-  const totalKatRow = wsSummary.addRow([
-    "Total Keseluruhan",
+  // Total Row
+  const totalRow = ws.addRow([
+    "TOTAL KESELURUHAN", "",
     stats.sudah,
     stats.belum,
     stats.dispensasi,
     stats.total,
-    stats.total > 0 ? stats.sudah / stats.total : 0,
+    stats.total > 0 ? stats.sudah / stats.total : 0, ""
   ]);
-  totalKatRow.height = 24;
-  totalKatRow.eachCell((cell, colNum) => {
-    cell.font = { name: "Segoe UI", size: 10, bold: true };
+  totalRow.height = 22;
+  const totNum = totalRow.number;
+
+  ws.mergeCells(`A${totNum}:B${totNum}`);
+  ws.mergeCells(`G${totNum}:H${totNum}`);
+
+  totalRow.eachCell({ includeEmpty: true }, (cell, colNum) => {
+    cell.font = { name: "Segoe UI", size: 9.5, bold: true };
     cell.border = THIN_BORDER;
     cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "E2E8F0" } };
+
     if (colNum === 1) cell.alignment = { horizontal: "left", vertical: "middle" };
     else cell.alignment = { horizontal: "right", vertical: "middle" };
 
-    if ([2, 3, 4, 5].includes(colNum)) cell.numFmt = "#,##0";
-    if (colNum === 6) cell.numFmt = "0.0%";
+    if ([3, 4, 5, 6].includes(colNum)) cell.numFmt = "#,##0";
+    if (colNum === 7) cell.numFmt = "0.0%";
   });
+};
+```
 
-  // Atur Lebar Kolom Proporsional Memenuhi A4 Landscape
-  wsSummary.getColumn(1).width = 30; // Kategori / Status
-  wsSummary.getColumn(2).width = 18; // Sudah / Detail
-  wsSummary.getColumn(3).width = 18; // Belum
-  wsSummary.getColumn(4).width = 18; // Dispensasi
-  wsSummary.getColumn(5).width = 20; // Total
-  wsSummary.getColumn(6).width = 20; // Capaian
+### `src/features/laporan/utils/exportRambutExcel.ts`
+```typescript
+// src/features/laporan/utils/exportRambutExcel.ts
+import ExcelJS from "exceljs";
+import { saveAs } from "file-saver";
+import { capitalizeText, formatDateHijri, sanitizeFileName } from "./excel/excelHelpers";
+import { buildSummarySheet } from "./excel/sheets/summarySheet";
+import { buildQueueSheet } from "./excel/sheets/queueSheet";
+import { buildRiwayatSheet } from "./excel/sheets/riwayatSheet";
+import { buildPengurusSheet } from "./excel/sheets/pengurusSheet";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
-  // SHEET 2: DAFTAR WAJIB SETOR (LANDSCAPE A4)
+export interface ExportRambutParams {
+  periode: PeriodeRambutResponse | null;
+  queueData: WajibSetorExpanded[];
+  riwayatData: RiwayatSetorExpanded[];
+  pengurusData?: any[];
+  stats: { total: number; sudah: number; belum: number; dispensasi: number };
+}
 
-  const wsQueue = workbook.addWorksheet("Daftar Wajib Setor", {
-    views: [{ showGridLines: true, state: "frozen", ySplit: 4 }],
-  });
+export const exportRambutToExcel = async ({
+  periode,
+  queueData,
+  riwayatData,
+  pengurusData,
+  stats,
+}: ExportRambutParams): Promise<void> => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Pondok Pesantren Sidogiri - TIBKAM 1745";
+  workbook.created = new Date();
 
-  applyA4PrintSetup(wsQueue, "landscape", 4, false);
+  const namaPeriode = capitalizeText(periode?.nama_periode || "Semua Periode");
+  const todayMasehi = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const todayHijri = await formatDateHijri(new Date().toISOString());
+  const tanggalExport = todayHijri !== "-" ? `${todayHijri} (${todayMasehi})` : todayMasehi;
 
-  wsQueue.addRow(["DAFTAR TARGET WAJIB SETOR CUKUR RAMBUT SANTRI"]).font = {
-    name: "Segoe UI", size: 18, bold: true, color: { argb: COLOR_PRIMARY },
-  };
-  wsQueue.addRow([`Periode: ${namaPeriode} | Tanggal Export: ${tanggalExport}`]).font = {
-    name: "Segoe UI", size: 11, italic: true, color: { argb: "64748B" },
-  };
-  wsQueue.addRow([]);
+  // Render Ke-4 Sheet Modular
+  buildSummarySheet(workbook, namaPeriode, tanggalExport, stats, queueData);
+  await buildQueueSheet(workbook, namaPeriode, tanggalExport, queueData);
+  await buildRiwayatSheet(workbook, namaPeriode, tanggalExport, riwayatData);
+  await buildPengurusSheet(workbook, namaPeriode, tanggalExport, pengurusData);
 
-  const headersQueue = [
-    "No",
-    "ID PPS",
-    "Nama Santri",
-    "Kategori Wajib Setor",
-    "Tingkatan",
-    "Kelas",
-    "Domisili",
-    "Status Setor",
-    "Tanggal Setor",
-    "Keterangan",
-  ];
-  const headerRowQueue = wsQueue.addRow(headersQueue);
-  applyHeaderStyle(headerRowQueue, COLOR_PRIMARY);
-
-  const queueExportData = await Promise.all(
-    queueData.map(async (item) => {
-      const santri = item.expand?.santri;
-      const statusKey = item.status_setor as keyof typeof STATUS_STYLES;
-      const statusStyle = STATUS_STYLES[statusKey];
-
-      const keteranganText = (item as any).catatan || (item as any).keterangan || "-";
-      const tglSetorHijri = await formatDateHijri(item.tanggal_setor, false);
-
-      return {
-        idPps: parseIdPps(item.id_pps),
-        nama: santri?.nama || "-",
-        kategori: formatKategoriLabel(item.kategori_wajib),
-        tingkatan: santri?.tingkatan || "-",
-        kelas: santri?.kelas || "-",
-        domisili: santri?.domisili || santri?.status_domisili || "-",
-        statusSetorText: formatStatusLabel(item.status_setor),
-        statusStyle,
-        keterangan: keteranganText,
-        tanggalSetor: tglSetorHijri,
-      };
-    })
-  );
-
-  queueExportData.forEach((item, index) => {
-    const row = wsQueue.addRow([
-      index + 1,
-      item.idPps,
-      item.nama,
-      item.kategori,
-      item.tingkatan,
-      item.kelas,
-      item.domisili,
-      item.statusSetorText,
-      item.tanggalSetor,
-      item.keterangan,
-    ]);
-
-    row.height = 22;
-
-    row.eachCell((cell, colNum) => {
-      cell.font = { name: "Segoe UI", size: 9.5, color: { argb: "1E293B" } };
-      cell.border = THIN_BORDER;
-
-      if (index % 2 === 1) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
-      }
-
-      if ([1, 2, 4, 5, 6, 7, 8, 9].includes(colNum)) {
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      } else if (colNum === 10) {
-        cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      } else {
-        cell.alignment = { horizontal: "left", vertical: "middle" };
-      }
-
-      if (colNum === 8 && item.statusStyle) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: item.statusStyle.fill } };
-        cell.font = { name: "Segoe UI", size: 9, bold: true, color: { argb: item.statusStyle.color } };
-      }
-    });
-  });
-
-  autoFitColumnWidths(
-    wsQueue,
-    { 1: 5, 2: 10, 3: 22, 4: 16, 5: 14, 6: 8, 7: 8, 8: 14, 9: 16, 10: 25 },
-    { 1: 6, 2: 14, 3: 32, 4: 20, 5: 18, 6: 12, 7: 12, 8: 16, 9: 20, 10: 45 }
-  );
-
-  // SHEET 3: LOG RIWAYAT TRANSAKSI (LANDSCAPE A4)
-
-  const wsRiwayat = workbook.addWorksheet("Riwayat Setor Rambut", {
-    views: [{ showGridLines: true, state: "frozen", ySplit: 4 }],
-  });
-
-  applyA4PrintSetup(wsRiwayat, "landscape", 4, false);
-
-  wsRiwayat.addRow(["LOG RIWAYAT AUDIT TRANSAKSI SETOR RAMBUT"]).font = {
-    name: "Segoe UI", size: 18, bold: true, color: { argb: COLOR_PRIMARY },
-  };
-  wsRiwayat.addRow(["Pencatatan real-time petugas eksekutor dan waktu Istiwa"]).font = {
-    name: "Segoe UI", size: 11, italic: true, color: { argb: "64748B" },
-  };
-  wsRiwayat.addRow([]);
-
-  const headersRiwayat = [
-    "No", "ID PPS", "Nama Santri", "Petugas Eksekutor", "Tanggal (Hijriyah)", "Waktu WIS", "Catatan Operasional",
-  ];
-  const headerRowRiwayat = wsRiwayat.addRow(headersRiwayat);
-  applyHeaderStyle(headerRowRiwayat, COLOR_SECONDARY);
-
-  const riwayatExportData = await Promise.all(
-    riwayatData.map(async (item) => {
-      const santri = item.expand?.santri;
-      const eksekutor = item.expand?.petugas_eksekutor;
-
-      const eksekutorUsername = eksekutor?.username || "-";
-      const tglHijri = await formatDateHijri(item.tanggal_setor, false);
-
-      return {
-        idPps: parseIdPps(item.id_pps),
-        namaSantri: santri?.nama || "-",
-        eksekutor: eksekutorUsername,
-        tanggalHijri: tglHijri,
-        waktuWis: item.waktu_wis || "-",
-        catatan: item.catatan || "-",
-      };
-    })
-  );
-
-  riwayatExportData.forEach((item, index) => {
-    const row = wsRiwayat.addRow([
-      index + 1,
-      item.idPps,
-      item.namaSantri,
-      item.eksekutor,
-      item.tanggalHijri,
-      item.waktuWis,
-      item.catatan,
-    ]);
-
-    row.height = 22;
-
-    row.eachCell((cell, colNum) => {
-      cell.font = { name: "Segoe UI", size: 9.5, color: { argb: "1E293B" } };
-      cell.border = THIN_BORDER;
-
-      if (index % 2 === 1) {
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: COLOR_ZEBRA_FILL } };
-      }
-
-      if ([1, 2, 4, 5, 6].includes(colNum)) {
-        cell.alignment = { horizontal: "center", vertical: "middle" };
-      } else if (colNum === 7) {
-        cell.alignment = { horizontal: "left", vertical: "middle", wrapText: true };
-      } else {
-        cell.alignment = { horizontal: "left", vertical: "middle" };
-      }
-    });
-  });
-
-  autoFitColumnWidths(
-    wsRiwayat,
-    { 1: 5, 2: 10, 3: 22, 4: 16, 5: 18, 6: 14, 7: 30 },
-    { 1: 6, 2: 14, 3: 38, 4: 22, 5: 22, 6: 18, 7: 45 }
-  );
-
-  // DOWNLOAD FILE
-
+  // Trigger Download
   const buffer = await workbook.xlsx.writeBuffer();
-  const cleanFileName = `Laporan_Rambut_${sanitizeFileName(namaPeriode)}.xlsx`;
-  saveAs(new Blob([buffer]), cleanFileName);
+  saveAs(new Blob([buffer]), `Laporan_Rambut_${sanitizeFileName(namaPeriode)}.xlsx`);
 };
 ```

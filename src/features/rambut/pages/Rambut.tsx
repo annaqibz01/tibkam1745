@@ -60,7 +60,7 @@ export default function RambutPage() {
         isLoading={p.isQueueLoading || p.isPengurusLoading}
         onOpenPosModal={() => p.setActiveModal("POS")} // ✅ MODAL REGISTRY PATTERN
         onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")} // ✅ MODAL REGISTRY PATTERN
-        onOpenGenerateQueue={p.handleOpenGenerateQueue} 
+        onOpenGenerateQueue={p.handleOpenGenerateQueue}
       />
 
       {/* 4. Multi-SubTable Container */}
@@ -70,17 +70,19 @@ export default function RambutPage() {
         isLoading={p.isQueueLoading}
         page={p.page}
         perPage={p.PER_PAGE}
-        pengurusItems={p.filteredPengurusData}
+        pengurusItems={p.paginatedPengurusItems}
         isPengurusLoading={p.isPengurusLoading}
         onDeletePengurus={(item) => p.setSelectedDeletePengurus(item)}
-        auditItems={p.filteredAuditItems}
+        auditItems={p.paginatedAuditItems}
         isAuditLoading={p.isHistoryLoading}
         onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
         onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
-        canExecute={p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"}
+        canExecute={
+          p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"
+        }
       />
 
-      {/* 5. Pagination */}
+      {/* 5. Pagination Kontrol */}
       {p.activeTab === "queue" && p.totalItems > 0 && (
         <MasterPagination
           page={p.page}
@@ -88,6 +90,26 @@ export default function RambutPage() {
           totalItems={p.totalItems}
           perPage={p.PER_PAGE}
           onPageChange={p.setPage}
+        />
+      )}
+
+      {p.activeTab === "pengurus" && p.totalPengurusItems > 0 && (
+        <MasterPagination
+          page={p.pengurusPage}
+          totalPages={p.totalPengurusPages}
+          totalItems={p.totalPengurusItems}
+          perPage={p.PER_PAGE}
+          onPageChange={p.setPengurusPage}
+        />
+      )}
+
+      {p.activeTab === "audit" && p.totalAuditItems > 0 && (
+        <MasterPagination
+          page={p.auditPage}
+          totalPages={p.totalAuditPages}
+          totalItems={p.totalAuditItems}
+          perPage={p.PER_PAGE}
+          onPageChange={p.setAuditPage}
         />
       )}
 
