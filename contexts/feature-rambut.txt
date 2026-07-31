@@ -4154,14 +4154,16 @@ export function useRambut() {
       mutationFn: async (payload: ExecuteSetorPayload) => {
         try {
           const currentUser = pb.authStore.record || pb.authStore.model;
-          const isAdmin = currentUser?.role === "admin";
+          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
+          const isAdmin =
+            currentUser?.role === "admin" ||
+            currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
           if (!isAdmin) {
             if (periode.status_periode !== "aktif") {
               throw new Error(
@@ -4243,14 +4245,15 @@ export function useRambut() {
       mutationFn: async (payload: DispensasiPayload) => {
         try {
           const currentUser = pb.authStore.record || pb.authStore.model;
-          const isAdmin = currentUser?.role === "admin";
+          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
+          const isAdmin =
+            currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
           if (!isAdmin) {
             if (periode.status_periode !== "aktif") {
               throw new Error(
@@ -4442,7 +4445,11 @@ export type RambutModalType =
 export function useRambutPage() {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
-  const isAdmin = currentUser?.role === "admin";
+
+  // 🛡️ Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
+  const isAdmin =
+    currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+
   const { showSuccess, showError } = useToast();
 
   const [activeTab, setActiveTab] = useState<RambutTabType>("queue");
@@ -4531,7 +4538,7 @@ export function useRambutPage() {
       )
     : false;
 
-  // Admin selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
+  // Admin & Admin Rambut selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
   const canExecute =
     isAdmin ||
     (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
@@ -4629,7 +4636,6 @@ export function useRambutPage() {
   const { data: historyData = [], isLoading: isHistoryLoading } =
     useRiwayatSetorList(currentPeriodeId);
 
-  // 🎯 FIX 1: FILTER TANGGAL AUDIT BERBASIS WAKTU LOKAL (Mencegah Shift Jam UTC)
   const availableHijriDateOptions = useMemo(() => {
     if (!historyData) return [];
     const map = new Map<string, string>();
@@ -4750,7 +4756,6 @@ export function useRambutPage() {
     );
   };
 
-  // 🎯 FIX 2: SINKRONISASI PAYLOAD LENGKAP MUTASI DISPENSASI (Agar Tercatat di Audit Log)
   const handleConfirmDispensasi = (catatan: string) => {
     if (!selectedDispensasiItem || !currentPeriodeId) return;
     dispensasiMutation.mutate(
@@ -4839,6 +4844,7 @@ export function useRambutPage() {
 
   return {
     isAdmin,
+    canExecute,
     currentUser,
     activeTab,
     setActiveTab,
@@ -4875,10 +4881,8 @@ export function useRambutPage() {
     filteredAuditItems,
     isHistoryLoading,
     availableHijriDateOptions,
-    // Unified Modal Registry State
     activeModal,
     setActiveModal,
-    // Data-driven states
     selectedExecuteItem,
     setSelectedExecuteItem,
     selectedDispensasiItem,
@@ -4896,7 +4900,6 @@ export function useRambutPage() {
     totalAuditItems,
     totalAuditPages,
     paginatedAuditItems,
-    // Callbacks
     refetchAll: () => {
       refetchQueue();
       refetchPengurus();
@@ -5005,38 +5008,51 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   }, [isOpen, isProcessing, focusInput]);
 
   const handleProcessScan = async (codeToProcess: string) => {
-  const queryCode = codeToProcess.trim();
-  if (!queryCode || isProcessing) return;
+    const queryCode = codeToProcess.trim();
+    if (!queryCode || isProcessing) return;
 
-  setIsProcessing(true);
-  setBarcodeInput("");
+    setIsProcessing(true);
+    setBarcodeInput("");
 
-  try {
-    const currentUser = pb.authStore.record || pb.authStore.model;
-    const isAdmin = currentUser?.role === "admin";
+    try {
+      const currentUser = pb.authStore.record || pb.authStore.model;
+      // 🛡️ Buka proteksi POS jika role adalah admin ATAU admin_rambut
+      const isAdmin =
+        currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
-    if (!periodeId) {
-      throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
-    }
-
-    const periode = await pb
-      .collection("periode_rambut")
-      .getOne<PeriodeRambutResponse>(periodeId);
-
-    if (!periode) {
-      throw new Error("Data periode tidak ditemukan di sistem.");
-    }
-
-    // 🛡️ Buka proteksi POS jika role adalah ADMIN
-    if (!isAdmin) {
-      if (periode.status_periode !== "aktif") {
-        throw new Error(`POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
+      if (!periodeId) {
+        throw new Error(
+          "Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.",
+        );
       }
 
-      if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
-        throw new Error(`POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
+      const periode = await pb
+        .collection("periode_rambut")
+        .getOne<PeriodeRambutResponse>(periodeId);
+
+      if (!periode) {
+        throw new Error("Data periode tidak ditemukan di sistem.");
       }
-    }
+
+      if (!isAdmin) {
+        if (periode.status_periode !== "aktif") {
+          throw new Error(
+            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+          );
+        }
+
+        if (
+          !isDateWithinRange(
+            new Date(),
+            periode.tanggal_mulai,
+            periode.tanggal_selesai,
+          )
+        ) {
+          throw new Error(
+            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+          );
+        }
+      }
 
       // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
       const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
@@ -5048,7 +5064,9 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         });
 
       if (!matchRecord) {
-        throw new Error(`ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`);
+        throw new Error(
+          `ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`,
+        );
       }
 
       const santriData = matchRecord.expand?.santri;
@@ -5056,17 +5074,23 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       const idPps = matchRecord.id_pps;
 
       if (matchRecord.status_setor === "sudah") {
-        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`);
+        throw new Error(
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`,
+        );
       }
 
       if (matchRecord.status_setor === "dispensasi") {
-        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`);
+        throw new Error(
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`,
+        );
       }
 
       const nowIso = new Date().toISOString();
       const detailWis = dapatkanDetailWis();
       const currentUserId = currentUser?.id || "";
-      const penerimaNama = (currentUser?.username || "PETUGAS TIBKAM").toUpperCase();
+      const penerimaNama = (
+        currentUser?.username || "PETUGAS TIBKAM"
+      ).toUpperCase();
 
       // Update status wajib_setor_rambut
       await pb.collection("wajib_setor_rambut").update(matchRecord.id, {
@@ -5088,8 +5112,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const kelasVal = santriData?.kelas ? `${santriData.kelas}` : "";
       const tingkatanVal = santriData?.tingkatan || "";
-      const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
-      const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
+      const kelasTingkatanStr = [kelasVal, tingkatanVal]
+        .filter(Boolean)
+        .join(" ");
+      const domisiliStr =
+        santriData?.domisili || santriData?.status_domisili || "-";
       const alamatStr = getAlamatStr(santriData);
 
       const hijriData = await fetchHijriByDate(nowIso);
@@ -5136,11 +5163,14 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         ...prev.slice(0, 9),
       ]);
 
-      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({
+        queryKey: ["rambut-wajib-setor-list-full"],
+      });
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
-      const errMsg = parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
+      const errMsg =
+        parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
 
       setLastResult({
         status: "error",
@@ -5183,7 +5213,7 @@ export * from "./components/RambutStats";
 
 ### `src/features/rambut/pages/Rambut.tsx`
 ```tsx
-// src/pages/Rambut.tsx
+// src/features/rambut/pages/Rambut.tsx
 import React from "react";
 import { useRambutPage } from "../hooks/useRambutPage";
 
@@ -5204,8 +5234,8 @@ export default function RambutPage() {
         activePeriode={p.activePeriode || null}
         selectedPeriode={p.selectedPeriode}
         isAdmin={p.isAdmin}
-        onOpenCreatePeriode={() => p.setActiveModal("CREATE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
-        onOpenManagePeriode={() => p.setActiveModal("MANAGE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
+        onOpenCreatePeriode={() => p.setActiveModal("CREATE_PERIODE")}
+        onOpenManagePeriode={() => p.setActiveModal("MANAGE_PERIODE")}
       />
 
       {/* 2. Stats */}
@@ -5243,8 +5273,8 @@ export default function RambutPage() {
         availableHijriDateOptions={p.availableHijriDateOptions}
         onRefresh={p.refetchAll}
         isLoading={p.isQueueLoading || p.isPengurusLoading}
-        onOpenPosModal={() => p.setActiveModal("POS")} // ✅ MODAL REGISTRY PATTERN
-        onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")} // ✅ MODAL REGISTRY PATTERN
+        onOpenPosModal={() => p.setActiveModal("POS")}
+        onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")}
         onOpenGenerateQueue={p.handleOpenGenerateQueue}
       />
 
@@ -5262,9 +5292,7 @@ export default function RambutPage() {
         isAuditLoading={p.isHistoryLoading}
         onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
         onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
-        canExecute={
-          p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"
-        }
+        canExecute={p.canExecute} // 👈 Dihubungkan langsung dari useRambutPage
       />
 
       {/* 5. Pagination Kontrol */}

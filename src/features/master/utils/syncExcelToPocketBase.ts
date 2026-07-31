@@ -14,24 +14,20 @@ const hasChanges = (excelRow: ExcelSantriRow, dbRecord: MasterResponse): boolean
 
     const excelVal = excelRow[key as keyof ExcelSantriRow];
     const dbVal = dbRecord[key as keyof MasterResponse];
-    
+
     const normalize = (val: any) => (val === undefined || val === null ? "" : String(val).trim());
 
     if (normalize(excelVal) !== normalize(dbVal)) {
-      // 🕵️‍♂️ SCOPE MATA-MATA (X-RAY SCANNER):
-      // Ini akan mencetak langsung di Console browser kamu kolom mana yang tidak sama!
-      console.warn(
-        `🚨 [DATA BERBEDA LOG] ID PPS: ${excelRow.id_pps} | Kolom: "${key}" \n` +
-        `   -> Di Excel terbaca : "${normalize(excelVal)}"\n` +
-        `   -> Di PocketBase    : "${normalize(dbVal)}"`
-      );
-      return true; 
+      return true;
     }
   }
-  return false; 
+  return false;
 };
 
-export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promise<{
+export const syncExcelToPocketBase = async (
+  excelData: ExcelSantriRow[],
+  onProgress?: (processed: number, total: number) => void // 👈 Callback Progress
+): Promise<{
   inserted: number;
   updated: number;
   softDeleted: number;
@@ -46,7 +42,10 @@ export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promis
     if (rec.id_pps) dbMap.set(rec.id_pps.trim(), rec);
   });
 
-  const BATCH_LIMIT = 200; 
+  const totalItemsToProcess = excelData.length + dbMap.size;
+  let processedCounter = 0;
+
+  const BATCH_LIMIT = 150;
   let batch = pb.createBatch();
   let batchCount = 0;
 
@@ -61,6 +60,9 @@ export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promis
   const processedExcelIds = new Set<string>();
 
   for (const excelRow of excelData) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
     if (!excelRow.id_pps) continue;
 
     const id_pps_key = excelRow.id_pps.trim();
@@ -82,8 +84,8 @@ export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promis
         batch.collection("master").update(matchDbRecord.id, {
           ...excelRow,
           status_aktif: true,
-          alasan_update_status: matchDbRecord.status_aktif 
-            ? "Pembaruan informasi data berkas induk" 
+          alasan_update_status: matchDbRecord.status_aktif
+            ? "Pembaruan informasi data berkas induk"
             : "Santri aktif kembali melalui import berkas terbaru",
         });
         report.updated++;
@@ -96,6 +98,9 @@ export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promis
   }
 
   for (const [id_pps, dbRecord] of dbMap.entries()) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
     if (!processedExcelIds.has(id_pps) && dbRecord.status_aktif) {
       batch.collection("master").update(dbRecord.id, {
         status_aktif: false,
@@ -110,6 +115,8 @@ export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promis
   if (batchCount > 0) {
     await batch.send();
   }
+
+  if (onProgress) onProgress(totalItemsToProcess, totalItemsToProcess);
 
   return report;
 };

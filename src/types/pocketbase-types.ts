@@ -206,6 +206,7 @@ export const UsersRoleOptions = {
 	"admin": "admin",
 	"umum": "umum",
 	"rambut": "rambut",
+	"admin_rambut": "admin_rambut",
 } as const
 export type UsersRoleOptions = typeof UsersRoleOptions[keyof typeof UsersRoleOptions]
 export type UsersRecord = {

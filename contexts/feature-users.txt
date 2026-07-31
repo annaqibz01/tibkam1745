@@ -17,7 +17,7 @@
 
 ### `src/features/users/components/CreateUserModal.tsx`
 ```tsx
-// src/components/users/CreateUserModal.tsx
+// src/features/users/components/CreateUserModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -34,9 +34,10 @@ import {
   UserPlus,
   AlertCircle,
   Check,
+  Lock,
+  ShieldAlert,
 } from "lucide-react";
 
-// 1. Skema Validasi Zod
 const createUserSchema = z
   .object({
     name: z.string().trim().min(1, "Nama lengkap wajib diisi."),
@@ -58,6 +59,7 @@ interface CreateUserModalProps {
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
   createUser: ReturnType<typeof useUsers>["createUser"];
+  isAdminRambut?: boolean;
 }
 
 export default function CreateUserModal({
@@ -66,6 +68,7 @@ export default function CreateUserModal({
   onSuccess,
   onError,
   createUser,
+  isAdminRambut = false,
 }: CreateUserModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -76,25 +79,24 @@ export default function CreateUserModal({
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 2. React Hook Form
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       name: "",
       username: "",
-      role: "umum",
+      role: isAdminRambut ? "rambut" : "umum",
       password: "",
       passwordConfirm: "",
     },
   });
 
-  // Menutup dropdown jika klik di luar area
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -108,15 +110,22 @@ export default function CreateUserModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset form & state saat modal ditutup
   useEffect(() => {
     if (!isOpen) {
-      reset();
+      reset({
+        name: "",
+        username: "",
+        role: isAdminRambut ? "rambut" : "umum",
+        password: "",
+        passwordConfirm: "",
+      });
       setShowPassword(false);
       setShowPasswordConfirm(false);
       setServerError(null);
+    } else if (isAdminRambut) {
+      setValue("role", "rambut");
     }
-  }, [isOpen, reset]);
+  }, [isOpen, reset, isAdminRambut, setValue]);
 
   const onSubmit = (data: CreateUserFormValues) => {
     setServerError(null);
@@ -126,12 +135,15 @@ export default function CreateUserModal({
       return;
     }
 
+    // Fail-safe: Pastikan role tetap 'rambut' jika dibuat oleh admin_rambut
+    const finalRole = isAdminRambut ? "rambut" : (data.role as UsersRoleOptions);
+
     createUser.mutate(
       {
         name: data.name,
         username: data.username,
-        email: `${data.username}@tibkam.local`, // Tetap menggunakan format username
-        role: data.role as UsersRoleOptions,
+        email: `${data.username}@tibkam.local`,
+        role: finalRole,
         password: data.password,
         passwordConfirm: data.passwordConfirm,
         status: true,
@@ -159,6 +171,21 @@ export default function CreateUserModal({
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4 px-6 pb-6 pt-2"
       >
+        {/* Banner Informasi Khusus Admin Rambut */}
+        {isAdminRambut && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-2.5 text-amber-300 text-xs leading-relaxed">
+            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Akses Terbatas:</span> Sebagai{" "}
+              <code className="text-amber-200 bg-amber-500/20 px-1 py-0.5 rounded font-mono">
+                admin_rambut
+              </code>
+              , Anda hanya diperbolehkan menambahkan akun petugas ber-role{" "}
+              <span className="font-bold underline">rambut</span>.
+            </div>
+          </div>
+        )}
+
         {/* Nama Lengkap */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">
@@ -203,60 +230,69 @@ export default function CreateUserModal({
           )}
         </div>
 
-        {/* Custom Role Dropdown dengan React Hook Form */}
+        {/* Custom Role Dropdown */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">
             Role
           </label>
-          <Controller
-            name="role"
-            control={control} // Ambil `control` dari `useForm()`
-            render={({ field }) => (
-              <div ref={roleDropdownRef} className="relative">
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => setIsRoleOpen(!isRoleOpen)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 bg-gray-800 border rounded-xl text-white text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                    errors.role
-                      ? "border-red-500 focus:ring-2 focus:ring-red-500/50"
-                      : "border-gray-700 focus:ring-2 focus:ring-indigo-500/50 hover:border-gray-600"
-                  }`}
-                >
-                  <span className="capitalize">{field.value}</span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
-                      isRoleOpen ? "rotate-180" : ""
+          {isAdminRambut ? (
+            <div className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-800/50 border border-gray-700/80 rounded-xl text-amber-300 text-sm font-mono select-none cursor-not-allowed">
+              <span className="capitalize font-bold">rambut (Petugas Layanan)</span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                <Lock className="w-3 h-3 text-amber-400" /> Terkunci
+              </span>
+            </div>
+          ) : (
+            <Controller
+              name="role"
+              control={control}
+              render={({ field }) => (
+                <div ref={roleDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setIsRoleOpen(!isRoleOpen)}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 bg-gray-800 border rounded-xl text-white text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      errors.role
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/50"
+                        : "border-gray-700 focus:ring-2 focus:ring-indigo-500/50 hover:border-gray-600"
                     }`}
-                  />
-                </button>
+                  >
+                    <span className="capitalize">{field.value}</span>
+                    <ChevronDown
+                      className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                        isRoleOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
 
-                {isRoleOpen && (
-                  <ul className="absolute z-20 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
-                    {ROLE_OPTIONS.map((r) => (
-                      <li
-                        key={r}
-                        onClick={() => {
-                          field.onChange(r); // Update nilai ke React Hook Form
-                          setIsRoleOpen(false);
-                        }}
-                        className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                          field.value === r
-                            ? "bg-indigo-600/20 text-indigo-400 font-medium"
-                            : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                        }`}
-                      >
-                        <span className="capitalize">{r}</span>
-                        {field.value === r && (
-                          <Check className="w-4 h-4 text-indigo-400" />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          />
+                  {isRoleOpen && (
+                    <ul className="absolute z-20 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+                      {ROLE_OPTIONS.map((r) => (
+                        <li
+                          key={r}
+                          onClick={() => {
+                            field.onChange(r);
+                            setIsRoleOpen(false);
+                          }}
+                          className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                            field.value === r
+                              ? "bg-indigo-600/20 text-indigo-400 font-medium"
+                              : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                          }`}
+                        >
+                          <span className="capitalize">{r}</span>
+                          {field.value === r && (
+                            <Check className="w-4 h-4 text-indigo-400" />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            />
+          )}
           {errors.role && (
             <p className="mt-1 text-xs text-red-400">{errors.role.message}</p>
           )}
@@ -1340,10 +1376,10 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
 ### `src/features/users/components/UsersToolbar.tsx`
 ```tsx
-// src/components/users/UsersToolbar.tsx
+// src/features/users/components/UsersToolbar.tsx
 import React, { useState, useRef, useEffect } from "react";
-import { Search, ChevronDown, Check, X, Shield, Activity } from "lucide-react";
-import { ROLE_FILTER_OPTIONS, STATUS_OPTIONS } from "../../../utils/userHelpers";
+import { Search, ChevronDown, Check, X, Shield, Activity, Lock } from "lucide-react";
+import { ROLE_FILTER_OPTIONS, STATUS_OPTIONS } from "@/utils/userHelpers";
 
 interface UsersToolbarProps {
   searchTerm: string;
@@ -1352,6 +1388,7 @@ interface UsersToolbarProps {
   onRoleFilterChange: (value: string) => void;
   statusFilter: string;
   onStatusFilterChange: (value: string) => void;
+  isAdminRambut?: boolean;
 }
 
 export const UsersToolbar: React.FC<UsersToolbarProps> = ({
@@ -1361,6 +1398,7 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
   onRoleFilterChange,
   statusFilter,
   onStatusFilterChange,
+  isAdminRambut = false,
 }) => {
   const [isRoleDropdownOpen, setIsRoleDropdownOpen] = useState(false);
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -1368,7 +1406,6 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
   const roleRef = useRef<HTMLDivElement>(null);
   const statusRef = useRef<HTMLDivElement>(null);
 
-  // ✨ Auto Close Dropdown jika klik di luar area
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (roleRef.current && !roleRef.current.contains(event.target as Node)) {
@@ -1382,13 +1419,12 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Penanda Status Filter Aktif
   const isRoleActive = roleFilter !== "Semua Role";
   const isStatusActive = statusFilter !== "Semua Status";
 
   return (
     <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-      {/* 1. Input Pencarian dengan Clear Button & Glassmorphism */}
+      {/* 1. Input Pencarian */}
       <div className="relative flex-1 group">
         <div className="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
           <Search className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1416,61 +1452,73 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
       <div className="flex items-center gap-3">
         {/* Dropdown: Role Filter */}
         <div ref={roleRef} className="relative flex-1 sm:flex-initial">
-          <button
-            type="button"
-            onClick={() => {
-              setIsRoleDropdownOpen(!isRoleDropdownOpen);
-              setIsStatusDropdownOpen(false);
-            }}
-            className={`w-full sm:w-44 flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-sm transition-all duration-200 shadow-lg ${
-              isRoleDropdownOpen || isRoleActive
-                ? "border-indigo-500/50 text-white ring-2 ring-indigo-500/20"
-                : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2 truncate">
-              <Shield
-                className={`w-4 h-4 flex-shrink-0 ${
-                  isRoleActive ? "text-indigo-400" : "text-gray-500"
-                }`}
-              />
-              <span className="capitalize truncate font-medium">{roleFilter}</span>
-            </div>
-            <div className="flex items-center gap-1.5 ml-2">
-              {isRoleActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              )}
-              <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
-                  isRoleDropdownOpen ? "rotate-180 text-indigo-400" : ""
-                }`}
-              />
-            </div>
-          </button>
-
-          {isRoleDropdownOpen && (
-            <ul className="absolute right-0 z-30 mt-2 w-full sm:w-48 bg-gray-900/95 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
-                Filter Role
+          {isAdminRambut ? (
+            <div className="w-full sm:w-44 flex items-center justify-between px-4 py-3 bg-gray-900/40 border border-amber-500/30 rounded-2xl text-sm text-amber-300 font-mono shadow-lg select-none cursor-not-allowed">
+              <div className="flex items-center gap-2 truncate">
+                <Shield className="w-4 h-4 flex-shrink-0 text-amber-400" />
+                <span className="capitalize truncate font-bold">rambut</span>
               </div>
-              {ROLE_FILTER_OPTIONS.map((r) => (
-                <li
-                  key={r}
-                  onClick={() => {
-                    onRoleFilterChange(r);
-                    setIsRoleDropdownOpen(false);
-                  }}
-                  className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium cursor-pointer capitalize transition-colors ${
-                    roleFilter === r
-                      ? "bg-indigo-600/15 text-indigo-400 font-semibold"
-                      : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
-                  }`}
-                >
-                  <span>{r}</span>
-                  {roleFilter === r && <Check className="w-4 h-4 text-indigo-400" />}
-                </li>
-              ))}
-            </ul>
+              <Lock className="w-3.5 h-3.5 text-amber-400 flex-shrink-0 ml-1" />
+            </div>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsRoleDropdownOpen(!isRoleDropdownOpen);
+                  setIsStatusDropdownOpen(false);
+                }}
+                className={`w-full sm:w-44 flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-sm transition-all duration-200 shadow-lg ${
+                  isRoleDropdownOpen || isRoleActive
+                    ? "border-indigo-500/50 text-white ring-2 ring-indigo-500/20"
+                    : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+                }`}
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Shield
+                    className={`w-4 h-4 flex-shrink-0 ${
+                      isRoleActive ? "text-indigo-400" : "text-gray-500"
+                    }`}
+                  />
+                  <span className="capitalize truncate font-medium">{roleFilter}</span>
+                </div>
+                <div className="flex items-center gap-1.5 ml-2">
+                  {isRoleActive && (
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+                  )}
+                  <ChevronDown
+                    className={`w-4 h-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
+                      isRoleDropdownOpen ? "rotate-180 text-indigo-400" : ""
+                    }`}
+                  />
+                </div>
+              </button>
+
+              {isRoleDropdownOpen && (
+                <ul className="absolute right-0 z-30 mt-2 w-full sm:w-48 bg-gray-900/95 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl overflow-hidden py-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
+                  <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
+                    Filter Role
+                  </div>
+                  {ROLE_FILTER_OPTIONS.map((r) => (
+                    <li
+                      key={r}
+                      onClick={() => {
+                        onRoleFilterChange(r);
+                        setIsRoleDropdownOpen(false);
+                      }}
+                      className={`flex items-center justify-between px-4 py-2.5 text-xs font-medium cursor-pointer capitalize transition-colors ${
+                        roleFilter === r
+                          ? "bg-indigo-600/15 text-indigo-400 font-semibold"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span>{r}</span>
+                      {roleFilter === r && <Check className="w-4 h-4 text-indigo-400" />}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </>
           )}
         </div>
 
@@ -1541,9 +1589,10 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
 
 ### `src/features/users/hooks/useUsers.ts`
 ```typescript
-// src/hooks/useUsers.ts
+// src/features/users/hooks/useUsers.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { pb } from "@/lib/pocketbase";
+import { useAuth } from "@/features/auth";
 import { parsePocketBaseError } from "@/utils/errorHandler";
 import type { UsersResponse, UsersRoleOptions } from "@/types/pocketbase-types";
 
@@ -1722,24 +1771,46 @@ export function useDeleteUser() {
   });
 }
 
-export function useGetUsers(options?: { enabled?: boolean }) {
+export function useGetUsers(options?: { enabled?: boolean; filter?: string }) {
   const enabled = options?.enabled !== false;
+  const filter = options?.filter || "";
 
   return useQuery<UsersResponse[]>({
-    queryKey: ["users"],
-    queryFn: () => pb.collection("users").getFullList<UsersResponse>({ sort: "-created" }),
+    queryKey: ["users", filter],
+    queryFn: () =>
+      pb.collection("users").getFullList<UsersResponse>({
+        sort: "-created",
+        filter: filter || undefined,
+      }),
     enabled,
   });
 }
 
 export function useUsers() {
-  const getUsers = useGetUsers();
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdminRambut = currentUser?.role === "admin_rambut";
+
+  // 🛡️ Jika login sebagai admin_rambut, paksa query PocketBase hanya mengambil role = "rambut"
+  const getUsers = useGetUsers({
+    filter: isAdminRambut ? 'role = "rambut"' : "",
+  });
+
   const updateUser = useUpdateUser();
   const createUser = useCreateUser();
   const adminUpdateUser = useAdminUpdateUser();
   const deleteUser = useDeleteUser();
 
-  return { getAvatarUrl, getUsers, updateUser, createUser, adminUpdateUser, deleteUser };
+  return {
+    getAvatarUrl,
+    getUsers,
+    updateUser,
+    createUser,
+    adminUpdateUser,
+    deleteUser,
+    currentUser,
+    isAdminRambut,
+  };
 }
 ```
 
@@ -1752,7 +1823,7 @@ export { getAvatarUrl, useUsers } from "./hooks/useUsers";
 
 ### `src/features/users/pages/Users.tsx`
 ```tsx
-// src/pages/Users.tsx
+// src/features/users/pages/Users.tsx
 import { useState, useMemo } from "react";
 import { useUsers } from "../hooks/useUsers";
 import { useToast } from "@/context/ToastContext";
@@ -1772,25 +1843,21 @@ import DeleteUserModal from "../components/DeleteUserModal";
 import { Loader2, AlertCircle } from "lucide-react";
 
 const UsersPage = () => {
-  const { getUsers, createUser, adminUpdateUser, deleteUser, getAvatarUrl } = useUsers();
+  const { getUsers, createUser, adminUpdateUser, deleteUser, getAvatarUrl, isAdminRambut } = useUsers();
   const { data: users, isLoading, isError, error } = getUsers;
 
-  // ✨ Global Toast Trigger
   const { showSuccess, showError } = useToast();
 
-  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("Semua Role");
+  const [roleFilter, setRoleFilter] = useState<string>(isAdminRambut ? "rambut" : "Semua Role");
   const [statusFilter, setStatusFilter] = useState<string>("Semua Status");
 
-  // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UsersResponse | null>(null);
 
-  // Filtered Users Logic
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter((u) => {
@@ -1799,7 +1866,8 @@ const UsersPage = () => {
         u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.username?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchRole = roleFilter === "Semua Role" || u.role === roleFilter;
+      const matchRole =
+        isAdminRambut ? u.role === "rambut" : roleFilter === "Semua Role" || u.role === roleFilter;
 
       const matchStatus =
         statusFilter === "Semua Status" ||
@@ -1808,21 +1876,17 @@ const UsersPage = () => {
 
       return matchSearch && matchRole && matchStatus;
     });
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, roleFilter, statusFilter, isAdminRambut]);
 
-  // Statistics
   const stats = useMemo(() => {
     if (!users) return { total: 0, active: 0, admin: 0 };
     return {
       total: users.length,
       active: users.filter((u) => u.status).length,
-      admin: users.filter((u) => u.role === "admin").length,
+      admin: users.filter((u) => u.role === "admin" || u.role === "admin_rambut").length,
     };
   }, [users]);
 
-  // Modal Handlers
-  // ✨ PERBAIKAN: Hapus setSelectedUser(null) dari closeModals.
-  // Biarkan selectedUser tetap berisi data user terakhir agar animasi penutupan modal berjalan sempurna!
   const closeModals = () => {
     setShowCreateModal(false);
     setShowEditModal(false);
@@ -1862,10 +1926,11 @@ const UsersPage = () => {
       <UsersToolbar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        roleFilter={roleFilter}
+        roleFilter={isAdminRambut ? "rambut" : roleFilter}
         onRoleFilterChange={setRoleFilter}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        isAdminRambut={isAdminRambut}
       />
 
       {/* 4. Desktop Users Table */}
@@ -1886,9 +1951,7 @@ const UsersPage = () => {
         }}
       />
 
-      {/* ════════ 5. MODALS WITH SMOOTH EXIT TRANSITION ════════ */}
-
-      {/* Modal 1: Create User */}
+      {/* 5. Modals */}
       <CreateUserModal
         isOpen={showCreateModal}
         onClose={closeModals}
@@ -1899,9 +1962,9 @@ const UsersPage = () => {
         }}
         onError={(msg) => showError(msg, "Gagal Membuat Pengguna")}
         createUser={createUser}
+        isAdminRambut={isAdminRambut}
       />
 
-      {/* Modal 2: Edit User */}
       {selectedUser && (
         <EditUserModal
           isOpen={showEditModal}
@@ -1918,7 +1981,6 @@ const UsersPage = () => {
         />
       )}
 
-      {/* Modal 3: Reset Password */}
       {selectedUser && (
         <ResetPasswordModal
           isOpen={showResetPasswordModal}
@@ -1934,7 +1996,6 @@ const UsersPage = () => {
         />
       )}
 
-      {/* Modal 4: Delete User */}
       {selectedUser && (
         <DeleteUserModal
           isOpen={showDeleteModal}

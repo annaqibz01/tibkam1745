@@ -1,7 +1,8 @@
-// src/hooks/useUsers.ts
+// src/features/users/hooks/useUsers.ts
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { pb } from "@/lib/pocketbase";                    
-import { parsePocketBaseError } from "@/utils/errorHandler"; 
+import { pb } from "@/lib/pocketbase";
+import { useAuth } from "@/features/auth";
+import { parsePocketBaseError } from "@/utils/errorHandler";
 import type { UsersResponse, UsersRoleOptions } from "@/types/pocketbase-types";
 
 export interface UpdateUserData {
@@ -179,22 +180,44 @@ export function useDeleteUser() {
   });
 }
 
-export function useGetUsers(options?: { enabled?: boolean }) {
+export function useGetUsers(options?: { enabled?: boolean; filter?: string }) {
   const enabled = options?.enabled !== false;
+  const filter = options?.filter || "";
 
   return useQuery<UsersResponse[]>({
-    queryKey: ["users"],
-    queryFn: () => pb.collection("users").getFullList<UsersResponse>({ sort: "-created" }),
+    queryKey: ["users", filter],
+    queryFn: () =>
+      pb.collection("users").getFullList<UsersResponse>({
+        sort: "-created",
+        filter: filter || undefined,
+      }),
     enabled,
   });
 }
 
 export function useUsers() {
-  const getUsers = useGetUsers();
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdminRambut = currentUser?.role === "admin_rambut";
+
+  // 🛡️ Jika login sebagai admin_rambut, paksa query PocketBase hanya mengambil role = "rambut"
+  const getUsers = useGetUsers({
+    filter: isAdminRambut ? 'role = "rambut"' : "",
+  });
+
   const updateUser = useUpdateUser();
   const createUser = useCreateUser();
   const adminUpdateUser = useAdminUpdateUser();
   const deleteUser = useDeleteUser();
 
-  return { getAvatarUrl, getUsers, updateUser, createUser, adminUpdateUser, deleteUser };
+  return {
+    getAvatarUrl,
+    getUsers,
+    updateUser,
+    createUser,
+    adminUpdateUser,
+    deleteUser,
+    currentUser,
+    isAdminRambut,
+  };
 }

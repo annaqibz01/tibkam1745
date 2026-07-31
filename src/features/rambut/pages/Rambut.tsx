@@ -1,4 +1,4 @@
-// src/pages/Rambut.tsx
+// src/features/rambut/pages/Rambut.tsx
 import React from "react";
 import { useRambutPage } from "../hooks/useRambutPage";
 
@@ -19,8 +19,8 @@ export default function RambutPage() {
         activePeriode={p.activePeriode || null}
         selectedPeriode={p.selectedPeriode}
         isAdmin={p.isAdmin}
-        onOpenCreatePeriode={() => p.setActiveModal("CREATE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
-        onOpenManagePeriode={() => p.setActiveModal("MANAGE_PERIODE")} // ✅ MODAL REGISTRY PATTERN
+        onOpenCreatePeriode={() => p.setActiveModal("CREATE_PERIODE")}
+        onOpenManagePeriode={() => p.setActiveModal("MANAGE_PERIODE")}
       />
 
       {/* 2. Stats */}
@@ -58,8 +58,8 @@ export default function RambutPage() {
         availableHijriDateOptions={p.availableHijriDateOptions}
         onRefresh={p.refetchAll}
         isLoading={p.isQueueLoading || p.isPengurusLoading}
-        onOpenPosModal={() => p.setActiveModal("POS")} // ✅ MODAL REGISTRY PATTERN
-        onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")} // ✅ MODAL REGISTRY PATTERN
+        onOpenPosModal={() => p.setActiveModal("POS")}
+        onOpenAddPengurusModal={() => p.setActiveModal("IMPORT_PENGURUS")}
         onOpenGenerateQueue={p.handleOpenGenerateQueue}
       />
 
@@ -77,9 +77,7 @@ export default function RambutPage() {
         isAuditLoading={p.isHistoryLoading}
         onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
         onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
-        canExecute={
-          p.currentUser?.role === "admin" || p.currentUser?.role === "rambut"
-        }
+        canExecute={p.canExecute} // 👈 Dihubungkan langsung dari useRambutPage
       />
 
       {/* 5. Pagination Kontrol */}

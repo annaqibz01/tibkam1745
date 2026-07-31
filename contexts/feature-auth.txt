@@ -75,34 +75,28 @@ type AuthResult = { success: boolean; error?: string };
 // Fungsi penanganan error asinkron khusus untuk alur login
 async function extractLoginErrorMessage(error: unknown, username: string): Promise<string> {
   if (error instanceof ClientResponseError) {
-    // 1. Jika server mati atau masalah jaringan
     if (error.status === 0) {
       return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
     }
 
-    // 2. Jika kredensial salah (Username/Password tidak cocok)
     if (error.status === 400) {
       try {
-        // Cari data user secara anonim berdasarkan input username/email
-        // Pastikan API Rule "View" atau "List" koleksi users di PocketBase mengizinkan pencarian field 'role'
         const userCheck = await pb.collection('users').getFirstListItem(
           `username = "${username}" || email = "${username}"`,
-          { fields: 'role' } // Optimasi: Hanya ambil field role saja
+          { fields: 'role' }
         );
 
-        // Kondisi pesan error berdasarkan tingkat hierarki role
         if (userCheck.role === 'super_admin' || userCheck.role === 'superadmin') {
           return 'Password salah. Jika Anda lupa password Utama, silakan hubungi Tim Pengembang Sistem.';
         }
 
-        if (userCheck.role === 'admin') {
+        // 🛡️ Tambahkan 'admin_rambut' di sini
+        if (userCheck.role === 'admin' || userCheck.role === 'admin_rambut') {
           return 'Password salah. Jika Anda lupa password Admin, silakan hubungi Super Admin.';
         }
 
-        // Default untuk user biasa
         return 'Username atau password salah. Jika Anda lupa, silakan hubungi Admin.';
       } catch {
-        // Fallback jika username memang tidak terdaftar atau API Rule PocketBase dikunci total
         return 'Username atau password salah. Jika Anda lupa kredensial, silakan hubungi Admin.';
       }
     }

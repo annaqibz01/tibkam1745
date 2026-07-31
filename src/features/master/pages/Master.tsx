@@ -1,54 +1,105 @@
-// src/pages/Master.tsx
-import { useState } from "react";
-import { useMaster } from "../hooks/useMaster";
-import {
-  syncExcelToPocketBase,
-  type ExcelSantriRow,
-} from "@/utils/syncExcelToPocketBase";
-import * as XLSX from "xlsx";
+// src/features/master/pages/Master.tsx
+import { useState, useEffect } from "react";
+import { useMaster, useMasterFilterOptions } from "../hooks/useMaster";
+import { useAuth } from "@/features/auth";
 import MasterHeader from "../components/MasterHeader";
 import SyncReportBanner from "../components/SyncReportBanner";
-import ImportErrorBanner from "../components/ImportErrorBanner";
 import MasterToolbar from "../components/MasterToolbar";
 import MasterTable from "../components/MasterTable";
 import MasterPagination from "../components/MasterPagination";
+import { ImportMasterModal } from "../components/ImportMasterModal";
+import { SantriDetailModal } from "../components/SantriDetailModal";
+import type { UsersResponse, MasterResponse } from "@/types/pocketbase-types";
+
 const PER_PAGE = 15;
 
 export default function MasterPage() {
-  // ---- State ----
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdmin = Boolean(currentUser?.role?.startsWith("admin"));
+
+  // State Filters
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "aktif" | "nonaktif"
-  >("aktif");
-  const [isImporting, setIsImporting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "aktif" | "nonaktif">("aktif");
+  const [tingkatanFilter, setTingkatanFilter] = useState("all");
+  const [kelasFilter, setKelasFilter] = useState("all");
+  const [statusDomisiliFilter, setStatusDomisiliFilter] = useState("all");
+  const [domisiliFilter, setDomisiliFilter] = useState("all");
 
-  // State Laporan Sukses & Laporan Eror Kustom
+  // Modals
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedSantriDetail, setSelectedSantriDetail] = useState<MasterResponse | null>(null);
+
   const [syncReport, setSyncReport] = useState<{
     inserted: number;
     updated: number;
     softDeleted: number;
     skipped: number;
   } | null>(null);
-  const [importError, setImportError] = useState<string | null>(null); // ✨ State baru penampung pesan eror
 
-  // ---- Hooks ----
-  const { useMasterList, useToggleStatusMaster } = useMaster();
+  const { useMasterList } = useMaster();
+
+  // 🔄 KIRIM STATE FILTER AKTIF KE HOOK OPTIONS
+  const { data: dynamicFilterOptions } = useMasterFilterOptions({
+    statusFilter,
+    tingkatanFilter,
+    kelasFilter,
+    statusDomisiliFilter,
+    domisiliFilter,
+  });
+
+  // 🛡️ AUTO-RESET: Jika pilihan filter saat ini tidak ada di opsi baru yang tersedia, reset ke "all"
+  useEffect(() => {
+    if (
+      domisiliFilter !== "all" &&
+      dynamicFilterOptions?.domisiliOptions &&
+      !dynamicFilterOptions.domisiliOptions.includes(domisiliFilter)
+    ) {
+      setDomisiliFilter("all");
+    }
+  }, [dynamicFilterOptions?.domisiliOptions, domisiliFilter]);
+
+  useEffect(() => {
+    if (
+      kelasFilter !== "all" &&
+      dynamicFilterOptions?.kelasOptions &&
+      !dynamicFilterOptions.kelasOptions.includes(kelasFilter)
+    ) {
+      setKelasFilter("all");
+    }
+  }, [dynamicFilterOptions?.kelasOptions, kelasFilter]);
+
+  useEffect(() => {
+    if (
+      tingkatanFilter !== "all" &&
+      dynamicFilterOptions?.tingkatanOptions &&
+      !dynamicFilterOptions.tingkatanOptions.includes(tingkatanFilter)
+    ) {
+      setTingkatanFilter("all");
+    }
+  }, [dynamicFilterOptions?.tingkatanOptions, tingkatanFilter]);
 
   const {
     data: masterData,
     isLoading,
     isFetching,
     refetch,
-  } = useMasterList({ page, perPage: PER_PAGE, search, statusFilter });
-
-  const toggleMutation = useToggleStatusMaster();
+  } = useMasterList({
+    page,
+    perPage: PER_PAGE,
+    search,
+    statusFilter,
+    tingkatanFilter,
+    kelasFilter,
+    statusDomisiliFilter,
+    domisiliFilter,
+  });
 
   const items = masterData?.items ?? [];
   const totalItems = masterData?.totalItems ?? 0;
   const totalPages = masterData?.totalPages ?? 0;
 
-  // ---- Handlers ----
   const handleSearchChange = (val: string) => {
     setSearch(val);
     setPage(1);
@@ -59,126 +110,46 @@ export default function MasterPage() {
     setPage(1);
   };
 
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // 📅 Hitung Cetakan Waktu Tanggal Hari Ini
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = now.getFullYear();
-    const expectedName = `${year}-${month}-${day}-database`;
-    const uploadedFileName = file.name.substring(0, file.name.lastIndexOf("."));
-
-    if (uploadedFileName !== expectedName) {
-      setImportError(
-        `Nama berkas tidak sesuai dengan tanggal hari ini.\n\n` +
-          `💡 Wajib: ${expectedName}.xlsx\n` +
-          `📂 Berkas Anda: ${file.name}`,
-      );
-      e.target.value = "";
-      return;
-    }
-
-    setIsImporting(true);
-    setSyncReport(null);
-    setImportError(null); // Bersihkan riwayat eror lama jika ada
-
-    try {
-      // 🚀 OPTIMASI UTAMA: Menggunakan modern ArrayBuffer API langsung dari objek File
-      // Menghilangkan instansiasi `new FileReader()` dan penumpukan callback `reader.onload`
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" }); // type diubah menjadi 'array'
-
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const rawData: unknown[] = XLSX.utils.sheet_to_json(sheet, {
-        defval: "",
-      });
-
-      const mapped: ExcelSantriRow[] = (rawData as any[])
-        .filter((row: any) => {
-          const idPps = row["ID PPS"]?.toString().trim();
-          return idPps && idPps.length > 0;
-        })
-        .map((row: any) => ({
-          id_pps: row["ID PPS"]?.toString().trim() ?? "",
-          nomor_daftar: row["Nomor Daftar"]?.toString().trim() ?? "",
-          tanggal_daftar: row["Tanggal Daftar"]?.toString().trim() ?? "",
-          nama: row["Nama"]?.toString().trim() ?? "",
-          nama_akte: row["Nama Akte"]?.toString().trim() ?? "",
-          desa: row["Desa"]?.toString().trim() ?? "",
-          kecamatan: row["Kecamatan"]?.toString().trim() ?? "",
-          kabupaten: row["Kabupaten"]?.toString().trim() ?? "",
-          provinsi: row["Provinsi"]?.toString().trim() ?? "",
-          nik: row["NIK"]?.toString().trim() ?? "",
-          kk: row["KK"]?.toString().trim() ?? "",
-          nisn: row["NISN"]?.toString().trim() ?? "",
-          nik_ayah: row["NIK Ayah"]?.toString().trim() ?? "",
-          nama_ayah: row["Nama Ayah"]?.toString().trim() ?? "",
-          nik_ibu: row["NIK Ibu"]?.toString().trim() ?? "",
-          nama_ibu: row["Nama Ibu"]?.toString().trim() ?? "",
-          nik_wali: row["NIK Wali"]?.toString().trim() ?? "",
-          nama_wali: row["Nama Wali"]?.toString().trim() ?? "",
-          kontak_wali: row["Kontak Wali"]?.toString().trim() ?? "",
-          status_domisili: row["Status Domisili"]?.toString().trim() ?? "",
-          domisili: row["Domisili"]?.toString().trim() ?? "",
-          kelas: row["Kelas"]?.toString().trim() ?? "",
-          tingkatan: row["Tingkat"]?.toString().trim() ?? "",
-          noabsen: row["NoAbsen"]?.toString().trim() ?? "",
-          ruang_kelas: row["Ruang Kelas"]?.toString().trim() ?? "",
-          alasan_update_status:
-            row["Alasan Update Status"]?.toString().trim() ?? "",
-          keterangan_update_domisi:
-            row["Ket. Update Domisili"]?.toString().trim() ?? "",
-        }));
-
-      const report = await syncExcelToPocketBase(mapped);
-      setSyncReport(report);
-      refetch();
-    } catch (err) {
-      console.error("Gagal sinkronisasi berkas:", err);
-      setImportError(
-        "Struktur dokumen Excel tidak valid, rusak, atau gagal diproses oleh sistem. Periksa kembali berkas Anda.",
-      );
-    } finally {
-      // Blok finally terpadu menjamin state loading & input element selalu dibersihkan dengan aman
-      setIsImporting(false);
-      e.target.value = "";
-    }
+  const handleTingkatanFilterChange = (val: string) => {
+    setTingkatanFilter(val);
+    setPage(1);
   };
 
-  const handleToggleStatus = (
-    id: string,
-    currentStatus: boolean,
-    nama: string,
-  ) => {
-    const msg = currentStatus
-      ? `Nonaktifkan santri "${nama}"? Santri tidak akan muncul di daftar aktif.`
-      : `Aktifkan kembali santri "${nama}"?`;
-    if (window.confirm(msg)) {
-      toggleMutation.mutate({ id, currentStatus });
-    }
+  const handleKelasFilterChange = (val: string) => {
+    setKelasFilter(val);
+    setPage(1);
+  };
+
+  const handleStatusDomisiliFilterChange = (val: string) => {
+    setStatusDomisiliFilter(val);
+    setPage(1);
+  };
+
+  const handleDomisiliFilterChange = (val: string) => {
+    setDomisiliFilter(val);
+    setPage(1);
+  };
+
+  const handleImportSuccess = (report: {
+    inserted: number;
+    updated: number;
+    softDeleted: number;
+    skipped: number;
+  }) => {
+    setSyncReport(report);
+    refetch();
   };
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
       <MasterHeader
-        isImporting={isImporting}
-        onExcelImport={handleExcelImport}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        isAdmin={isAdmin}
       />
 
-      {/* 🟢 Pasangkan onClose ke setSyncReport */}
       <SyncReportBanner
         report={syncReport}
         onClose={() => setSyncReport(null)}
-      />
-
-      {/* 🔴 Pastikan ini sudah terpasang rapi ke setImportError */}
-      <ImportErrorBanner
-        message={importError}
-        onClose={() => setImportError(null)}
       />
 
       <MasterToolbar
@@ -186,6 +157,18 @@ export default function MasterPage() {
         onSearchChange={handleSearchChange}
         statusFilter={statusFilter}
         onStatusFilterChange={handleStatusFilterChange}
+        tingkatanFilter={tingkatanFilter}
+        onTingkatanFilterChange={handleTingkatanFilterChange}
+        kelasFilter={kelasFilter}
+        onKelasFilterChange={handleKelasFilterChange}
+        statusDomisiliFilter={statusDomisiliFilter}
+        onStatusDomisiliFilterChange={handleStatusDomisiliFilterChange}
+        domisiliFilter={domisiliFilter}
+        onDomisiliFilterChange={handleDomisiliFilterChange}
+        tingkatanOptions={dynamicFilterOptions?.tingkatanOptions}
+        kelasOptions={dynamicFilterOptions?.kelasOptions}
+        statusDomisiliOptions={dynamicFilterOptions?.statusDomisiliOptions}
+        domisiliOptions={dynamicFilterOptions?.domisiliOptions}
         onRefresh={refetch}
         isListLoading={isLoading || isFetching}
       />
@@ -194,10 +177,9 @@ export default function MasterPage() {
         items={items}
         isLoading={isLoading}
         isFetching={isFetching}
-        isPendingToggle={toggleMutation.isPending}
-        onToggleStatus={handleToggleStatus}
         page={page}
         perPage={PER_PAGE}
+        onSelectSantri={(santri) => setSelectedSantriDetail(santri)}
       />
 
       <MasterPagination
@@ -206,6 +188,18 @@ export default function MasterPage() {
         totalItems={totalItems}
         perPage={PER_PAGE}
         onPageChange={setPage}
+      />
+
+      <ImportMasterModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      <SantriDetailModal
+        isOpen={!!selectedSantriDetail}
+        onClose={() => setSelectedSantriDetail(null)}
+        santri={selectedSantriDetail}
       />
     </div>
   );

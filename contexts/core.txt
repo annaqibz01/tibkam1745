@@ -28,7 +28,6 @@
 - `src/utils/dateHelpers.ts`
 - `src/utils/errorHandler.ts`
 - `src/utils/printer.ts`
-- `src/utils/syncExcelToPocketBase.ts`
 - `src/utils/userHelpers.ts`
 - `src/utils/waktuIstiwa.ts`
 - `src/vite-env.d.ts`
@@ -126,7 +125,7 @@ execSync(cmd, { stdio: 'inherit' });
 {
   "name": "tibkam1745",
   "private": true,
-  "version": "1.2.6",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -217,25 +216,26 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            {/* 🟢 Akses Umum (Semua User Terautentikasi) */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/master" element={<Master />} />
 
-            {/* 🛡️ Khusus Admin */}
+            {/* 🛡️ Kelola Users (Khusus Admin & Admin Rambut) */}
             <Route
               path="/users"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
                   <Users />
                 </ProtectedRoute>
               }
             />
 
-            {/* 🛡️ Khusus Admin & Rambut */}
+            {/* ✂️ Layanan Divisi Rambut (Admin, Admin Rambut & Petugas Rambut) */}
             <Route
               path="/rambut"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <Rambut />
                 </ProtectedRoute>
               }
@@ -243,7 +243,7 @@ export default function App() {
             <Route
               path="/laporan/rambut"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <LaporanRambut />
                 </ProtectedRoute>
               }
@@ -251,7 +251,7 @@ export default function App() {
             <Route
               path="/kalender"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <Kalender />
                 </ProtectedRoute>
               }
@@ -1777,43 +1777,43 @@ const Sidebar = () => {
       title: "Dashboard",
       path: "/dashboard",
       icon: LayoutDashboard,
-      allowedRoles: ["admin", "umum", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
     },
     {
       title: "Kelola Pengguna",
       path: "/users",
       icon: Users,
-      allowedRoles: ["admin"],
+      allowedRoles: ["admin", "admin_rambut"],
     },
     {
       title: "Data Master",
       path: "/master",
       icon: Database,
-      allowedRoles: ["admin", "umum", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
     },
     {
       title: "Layanan Rambut",
       path: "/rambut",
       icon: Scissors,
-      allowedRoles: ["admin", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "rambut"],
     },
     {
       title: "Laporan Rambut",
       path: "/laporan/rambut",
       icon: FileText,
-      allowedRoles: ["admin", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "rambut"],
     },
     {
       title: "Kalender",
       path: "/kalender",
       icon: CalendarDays,
-      allowedRoles: ["admin", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "rambut"],
     },
     {
       title: "Profil Saya",
       path: "/profile",
       icon: User,
-      allowedRoles: ["admin", "umum", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
     },
   ];
 
@@ -2395,6 +2395,7 @@ export const UsersRoleOptions = {
 	"admin": "admin",
 	"umum": "umum",
 	"rambut": "rambut",
+	"admin_rambut": "admin_rambut",
 } as const
 export type UsersRoleOptions = typeof UsersRoleOptions[keyof typeof UsersRoleOptions]
 export type UsersRecord = {
@@ -2809,138 +2810,21 @@ export const executePrint = async (
 };
 ```
 
-### `src/utils/syncExcelToPocketBase.ts`
-```typescript
-// src/utils/syncExcelToPocketBase.ts
-import { pb } from "@/lib/pocketbase";
-import type { MasterRecord, MasterResponse } from "@/types/pocketbase-types";
-
-export type ExcelSantriRow = Omit<MasterRecord, "id" | "created" | "updated" | "status_aktif">;
-
-const hasChanges = (excelRow: ExcelSantriRow, dbRecord: MasterResponse): boolean => {
-  if (!dbRecord.status_aktif) return true;
-
-  const IGNORED_FIELDS = ["alasan_update_status", "keterangan_update_domisi"];
-
-  for (const key in excelRow) {
-    if (IGNORED_FIELDS.includes(key)) continue;
-
-    const excelVal = excelRow[key as keyof ExcelSantriRow];
-    const dbVal = dbRecord[key as keyof MasterResponse];
-
-    const normalize = (val: any) => (val === undefined || val === null ? "" : String(val).trim());
-
-    if (normalize(excelVal) !== normalize(dbVal)) {
-      // 🕵️‍♂️ SCOPE MATA-MATA (X-RAY SCANNER):
-      // Ini akan mencetak langsung di Console browser kamu kolom mana yang tidak sama!
-      console.warn(
-        `🚨 [DATA BERBEDA LOG] ID PPS: ${excelRow.id_pps} | Kolom: "${key}" \n` +
-        `   -> Di Excel terbaca : "${normalize(excelVal)}"\n` +
-        `   -> Di PocketBase    : "${normalize(dbVal)}"`
-      );
-      return true;
-    }
-  }
-  return false;
-};
-
-export const syncExcelToPocketBase = async (excelData: ExcelSantriRow[]): Promise<{
-  inserted: number;
-  updated: number;
-  softDeleted: number;
-  skipped: number;
-}> => {
-  const report = { inserted: 0, updated: 0, softDeleted: 0, skipped: 0 };
-  if (!excelData || excelData.length === 0) return report;
-
-  const existingRecords = await pb.collection("master").getFullList<MasterResponse>();
-  const dbMap = new Map<string, MasterResponse>();
-  existingRecords.forEach((rec) => {
-    if (rec.id_pps) dbMap.set(rec.id_pps.trim(), rec);
-  });
-
-  const BATCH_LIMIT = 200;
-  let batch = pb.createBatch();
-  let batchCount = 0;
-
-  const commitBatchIfFull = async () => {
-    if (batchCount >= BATCH_LIMIT) {
-      await batch.send();
-      batch = pb.createBatch();
-      batchCount = 0;
-    }
-  };
-
-  const processedExcelIds = new Set<string>();
-
-  for (const excelRow of excelData) {
-    if (!excelRow.id_pps) continue;
-
-    const id_pps_key = excelRow.id_pps.trim();
-    processedExcelIds.add(id_pps_key);
-
-    const matchDbRecord = dbMap.get(id_pps_key);
-
-    if (!matchDbRecord) {
-      batch.collection("master").create({
-        ...excelRow,
-        status_aktif: true,
-        alasan_update_status: "Santri baru terdaftar via sistem import massal",
-      });
-      report.inserted++;
-      batchCount++;
-      await commitBatchIfFull();
-    } else {
-      if (hasChanges(excelRow, matchDbRecord)) {
-        batch.collection("master").update(matchDbRecord.id, {
-          ...excelRow,
-          status_aktif: true,
-          alasan_update_status: matchDbRecord.status_aktif
-            ? "Pembaruan informasi data berkas induk"
-            : "Santri aktif kembali melalui import berkas terbaru",
-        });
-        report.updated++;
-        batchCount++;
-        await commitBatchIfFull();
-      } else {
-        report.skipped++;
-      }
-    }
-  }
-
-  for (const [id_pps, dbRecord] of dbMap.entries()) {
-    if (!processedExcelIds.has(id_pps) && dbRecord.status_aktif) {
-      batch.collection("master").update(dbRecord.id, {
-        status_aktif: false,
-        alasan_update_status: `Tidak terdaftar di Excel import terbaru pada tanggal ${new Date().toLocaleDateString("id-ID")}`,
-      });
-      report.softDeleted++;
-      batchCount++;
-      await commitBatchIfFull();
-    }
-  }
-
-  if (batchCount > 0) {
-    await batch.send();
-  }
-
-  return report;
-};
-```
-
 ### `src/utils/userHelpers.ts`
 ```typescript
 // src/utils/userHelpers.ts
 import type { UsersRoleOptions } from "../types/pocketbase-types";
 
-export const ROLE_OPTIONS: UsersRoleOptions[] = ["admin", "rambut", "umum"];
+export const ROLE_OPTIONS: UsersRoleOptions[] = ["admin", "admin_rambut", "rambut", "umum"];
 export const STATUS_OPTIONS = ["Semua Status", "Aktif", "Nonaktif"];
-export const ROLE_FILTER_OPTIONS = ["Semua Role", "admin", "rambut", "umum"];
+export const ROLE_FILTER_OPTIONS = ["Semua Role", "admin", "admin_rambut", "rambut", "umum"];
 
 export const roleBadgeClass = (role: string) => {
   switch (role) {
     case "admin":
       return "bg-purple-600/20 text-purple-300 border-purple-500/40";
+    case "admin_rambut":
+      return "bg-amber-600/20 text-amber-300 border-amber-500/40";
     case "rambut":
       return "bg-blue-600/20 text-blue-300 border-blue-500/40";
     case "umum":

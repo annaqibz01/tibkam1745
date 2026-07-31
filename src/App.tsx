@@ -17,7 +17,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
-          
+
           <Route
             element={
               <ProtectedRoute>
@@ -25,44 +25,45 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            {/* 🟢 Akses Umum (Semua User Terautentikasi) */}
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/profile" element={<Profile />} />
             <Route path="/master" element={<Master />} />
 
-            {/* 🛡️ Khusus Admin */}
-            <Route 
-              path="/users" 
+            {/* 🛡️ Kelola Users (Khusus Admin & Admin Rambut) */}
+            <Route
+              path="/users"
               element={
-                <ProtectedRoute allowedRoles={["admin"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
                   <Users />
                 </ProtectedRoute>
-              } 
+              }
             />
 
-            {/* 🛡️ Khusus Admin & Rambut */}
-            <Route 
-              path="/rambut" 
+            {/* ✂️ Layanan Divisi Rambut (Admin, Admin Rambut & Petugas Rambut) */}
+            <Route
+              path="/rambut"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <Rambut />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/laporan/rambut" 
+            <Route
+              path="/laporan/rambut"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <LaporanRambut />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/kalender" 
+            <Route
+              path="/kalender"
               element={
-                <ProtectedRoute allowedRoles={["admin", "rambut"]}>
+                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
                   <Kalender />
                 </ProtectedRoute>
-              } 
+              }
             />
           </Route>
 

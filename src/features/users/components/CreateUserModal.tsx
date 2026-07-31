@@ -1,4 +1,4 @@
-// src/components/users/CreateUserModal.tsx
+// src/features/users/components/CreateUserModal.tsx
 import { useState, useEffect, useRef } from "react";
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,9 +15,10 @@ import {
   UserPlus,
   AlertCircle,
   Check,
+  Lock,
+  ShieldAlert,
 } from "lucide-react";
 
-// 1. Skema Validasi Zod
 const createUserSchema = z
   .object({
     name: z.string().trim().min(1, "Nama lengkap wajib diisi."),
@@ -39,6 +40,7 @@ interface CreateUserModalProps {
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
   createUser: ReturnType<typeof useUsers>["createUser"];
+  isAdminRambut?: boolean;
 }
 
 export default function CreateUserModal({
@@ -47,6 +49,7 @@ export default function CreateUserModal({
   onSuccess,
   onError,
   createUser,
+  isAdminRambut = false,
 }: CreateUserModalProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showPasswordConfirm, setShowPasswordConfirm] = useState(false);
@@ -57,25 +60,24 @@ export default function CreateUserModal({
   const [isRoleOpen, setIsRoleOpen] = useState(false);
   const roleDropdownRef = useRef<HTMLDivElement>(null);
 
-  // 2. React Hook Form
   const {
     register,
     handleSubmit,
     reset,
     control,
+    setValue,
     formState: { errors },
   } = useForm<CreateUserFormValues>({
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       name: "",
       username: "",
-      role: "umum",
+      role: isAdminRambut ? "rambut" : "umum",
       password: "",
       passwordConfirm: "",
     },
   });
 
-  // Menutup dropdown jika klik di luar area
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (
@@ -89,15 +91,22 @@ export default function CreateUserModal({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // Reset form & state saat modal ditutup
   useEffect(() => {
     if (!isOpen) {
-      reset();
+      reset({
+        name: "",
+        username: "",
+        role: isAdminRambut ? "rambut" : "umum",
+        password: "",
+        passwordConfirm: "",
+      });
       setShowPassword(false);
       setShowPasswordConfirm(false);
       setServerError(null);
+    } else if (isAdminRambut) {
+      setValue("role", "rambut");
     }
-  }, [isOpen, reset]);
+  }, [isOpen, reset, isAdminRambut, setValue]);
 
   const onSubmit = (data: CreateUserFormValues) => {
     setServerError(null);
@@ -107,12 +116,15 @@ export default function CreateUserModal({
       return;
     }
 
+    // Fail-safe: Pastikan role tetap 'rambut' jika dibuat oleh admin_rambut
+    const finalRole = isAdminRambut ? "rambut" : (data.role as UsersRoleOptions);
+
     createUser.mutate(
       {
         name: data.name,
         username: data.username,
-        email: `${data.username}@tibkam.local`, // Tetap menggunakan format username
-        role: data.role as UsersRoleOptions,
+        email: `${data.username}@tibkam.local`,
+        role: finalRole,
         password: data.password,
         passwordConfirm: data.passwordConfirm,
         status: true,
@@ -140,6 +152,21 @@ export default function CreateUserModal({
         onSubmit={handleSubmit(onSubmit)}
         className="space-y-4 px-6 pb-6 pt-2"
       >
+        {/* Banner Informasi Khusus Admin Rambut */}
+        {isAdminRambut && (
+          <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-2.5 text-amber-300 text-xs leading-relaxed">
+            <ShieldAlert className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <span className="font-bold">Akses Terbatas:</span> Sebagai{" "}
+              <code className="text-amber-200 bg-amber-500/20 px-1 py-0.5 rounded font-mono">
+                admin_rambut
+              </code>
+              , Anda hanya diperbolehkan menambahkan akun petugas ber-role{" "}
+              <span className="font-bold underline">rambut</span>.
+            </div>
+          </div>
+        )}
+
         {/* Nama Lengkap */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">
@@ -184,60 +211,69 @@ export default function CreateUserModal({
           )}
         </div>
 
-        {/* Custom Role Dropdown dengan React Hook Form */}
+        {/* Custom Role Dropdown */}
         <div>
           <label className="block text-sm font-medium text-gray-300 mb-1.5">
             Role
           </label>
-          <Controller
-            name="role"
-            control={control} // Ambil `control` dari `useForm()`
-            render={({ field }) => (
-              <div ref={roleDropdownRef} className="relative">
-                <button
-                  type="button"
-                  disabled={isPending}
-                  onClick={() => setIsRoleOpen(!isRoleOpen)}
-                  className={`w-full flex items-center justify-between px-4 py-2.5 bg-gray-800 border rounded-xl text-white text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                    errors.role
-                      ? "border-red-500 focus:ring-2 focus:ring-red-500/50"
-                      : "border-gray-700 focus:ring-2 focus:ring-indigo-500/50 hover:border-gray-600"
-                  }`}
-                >
-                  <span className="capitalize">{field.value}</span>
-                  <ChevronDown
-                    className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
-                      isRoleOpen ? "rotate-180" : ""
+          {isAdminRambut ? (
+            <div className="w-full flex items-center justify-between px-4 py-2.5 bg-gray-800/50 border border-gray-700/80 rounded-xl text-amber-300 text-sm font-mono select-none cursor-not-allowed">
+              <span className="capitalize font-bold">rambut (Petugas Layanan)</span>
+              <span className="inline-flex items-center gap-1 text-[10px] font-mono bg-amber-500/20 text-amber-300 px-2 py-0.5 rounded border border-amber-500/30">
+                <Lock className="w-3 h-3 text-amber-400" /> Terkunci
+              </span>
+            </div>
+          ) : (
+            <Controller
+              name="role"
+              control={control}
+              render={({ field }) => (
+                <div ref={roleDropdownRef} className="relative">
+                  <button
+                    type="button"
+                    disabled={isPending}
+                    onClick={() => setIsRoleOpen(!isRoleOpen)}
+                    className={`w-full flex items-center justify-between px-4 py-2.5 bg-gray-800 border rounded-xl text-white text-sm focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                      errors.role
+                        ? "border-red-500 focus:ring-2 focus:ring-red-500/50"
+                        : "border-gray-700 focus:ring-2 focus:ring-indigo-500/50 hover:border-gray-600"
                     }`}
-                  />
-                </button>
+                  >
+                    <span className="capitalize">{field.value}</span>
+                    <ChevronDown
+                      className={`w-5 h-5 text-gray-400 transition-transform duration-200 ${
+                        isRoleOpen ? "rotate-180" : ""
+                      }`}
+                    />
+                  </button>
 
-                {isRoleOpen && (
-                  <ul className="absolute z-20 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
-                    {ROLE_OPTIONS.map((r) => (
-                      <li
-                        key={r}
-                        onClick={() => {
-                          field.onChange(r); // Update nilai ke React Hook Form
-                          setIsRoleOpen(false);
-                        }}
-                        className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
-                          field.value === r
-                            ? "bg-indigo-600/20 text-indigo-400 font-medium"
-                            : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
-                        }`}
-                      >
-                        <span className="capitalize">{r}</span>
-                        {field.value === r && (
-                          <Check className="w-4 h-4 text-indigo-400" />
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          />
+                  {isRoleOpen && (
+                    <ul className="absolute z-20 mt-2 w-full bg-gray-800 border border-gray-700 rounded-xl shadow-xl overflow-hidden">
+                      {ROLE_OPTIONS.map((r) => (
+                        <li
+                          key={r}
+                          onClick={() => {
+                            field.onChange(r);
+                            setIsRoleOpen(false);
+                          }}
+                          className={`flex items-center justify-between px-4 py-2.5 text-sm cursor-pointer transition-colors ${
+                            field.value === r
+                              ? "bg-indigo-600/20 text-indigo-400 font-medium"
+                              : "text-gray-300 hover:bg-gray-700/50 hover:text-white"
+                          }`}
+                        >
+                          <span className="capitalize">{r}</span>
+                          {field.value === r && (
+                            <Check className="w-4 h-4 text-indigo-400" />
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            />
+          )}
           {errors.role && (
             <p className="mt-1 text-xs text-red-400">{errors.role.message}</p>
           )}

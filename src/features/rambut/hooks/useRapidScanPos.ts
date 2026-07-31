@@ -82,38 +82,51 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   }, [isOpen, isProcessing, focusInput]);
 
   const handleProcessScan = async (codeToProcess: string) => {
-  const queryCode = codeToProcess.trim();
-  if (!queryCode || isProcessing) return;
+    const queryCode = codeToProcess.trim();
+    if (!queryCode || isProcessing) return;
 
-  setIsProcessing(true);
-  setBarcodeInput("");
+    setIsProcessing(true);
+    setBarcodeInput("");
 
-  try {
-    const currentUser = pb.authStore.record || pb.authStore.model;
-    const isAdmin = currentUser?.role === "admin";
+    try {
+      const currentUser = pb.authStore.record || pb.authStore.model;
+      // 🛡️ Buka proteksi POS jika role adalah admin ATAU admin_rambut
+      const isAdmin =
+        currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
-    if (!periodeId) {
-      throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
-    }
-
-    const periode = await pb
-      .collection("periode_rambut")
-      .getOne<PeriodeRambutResponse>(periodeId);
-
-    if (!periode) {
-      throw new Error("Data periode tidak ditemukan di sistem.");
-    }
-
-    // 🛡️ Buka proteksi POS jika role adalah ADMIN
-    if (!isAdmin) {
-      if (periode.status_periode !== "aktif") {
-        throw new Error(`POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
+      if (!periodeId) {
+        throw new Error(
+          "Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.",
+        );
       }
 
-      if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
-        throw new Error(`POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
+      const periode = await pb
+        .collection("periode_rambut")
+        .getOne<PeriodeRambutResponse>(periodeId);
+
+      if (!periode) {
+        throw new Error("Data periode tidak ditemukan di sistem.");
       }
-    }
+
+      if (!isAdmin) {
+        if (periode.status_periode !== "aktif") {
+          throw new Error(
+            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+          );
+        }
+
+        if (
+          !isDateWithinRange(
+            new Date(),
+            periode.tanggal_mulai,
+            periode.tanggal_selesai,
+          )
+        ) {
+          throw new Error(
+            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+          );
+        }
+      }
 
       // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
       const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
@@ -125,7 +138,9 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         });
 
       if (!matchRecord) {
-        throw new Error(`ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`);
+        throw new Error(
+          `ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`,
+        );
       }
 
       const santriData = matchRecord.expand?.santri;
@@ -133,17 +148,23 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       const idPps = matchRecord.id_pps;
 
       if (matchRecord.status_setor === "sudah") {
-        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`);
+        throw new Error(
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`,
+        );
       }
 
       if (matchRecord.status_setor === "dispensasi") {
-        throw new Error(`SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`);
+        throw new Error(
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`,
+        );
       }
 
       const nowIso = new Date().toISOString();
       const detailWis = dapatkanDetailWis();
       const currentUserId = currentUser?.id || "";
-      const penerimaNama = (currentUser?.username || "PETUGAS TIBKAM").toUpperCase();
+      const penerimaNama = (
+        currentUser?.username || "PETUGAS TIBKAM"
+      ).toUpperCase();
 
       // Update status wajib_setor_rambut
       await pb.collection("wajib_setor_rambut").update(matchRecord.id, {
@@ -165,8 +186,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const kelasVal = santriData?.kelas ? `${santriData.kelas}` : "";
       const tingkatanVal = santriData?.tingkatan || "";
-      const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
-      const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
+      const kelasTingkatanStr = [kelasVal, tingkatanVal]
+        .filter(Boolean)
+        .join(" ");
+      const domisiliStr =
+        santriData?.domisili || santriData?.status_domisili || "-";
       const alamatStr = getAlamatStr(santriData);
 
       const hijriData = await fetchHijriByDate(nowIso);
@@ -213,11 +237,14 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         ...prev.slice(0, 9),
       ]);
 
-      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({
+        queryKey: ["rambut-wajib-setor-list-full"],
+      });
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
-      const errMsg = parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
+      const errMsg =
+        parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
 
       setLastResult({
         status: "error",

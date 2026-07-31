@@ -378,14 +378,16 @@ export function useRambut() {
       mutationFn: async (payload: ExecuteSetorPayload) => {
         try {
           const currentUser = pb.authStore.record || pb.authStore.model;
-          const isAdmin = currentUser?.role === "admin";
+          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
+          const isAdmin =
+            currentUser?.role === "admin" ||
+            currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
           if (!isAdmin) {
             if (periode.status_periode !== "aktif") {
               throw new Error(
@@ -467,14 +469,15 @@ export function useRambut() {
       mutationFn: async (payload: DispensasiPayload) => {
         try {
           const currentUser = pb.authStore.record || pb.authStore.model;
-          const isAdmin = currentUser?.role === "admin";
+          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
+          const isAdmin =
+            currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")
             .getOne<PeriodeRambutResponse>(payload.periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🛡️ Buka proteksi / Bypass khusus jika role adalah ADMIN
           if (!isAdmin) {
             if (periode.status_periode !== "aktif") {
               throw new Error(

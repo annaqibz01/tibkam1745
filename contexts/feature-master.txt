@@ -2,14 +2,17 @@
 
 ## Included Files:
 - `src/features/master/components/ImportErrorBanner.tsx`
+- `src/features/master/components/ImportMasterModal.tsx`
 - `src/features/master/components/MasterHeader.tsx`
 - `src/features/master/components/MasterPagination.tsx`
 - `src/features/master/components/MasterTable.tsx`
 - `src/features/master/components/MasterToolbar.tsx`
+- `src/features/master/components/SantriDetailModal.tsx`
 - `src/features/master/components/SyncReportBanner.tsx`
 - `src/features/master/hooks/useMaster.ts`
 - `src/features/master/index.ts`
 - `src/features/master/pages/Master.tsx`
+- `src/features/master/utils/syncExcelToPocketBase.ts`
 
 ---
 
@@ -90,42 +93,344 @@ export default function ImportErrorBanner({ message, onClose }: ImportErrorBanne
 }
 ```
 
-### `src/features/master/components/MasterHeader.tsx`
+### `src/features/master/components/ImportMasterModal.tsx`
 ```tsx
-// src/components/master/MasterHeader.tsx
-import React from "react";
-import { UploadCloud, Loader2, Database } from "lucide-react";
+// src/features/master/components/ImportMasterModal.tsx
+import React, { useState, useRef } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
+import { useToast } from "@/context/ToastContext";
+import * as XLSX from "xlsx";
+import {
+  syncExcelToPocketBase,
+  type ExcelSantriRow,
+} from "../utils/syncExcelToPocketBase";
+import {
+  FileSpreadsheet,
+  UploadCloud,
+  Loader2,
+  FileCheck,
+  RefreshCw,
+  CheckCircle2,
+  Database,
+} from "lucide-react";
 
-interface MasterHeaderProps {
-  isImporting: boolean;
-  onExcelImport: (e: React.ChangeEvent<HTMLInputElement>) => void;
+interface ImportMasterModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (report: {
+    inserted: number;
+    updated: number;
+    softDeleted: number;
+    skipped: number;
+  }) => void;
 }
 
-export default function MasterHeader({ isImporting, onExcelImport }: MasterHeaderProps) {
-  const inputId = "excel-upload-masterheader";
+export const ImportMasterModal: React.FC<ImportMasterModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+}) => {
+  const { showError } = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<ExcelSantriRow[]>([]);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [progressPercent, setProgressPercent] = useState(0);
+
+  const handleReset = () => {
+    setSelectedFile(null);
+    setParsedRows([]);
+    setProgressPercent(0);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleCloseModal = () => {
+    if (isSyncing) return;
+    handleReset();
+    onClose();
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+    const year = now.getFullYear();
+    const expectedName = `${year}-${month}-${day}-database`;
+    const uploadedFileName = file.name.substring(0, file.name.lastIndexOf("."));
+
+    if (uploadedFileName !== expectedName) {
+      showError(
+        `Nama berkas "${file.name}" tidak sesuai tanggal hari ini. Wajib bernama: ${expectedName}.xlsx`,
+        "Nama Berkas Tidak Valid"
+      );
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      return;
+    }
+
+    setSelectedFile(file);
+    setIsParsing(true);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName = workbook.SheetNames[0];
+      const sheet = workbook.Sheets[sheetName];
+      const rawData = XLSX.utils.sheet_to_json<Record<string, any>>(sheet, { defval: "" });
+
+      const mapped: ExcelSantriRow[] = rawData
+        .filter((row) => {
+          const idPps = row["ID PPS"]?.toString().trim();
+          return idPps && idPps.length > 0;
+        })
+        .map((row) => ({
+          id_pps: row["ID PPS"]?.toString().trim() ?? "",
+          nomor_daftar: row["Nomor Daftar"]?.toString().trim() ?? "",
+          tanggal_daftar: row["Tanggal Daftar"]?.toString().trim() ?? "",
+          nama: row["Nama"]?.toString().trim() ?? "",
+          nama_akte: row["Nama Akte"]?.toString().trim() ?? "",
+          desa: row["Desa"]?.toString().trim() ?? "",
+          kecamatan: row["Kecamatan"]?.toString().trim() ?? "",
+          kabupaten: row["Kabupaten"]?.toString().trim() ?? "",
+          provinsi: row["Provinsi"]?.toString().trim() ?? "",
+          nik: row["NIK"]?.toString().trim() ?? "",
+          kk: row["KK"]?.toString().trim() ?? "",
+          nisn: row["NISN"]?.toString().trim() ?? "",
+          nik_ayah: row["NIK Ayah"]?.toString().trim() ?? "",
+          nama_ayah: row["Nama Ayah"]?.toString().trim() ?? "",
+          nik_ibu: row["NIK Ibu"]?.toString().trim() ?? "",
+          nama_ibu: row["Nama Ibu"]?.toString().trim() ?? "",
+          nik_wali: row["NIK Wali"]?.toString().trim() ?? "",
+          nama_wali: row["Nama Wali"]?.toString().trim() ?? "",
+          kontak_wali: row["Kontak Wali"]?.toString().trim() ?? "",
+          status_domisili: row["Status Domisili"]?.toString().trim() ?? "",
+          domisili: row["Domisili"]?.toString().trim() ?? "",
+          kelas: row["Kelas"]?.toString().trim() ?? "",
+          tingkatan: row["Tingkat"]?.toString().trim() ?? "",
+          noabsen: row["NoAbsen"]?.toString().trim() ?? "",
+          ruang_kelas: row["Ruang Kelas"]?.toString().trim() ?? "",
+          alasan_update_status: row["Alasan Update Status"]?.toString().trim() ?? "",
+          keterangan_update_domisi: row["Ket. Update Domisili"]?.toString().trim() ?? "",
+        }));
+
+      if (mapped.length === 0) {
+        throw new Error("File Excel tidak berisi data ID PPS yang valid.");
+      }
+
+      setParsedRows(mapped);
+    } catch (err: any) {
+      showError(
+        err.message || "Gagal membaca berkas Excel. Pastikan format file sesuai.",
+        "Gagal Membaca File"
+      );
+      setSelectedFile(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const handleExecuteSync = async () => {
+    if (parsedRows.length === 0 || isSyncing) return;
+
+    setIsSyncing(true);
+    setProgressPercent(0);
+
+    try {
+      const report = await syncExcelToPocketBase(parsedRows, (processed, total) => {
+        const pct = Math.round((processed / total) * 100);
+        setProgressPercent(pct);
+      });
+
+      onSuccess(report);
+      handleCloseModal();
+    } catch (err: any) {
+      showError(
+        err.message || "Terjadi kesalahan saat memproses transaksi database.",
+        "Gagal Sinkronisasi"
+      );
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleCloseModal}
+      title="Sinkronisasi Master Database via Excel"
+      icon={<FileSpreadsheet className="w-5 h-5 text-indigo-400" />}
+      maxWidth="max-w-xl"
+    >
+      {/* 🔮 KUNCI STABILITAS UI: TINGGI DILOCK 'h-[280px]' & 'justify-between' */}
+      <div className="h-[280px] flex flex-col justify-between py-1 px-1 font-mono text-xs select-none">
 
-      {/* 🔮 EFEK AMBIENT GLOW MESH (Cahaya Latar Belakang) */}
+        {/* 1. HEADER INFO FORMAT TANGGAL (Tinggi Tetap) */}
+        <div className="p-3 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between text-indigo-300 shrink-0">
+          <div className="flex items-center gap-2">
+            <Database className="w-4 h-4 text-indigo-400 shrink-0" />
+            <span>
+              Format Wajib:{" "}
+              <b className="text-white">
+                {new Date().toISOString().slice(0, 10)}-database.xlsx
+              </b>
+            </span>
+          </div>
+        </div>
+
+        {/* 2. AREA TENGAH: UPLOAD / PREVIEW (Presisi mengisi sisa ruang) */}
+        <div className="flex-1 flex flex-col justify-center my-2">
+          {parsedRows.length === 0 ? (
+            <div
+              onClick={() => !isParsing && fileInputRef.current?.click()}
+              className="h-full border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-2xl p-4 flex flex-col items-center justify-center text-center bg-gray-950/40 hover:bg-indigo-500/[0.02] cursor-pointer transition-all duration-200 group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleFileSelect}
+                className="hidden"
+                disabled={isParsing}
+              />
+              {isParsing ? (
+                <div className="flex flex-col items-center space-y-2">
+                  <Loader2 className="w-7 h-7 text-indigo-400 animate-spin" />
+                  <p className="text-gray-400">Menganalisis berkas Excel...</p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center space-y-2">
+                  <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                    <UploadCloud className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-white">
+                      Klik untuk Unggah Berkas Excel Database
+                    </p>
+                    <p className="text-gray-500 text-[10px] mt-0.5">Format: .XLSX / .XLS</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full p-4 rounded-2xl bg-gray-950/80 border border-gray-800 flex flex-col justify-between">
+              <div className="flex items-center justify-between border-b border-gray-800/80 pb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <FileCheck className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-white text-xs truncate">{selectedFile?.name}</p>
+                    <p className="text-gray-400 text-[10px] mt-0.5">
+                      {parsedRows.length.toLocaleString("id-ID")} Santri Siap Disinkronkan
+                    </p>
+                  </div>
+                </div>
+                {!isSyncing && (
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors shrink-0"
+                    title="Ganti Berkas"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {/* PROGRESS BAR SLOT */}
+              <div className="py-2">
+                {isSyncing ? (
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-indigo-300 font-bold flex items-center gap-1.5">
+                        <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+                        Menyinkronkan Database...
+                      </span>
+                      <span className="font-bold text-white">{progressPercent}%</span>
+                    </div>
+                    <div className="w-full h-2.5 bg-gray-900 border border-gray-800 rounded-full overflow-hidden p-0.5">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-150"
+                        style={{ width: `${progressPercent}%` }}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-[11px] text-emerald-400/90 bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20 text-center font-bold">
+                    ✓ Berkas Valid & Siap Diproses
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. FOOTER ACTIONS (Tinggi Tetap) */}
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-800/80 shrink-0">
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            disabled={isSyncing}
+            className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white text-xs font-bold transition-all disabled:opacity-50"
+          >
+            Batal
+          </button>
+          <button
+            type="button"
+            onClick={handleExecuteSync}
+            disabled={parsedRows.length === 0 || isSyncing}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30 disabled:opacity-40 disabled:cursor-not-allowed"
+          >
+            {isSyncing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memproses...</span>
+              </>
+            ) : (
+              <>
+                <CheckCircle2 className="w-4 h-4" />
+                <span>Mulai Sinkronisasi ({parsedRows.length} Data)</span>
+              </>
+            )}
+          </button>
+        </div>
+
+      </div>
+    </BaseModal>
+  );
+};
+```
+
+### `src/features/master/components/MasterHeader.tsx`
+```tsx
+// src/features/master/components/MasterHeader.tsx
+import React from "react";
+import { UploadCloud, Database } from "lucide-react";
+
+interface MasterHeaderProps {
+  onOpenImportModal: () => void; // 👈 Pemicu Buka Modal Import
+  isAdmin?: boolean;
+}
+
+export default function MasterHeader({
+  onOpenImportModal,
+  isAdmin = false,
+}: MasterHeaderProps) {
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
       <div className="absolute -top-24 -left-20 w-80 h-80 rounded-full bg-indigo-600/15 blur-[100px] pointer-events-none" />
       <div className="absolute -bottom-24 -right-20 w-80 h-80 rounded-full bg-purple-600/15 blur-[100px] pointer-events-none" />
-
-      {/* Garis Kilau Top-Border */}
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-6">
-
-        {/* ════════ SISI KIRI: DESKRIPSI & BADGE ════════ */}
         <div className="space-y-2.5">
-
-          {/* Badge Kategori Modul */}
           <div className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
             <Database className="w-3.5 h-3.5 text-indigo-400" />
             <span>Database Induk</span>
           </div>
 
-          {/* Judul Modul */}
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-extrabold text-white tracking-tight leading-tight">
             Pusat Data{" "}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
@@ -134,48 +439,25 @@ export default function MasterHeader({ isImporting, onExcelImport }: MasterHeade
           </h1>
 
           <p className="max-w-xl text-xs sm:text-sm text-gray-400 leading-relaxed font-normal">
-            Manajemen Database Induk, dan sinkronisasi data massal santri dalam satu tempat terpadu.
+            Manajemen Database Induk dan sinkronisasi data massal santri dalam satu tempat terpadu.
           </p>
         </div>
 
-        {/* ════════ SISI KANAN: TOMBOL UPDATE DB VIA EXCEL ════════ */}
-        <div className="flex-shrink-0 self-start md:self-center">
-          <label
-            htmlFor={inputId}
-            className={`relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30 select-none ${
-              isImporting ? "opacity-70 cursor-not-allowed" : "cursor-pointer"
-            }`}
-          >
-            {/* Efek Kilatan Glossy saat Tombol di-Hover */}
-            {!isImporting && (
+        {isAdmin && (
+          <div className="flex-shrink-0 self-start md:self-center">
+            <button
+              type="button"
+              onClick={onOpenImportModal}
+              className="relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30 select-none font-mono"
+            >
               <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-            )}
-
-            <div className="relative flex items-center gap-2">
-              {isImporting ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin text-indigo-200" />
-                  <span>Menyinkronkan Data...</span>
-                </>
-              ) : (
-                <>
-                  <UploadCloud className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
-                  <span>Update DB via Excel</span>
-                </>
-              )}
-            </div>
-
-            <input
-              id={inputId}
-              type="file"
-              accept=".xlsx, .xls"
-              onChange={onExcelImport}
-              className="hidden"
-              disabled={isImporting}
-            />
-          </label>
-        </div>
-
+              <div className="relative flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
+                <span>Update DB via Excel</span>
+              </div>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -327,24 +609,20 @@ export default function MasterPagination({
 
 ### `src/features/master/components/MasterTable.tsx`
 ```tsx
-// src/components/master/MasterTable.tsx
+// src/features/master/components/MasterTable.tsx
 import React, { useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, UserCheck, UserX, FileSpreadsheet } from 'lucide-react';
 import type { MasterResponse } from '@/types/pocketbase-types';
-
-// TYPES
 
 interface MasterTableProps {
   items: MasterResponse[];
   isLoading: boolean;
   isFetching: boolean;
-  isPendingToggle?: boolean;
-  onToggleStatus?: (id: string, currentStatus: boolean, nama: string) => void;
   page?: number;
   perPage?: number;
+  onSelectSantri?: (santri: MasterResponse) => void;
 }
-
-// COMPONENT
 
 const MasterTable: React.FC<MasterTableProps> = ({
   items,
@@ -352,50 +630,36 @@ const MasterTable: React.FC<MasterTableProps> = ({
   isFetching,
   page = 1,
   perPage = 15,
+  onSelectSantri,
 }) => {
-
-  // Status Badge (MURNI PRESENTASI / READ-ONLY)
-
-  const renderStatusBadge = useCallback(
-    (statusAktif: boolean) => {
-      return (
-        <div
-          className={`
-            inline-flex items-center justify-center w-8 h-8 rounded-xl select-none shadow-md transition-transform group-hover:scale-105
-            ${
-              statusAktif
-                ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ring-2 ring-emerald-500/10'
-                : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 ring-2 ring-rose-500/10'
-            }
-          `}
-          title={
+  const renderStatusBadge = useCallback((statusAktif: boolean) => {
+    return (
+      <div
+        className={`
+          inline-flex items-center justify-center w-8 h-8 rounded-xl select-none shadow-md transition-transform group-hover:scale-105
+          ${
             statusAktif
-              ? 'Status: Aktif (Dikelola otomatis via Sinkronisasi Excel)'
-              : 'Status: Nonaktif (Dikelola otomatis via Sinkronisasi Excel)'
+              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 ring-2 ring-emerald-500/10'
+              : 'bg-rose-500/10 text-rose-400 border border-rose-500/20 ring-2 ring-rose-500/10'
           }
-        >
-          {statusAktif ? (
-            <UserCheck className="w-4 h-4" />
-          ) : (
-            <UserX className="w-4 h-4" />
-          )}
-        </div>
-      );
-    },
-    [],
-  );
-
-  // Memoized data mapping (1 kolom = 1 field, tanpa aggregasi)
+        `}
+      >
+        {statusAktif ? <UserCheck className="w-4 h-4" /> : <UserX className="w-4 h-4" />}
+      </div>
+    );
+  }, []);
 
   const rows = useMemo(() => {
     if (isLoading || items.length === 0) return [];
     return items.map((item, index) => {
-      const alamatSatuKolom = [item.desa, item.kecamatan, item.kabupaten, item.provinsi]
-        .map(val => val?.toString().trim())
-        .filter(Boolean)
-        .join(', ') || '-';
+      const alamatSatuKolom =
+        [item.desa, item.kecamatan, item.kabupaten, item.provinsi]
+          .map((val) => val?.toString().trim())
+          .filter(Boolean)
+          .join(', ') || '-';
 
       return {
+        rawRecord: item,
         key: item.id ?? index,
         no: (page - 1) * perPage + index + 1,
         id: item.id,
@@ -417,7 +681,9 @@ const MasterTable: React.FC<MasterTableProps> = ({
     });
   }, [items, isLoading, page, perPage]);
 
-  // Skeleton rows
+  const tableKey = useMemo(() => {
+    return `page-${page}-item-${items[0]?.id || 'empty'}`;
+  }, [page, items]);
 
   const skeletonRows = useMemo(() => {
     return Array.from({ length: 8 }).map((_, idx) => (
@@ -431,26 +697,21 @@ const MasterTable: React.FC<MasterTableProps> = ({
     ));
   }, []);
 
-  // Render
-
   return (
     <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[520px]">
-      {/* 🔮 Garis Kilau Top-Border */}
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
 
-      {/* Fetching indicator */}
-      {isFetching && (
-        <div className="flex items-center justify-center gap-2 px-5 py-2.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/40 border-b border-indigo-500/20 backdrop-blur-md">
+      {isFetching && !isLoading && (
+        <div className="flex items-center justify-center gap-2 px-5 py-2 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/40 border-b border-indigo-500/20 backdrop-blur-md">
           <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
-          <span>Memperbarui data latar belakang...</span>
+          <span>Memperbarui data...</span>
         </div>
       )}
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[2000px] text-center text-sm border-collapse table-auto">
-          {/* Table Head */}
+        <table className="w-full min-w-[2000px] text-center text-sm border-collapse table-auto font-mono">
           <thead>
-            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md">
+            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md">
               <th className="px-4 py-4 w-14 whitespace-nowrap">No</th>
               <th className="px-4 py-4 w-32 whitespace-nowrap">ID PPS</th>
               <th className="px-4 py-4 min-w-[220px] whitespace-nowrap text-left">Nama Lengkap</th>
@@ -469,124 +730,106 @@ const MasterTable: React.FC<MasterTableProps> = ({
             </tr>
           </thead>
 
-          {/* Table Body */}
-          <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
+          <AnimatePresence mode="wait">
             {isLoading ? (
-              skeletonRows
+              <tbody key="loading-body" className="divide-y divide-gray-800/50 bg-gray-900/30">
+                {skeletonRows}
+              </tbody>
             ) : rows.length === 0 ? (
-              <tr>
-                <td colSpan={15} className="px-6 py-20 text-center">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="p-4 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400 shadow-inner">
-                      <FileSpreadsheet className="w-8 h-8 text-gray-400" />
+              <tbody key="empty-body" className="divide-y divide-gray-800/50 bg-gray-900/30">
+                <tr>
+                  <td colSpan={15} className="px-6 py-20 text-center font-sans">
+                    <div className="flex flex-col items-center justify-center space-y-3">
+                      <div className="p-4 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400 shadow-inner">
+                        <FileSpreadsheet className="w-8 h-8 text-gray-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-gray-300">
+                          Tidak Ada Data Master Santri Ditemukan
+                        </p>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-gray-300">
-                        Tidak Ada Data Master Santri Ditemukan
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Ubah filter pencarian atau unggah berkas Excel baru untuk memperbarui data.
-                      </p>
-                    </div>
-                  </div>
-                </td>
-              </tr>
-            ) : (
-              rows.map((row) => (
-                <tr
-                  key={row.key}
-                  className="group transition-colors duration-200 hover:bg-indigo-500/[0.03]"
-                >
-                  {/* 1. No */}
-                  <td className="px-4 py-3.5 text-gray-500 font-mono text-xs whitespace-nowrap">
-                    {row.no}
-                  </td>
-
-                  {/* 2. ID PPS */}
-                  <td className="px-4 py-3.5 font-mono text-xs font-bold text-indigo-400 whitespace-nowrap">
-                    <span className="px-2 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20">
-                      {row.id_pps}
-                    </span>
-                  </td>
-
-                  {/* 3. Nama Lengkap */}
-                  <td className="px-4 py-3.5 whitespace-nowrap text-left">
-                    <span className="font-semibold text-gray-200 text-sm group-hover:text-indigo-300 transition-colors">
-                      {row.nama}
-                    </span>
-                  </td>
-
-                  {/* 4. Alamat Asal */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left">
-                    {row.alamat}
-                  </td>
-
-                  {/* 5. Tingkatan */}
-                  <td className="px-4 py-3.5 text-xs text-gray-300 font-medium whitespace-nowrap">
-                    {row.tingkatan}
-                  </td>
-
-                  {/* 6. Kelas */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
-                    {row.kelas}
-                  </td>
-
-                  {/* 7. Status Domisili */}
-                  <td className="px-4 py-3.5 text-xs whitespace-nowrap">
-                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-medium">
-                      {row.status_domisili}
-                    </span>
-                  </td>
-
-                  {/* 8. Kompleks Domisili */}
-                  <td className="px-4 py-3.5 text-xs text-gray-300 font-semibold whitespace-nowrap">
-                    {row.domisili}
-                  </td>
-
-                  {/* 9. Nama Ayah */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left">
-                    {row.nama_ayah}
-                  </td>
-
-                  {/* 10. Nama Ibu */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left">
-                    {row.nama_ibu}
-                  </td>
-
-                  {/* 11. Nama Wali */}
-                  <td className="px-4 py-3.5 text-xs text-gray-300 whitespace-nowrap text-left">
-                    {row.nama_wali}
-                  </td>
-
-                  {/* 12. Kontak Wali */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 font-mono whitespace-nowrap">
-                    {row.kontak_wali}
-                  </td>
-
-                  {/* 13. Status Aktif */}
-                  <td className="px-4 py-3.5 whitespace-nowrap">
-                    {renderStatusBadge(row.status_aktif)}
-                  </td>
-
-                  {/* 14. Alasan Update */}
-                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
-                    {row.alasan_update_status}
-                  </td>
-
-                  {/* 15. Ket. Update Domisili */}
-                  <td className="px-4 py-3.5 text-xs whitespace-nowrap">
-                    {row.keterangan_update_domisi !== '-' ? (
-                      <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-medium">
-                        {row.keterangan_update_domisi}
-                      </span>
-                    ) : (
-                      <span className="text-gray-500">-</span>
-                    )}
                   </td>
                 </tr>
-              ))
+              </tbody>
+            ) : (
+              <motion.tbody
+                key={tableKey}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+                className="divide-y divide-gray-800/50 bg-gray-900/30 transform-gpu"
+                style={{ willChange: "opacity, transform" }}
+              >
+                {rows.map((row) => (
+                  <tr
+                    key={row.id}
+                    onClick={() => onSelectSantri && onSelectSantri(row.rawRecord)}
+                    className="group cursor-pointer transition-colors duration-150 hover:bg-indigo-500/[0.05]"
+                  >
+                    <td className="px-4 py-3.5 text-gray-500 text-xs whitespace-nowrap">
+                      {row.no}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs font-bold text-indigo-400 whitespace-nowrap">
+                      <span className="px-2 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20">
+                        {row.id_pps}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap text-left font-sans">
+                      <span className="font-semibold text-gray-200 text-sm group-hover:text-indigo-300 transition-colors">
+                        {row.nama}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                      {row.alamat}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-300 font-medium whitespace-nowrap font-sans">
+                      {row.tingkatan}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
+                      {row.kelas}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
+                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-medium">
+                        {row.status_domisili}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-300 font-semibold whitespace-nowrap font-sans">
+                      {row.domisili}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                      {row.nama_ayah}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                      {row.nama_ibu}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-300 whitespace-nowrap text-left font-sans">
+                      {row.nama_wali}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 font-mono whitespace-nowrap">
+                      {row.kontak_wali}
+                    </td>
+                    <td className="px-4 py-3.5 whitespace-nowrap">
+                      {renderStatusBadge(row.status_aktif)}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap font-sans">
+                      {row.alasan_update_status}
+                    </td>
+                    <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
+                      {row.keterangan_update_domisi !== '-' ? (
+                        <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-medium">
+                          {row.keterangan_update_domisi}
+                        </span>
+                      ) : (
+                        <span className="text-gray-500">-</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </motion.tbody>
             )}
-          </tbody>
+          </AnimatePresence>
         </table>
       </div>
     </div>
@@ -598,15 +841,198 @@ export default MasterTable;
 
 ### `src/features/master/components/MasterToolbar.tsx`
 ```tsx
-// src/components/master/MasterToolbar.tsx
-import { useState, useRef, useEffect } from "react";
-import { Search, RefreshCw, ChevronDown, Check, X, Filter } from "lucide-react";
+// src/features/master/components/MasterToolbar.tsx
+import React, { useState, useRef, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Search,
+  RefreshCw,
+  ChevronDown,
+  Check,
+  X,
+  Filter,
+  GraduationCap,
+  BookOpen,
+  Home,
+  Building,
+} from "lucide-react";
+
+interface ExcelFilterDropdownProps {
+  title: string;
+  defaultLabel: string;
+  icon: React.ReactNode;
+  options: string[];
+  value: string;
+  onChange: (val: string) => void;
+  activeColorClass: string;
+  iconColorClass: string;
+}
+
+const ExcelFilterDropdown: React.FC<ExcelFilterDropdownProps> = ({
+  title,
+  defaultLabel,
+  icon,
+  options,
+  value,
+  onChange,
+  activeColorClass,
+  iconColorClass,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [internalSearch, setLocalInternalSearch] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    if (isOpen) {
+      setLocalInternalSearch("");
+      setTimeout(() => searchInputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
+
+  const filteredOptions = useMemo(() => {
+    if (!internalSearch.trim()) return options;
+    return options.filter((opt) =>
+      opt.toLowerCase().includes(internalSearch.trim().toLowerCase())
+    );
+  }, [options, internalSearch]);
+
+  const isActive = value !== "all";
+
+  return (
+    <div ref={dropdownRef} className="relative w-full">
+      {/* 🔒 TOMBOL DENGAN LEBAR TERKUNCI W-FULL DI DALAM GRID */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`w-full h-11 flex items-center justify-between px-3 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg active:scale-95 ${
+          isActive || isOpen
+            ? `${activeColorClass} ring-2`
+            : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
+        }`}
+      >
+        <div className="flex items-center gap-2 truncate min-w-0 flex-1">
+          {icon}
+          <span className="truncate">{value === "all" ? defaultLabel : value}</span>
+        </div>
+        <ChevronDown
+          className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 shrink-0 ml-1 ${
+            isOpen ? `rotate-180 ${iconColorClass}` : ""
+          }`}
+        />
+      </button>
+
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -8, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -8, scale: 0.96 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute left-0 z-30 mt-2 w-56 bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-2xl shadow-2xl p-2 space-y-2 font-mono text-xs"
+          >
+            {/* 🔍 INTERNAL SEARCH BOX */}
+            <div className="relative">
+              <input
+                ref={searchInputRef}
+                type="text"
+                value={internalSearch}
+                onChange={(e) => setLocalInternalSearch(e.target.value)}
+                placeholder={`Cari ${title.toLowerCase()}...`}
+                className="w-full h-8 pl-8 pr-7 bg-gray-950/80 border border-gray-800 rounded-xl text-white text-[11px] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+              />
+              <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2" />
+              {internalSearch && (
+                <button
+                  type="button"
+                  onClick={() => setLocalInternalSearch("")}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+
+            {/* 📊 OPTIONS LIST */}
+            <div className="max-h-48 overflow-y-auto space-y-0.5 custom-scrollbar pr-0.5">
+              <button
+                type="button"
+                onClick={() => {
+                  onChange("all");
+                  setIsOpen(false);
+                }}
+                className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition-colors ${
+                  value === "all"
+                    ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
+                    : "text-gray-400 hover:bg-gray-800/60 hover:text-white"
+                }`}
+              >
+                <span>(Tampilkan Semua)</span>
+                {value === "all" && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+              </button>
+
+              {filteredOptions.length === 0 ? (
+                <div className="py-4 text-center text-[10px] text-gray-500">
+                  Opsi tidak ditemukan
+                </div>
+              ) : (
+                filteredOptions.map((opt) => {
+                  const isSelected = value === opt;
+                  return (
+                    <button
+                      key={opt}
+                      type="button"
+                      onClick={() => {
+                        onChange(opt);
+                        setIsOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-xl text-left transition-colors ${
+                        isSelected
+                          ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
+                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                      }`}
+                    >
+                      <span className="truncate">{opt}</span>
+                      {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
 
 interface MasterToolbarProps {
   search: string;
   onSearchChange: (val: string) => void;
   statusFilter: "all" | "aktif" | "nonaktif";
   onStatusFilterChange: (val: "all" | "aktif" | "nonaktif") => void;
+  tingkatanFilter: string;
+  onTingkatanFilterChange: (val: string) => void;
+  kelasFilter: string;
+  onKelasFilterChange: (val: string) => void;
+  statusDomisiliFilter: string;
+  onStatusDomisiliFilterChange: (val: string) => void;
+  domisiliFilter: string;
+  onDomisiliFilterChange: (val: string) => void;
+  tingkatanOptions?: string[];
+  kelasOptions?: string[];
+  statusDomisiliOptions?: string[];
+  domisiliOptions?: string[];
   onRefresh: () => void;
   isListLoading: boolean;
 }
@@ -616,165 +1042,78 @@ export default function MasterToolbar({
   onSearchChange,
   statusFilter,
   onStatusFilterChange,
+  tingkatanFilter,
+  onTingkatanFilterChange,
+  kelasFilter,
+  onKelasFilterChange,
+  statusDomisiliFilter,
+  onStatusDomisiliFilterChange,
+  domisiliFilter,
+  onDomisiliFilterChange,
+  tingkatanOptions = [],
+  kelasOptions = [],
+  statusDomisiliOptions = [],
+  domisiliOptions = [],
   onRefresh,
   isListLoading,
 }: MasterToolbarProps) {
-  // 1. State untuk Dropdown
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  // 2. State & Ref untuk Pencarian Anti-Spam
   const [localSearch, setLocalSearch] = useState(search);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Sinkronisasi input pencarian jika direset dari luar
   useEffect(() => {
     setLocalSearch(search);
   }, [search]);
 
-  // Auto Close Dropdown
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // 3. Fungsi saat menekan tombol Enter
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      onSearchChange(localSearch); // Tembak request ke server
-
-      // Auto-select seluruh teks agar mudah ditimpa
+      onSearchChange(localSearch);
       setTimeout(() => {
         inputRef.current?.select();
       }, 0);
     }
   };
 
-  // 4. Fungsi tombol bersihkan pencarian
   const handleClear = () => {
     setLocalSearch("");
-    onSearchChange(""); // Langsung kirim string kosong ke server
+    onSearchChange("");
     inputRef.current?.focus();
   };
 
-  const filterOptions = [
-    { value: "aktif", label: "Status Aktif" },
-    { value: "all", label: "Semua Status" },
-    { value: "nonaktif", label: "Status Nonaktif" },
-  ] as const;
-
-  const currentLabel =
-    filterOptions.find((opt) => opt.value === statusFilter)?.label ?? "Status Aktif";
-
-  const isFilterActive = statusFilter !== "all";
-
   return (
-    <div className="mb-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 md:gap-4">
-      {/* 🔍 1. Input Pencarian dengan Clear Button */}
-      <div className="relative flex-1 max-w-md group">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
-          <Search className="w-4 h-4 sm:w-5 sm:h-5" />
-        </div>
-        <input
-          ref={inputRef}
-          type="text"
-          value={localSearch}
-          onChange={(e) => setLocalSearch(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Cari nama atau ID PPS santri..."
-          // [UBAH]: Mengganti py-3 menjadi h-12 agar tingginya tetap
-          className="w-full h-12 pl-11 pr-10 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-lg transition-all duration-200"
-        />
-        {localSearch && (
-          <button
-            type="button"
-            onClick={handleClear}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
-            title="Bersihkan pencarian"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        )}
-      </div>
-
-      {/* ⚡ 2. Grup Filter Dropdown & Tombol Refresh */}
-      <div className="flex items-center gap-3">
-        {/* Dropdown Filter Status */}
-        <div ref={dropdownRef} className="relative flex-1 sm:flex-initial">
-          <button
-            type="button"
-            onClick={() => setIsOpen(!isOpen)}
-            // [UBAH]: Mengganti py-3 menjadi h-12 agar setara dengan Search Input
-            className={`w-full sm:w-48 h-12 flex items-center justify-between px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-sm font-medium transition-all duration-200 shadow-lg ${
-              isOpen || isFilterActive
-                ? "border-indigo-500/50 text-white ring-2 ring-indigo-500/20"
-                : "border-gray-800/80 text-gray-300 hover:border-gray-700 hover:text-white"
-            }`}
-          >
-            <div className="flex items-center gap-2 truncate">
-              <Filter
-                className={`w-4 h-4 flex-shrink-0 ${
-                  isFilterActive ? "text-indigo-400" : "text-gray-500"
-                }`}
-              />
-              <span className="truncate">{currentLabel}</span>
-            </div>
-            <div className="flex items-center gap-1.5 ml-2">
-              {isFilterActive && (
-                <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-              )}
-              <ChevronDown
-                className={`w-4 h-4 text-gray-500 transition-transform duration-200 flex-shrink-0 ${
-                  isOpen ? "rotate-180 text-indigo-400" : ""
-                }`}
-              />
-            </div>
-          </button>
-
-          {/* Panel List Pilihan Menu Dropdown */}
-          {isOpen && (
-            <div className="absolute right-0 z-30 mt-2 w-full sm:w-48 bg-gray-900/95 backdrop-blur-2xl border border-gray-800/90 rounded-2xl shadow-2xl p-1.5 animate-in fade-in slide-in-from-top-2 duration-150">
-              <div className="px-3 py-1.5 text-[10px] font-mono font-semibold text-gray-500 uppercase tracking-wider border-b border-gray-800/60 mb-1">
-                Filter Status Santri
-              </div>
-              {filterOptions.map((option) => {
-                const isSelected = statusFilter === option.value;
-                return (
-                  <button
-                    key={option.value}
-                    type="button"
-                    onClick={() => {
-                      onStatusFilterChange(option.value);
-                      setIsOpen(false);
-                    }}
-                    className={`w-full flex items-center justify-between rounded-xl px-3 py-2.5 text-xs font-medium transition-colors duration-150 ${
-                      isSelected
-                        ? "bg-indigo-600/20 text-indigo-400 font-semibold"
-                        : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
-                    }`}
-                  >
-                    <span>{option.label}</span>
-                    {isSelected && <Check className="w-4 h-4 text-indigo-400" />}
-                  </button>
-                );
-              })}
-            </div>
+    <div className="mb-5 space-y-3 select-none">
+      {/* 🟢 BARIS 1: SEARCH BAR (100% WIDE) & REFRESH BUTTON */}
+      <div className="flex items-center gap-3 w-full">
+        <div className="relative flex-1 group">
+          <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 group-focus-within:text-indigo-400 transition-colors">
+            <Search className="w-4 h-4 sm:w-5 sm:h-5" />
+          </div>
+          <input
+            ref={inputRef}
+            type="text"
+            value={localSearch}
+            onChange={(e) => setLocalSearch(e.target.value)}
+            className="w-full h-12 pl-11 pr-10 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-xs font-mono placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 shadow-lg transition-all duration-200"
+            placeholder="Cari nama atau ID PPS santri (Tekan Enter)..."
+            onKeyDown={handleKeyDown}
+          />
+          {localSearch && (
+            <button
+              type="button"
+              onClick={handleClear}
+              className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
           )}
         </div>
 
-        {/* 🔄 3. Tombol Refresh */}
+        {/* 🔄 Refresh Button */}
         <button
           type="button"
           onClick={onRefresh}
           disabled={isListLoading}
-          // [UBAH]: Mengganti py-3 menjadi h-12 dan merapikan padding agar simetris
-          className="inline-flex items-center gap-2 px-5 h-12 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-xs font-mono font-semibold text-gray-300 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+          className="h-12 px-4 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-xs font-mono font-bold text-gray-300 hover:border-indigo-500/40 hover:text-white active:scale-95 transition-all shadow-lg shrink-0 disabled:opacity-50 flex items-center gap-2"
           title="Segarkan data"
         >
           <RefreshCw
@@ -785,9 +1124,331 @@ export default function MasterToolbar({
           <span className="hidden sm:inline">Refresh</span>
         </button>
       </div>
+
+      {/* 🟢 BARIS 2: CSS GRID 5 KOLOM PRESISI & STABIL */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 w-full">
+        {/* 1. Status Aktif */}
+        <ExcelFilterDropdown
+          title="Status Aktif"
+          defaultLabel="Semua Status"
+          icon={<Filter className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+          options={["aktif", "nonaktif"]}
+          value={statusFilter}
+          onChange={(val) => onStatusFilterChange(val as any)}
+          activeColorClass="border-indigo-500/50 text-indigo-300 ring-indigo-500/20"
+          iconColorClass="text-indigo-400"
+        />
+
+        {/* 2. Tingkatan / Jenjang */}
+        <ExcelFilterDropdown
+          title="Tingkatan"
+          defaultLabel="Semua Jenjang"
+          icon={<GraduationCap className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
+          options={tingkatanOptions}
+          value={tingkatanFilter}
+          onChange={onTingkatanFilterChange}
+          activeColorClass="border-purple-500/50 text-purple-300 ring-purple-500/20"
+          iconColorClass="text-purple-400"
+        />
+
+        {/* 3. Kelas */}
+        <ExcelFilterDropdown
+          title="Kelas"
+          defaultLabel="Semua Kelas"
+          icon={<BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+          options={kelasOptions}
+          value={kelasFilter}
+          onChange={onKelasFilterChange}
+          activeColorClass="border-sky-500/50 text-sky-300 ring-sky-500/20"
+          iconColorClass="text-sky-400"
+        />
+
+        {/* 4. Status Domisili (PPS / LPPS) */}
+        <ExcelFilterDropdown
+          title="Status Domisili"
+          defaultLabel="Semua Status Domisili"
+          icon={<Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
+          options={statusDomisiliOptions}
+          value={statusDomisiliFilter}
+          onChange={onStatusDomisiliFilterChange}
+          activeColorClass="border-emerald-500/50 text-emerald-300 ring-emerald-500/20"
+          iconColorClass="text-emerald-400"
+        />
+
+        {/* 5. Kompleks Domisili */}
+        <ExcelFilterDropdown
+          title="Kompleks Domisili"
+          defaultLabel="Semua Kompleks"
+          icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+          options={domisiliOptions}
+          value={domisiliFilter}
+          onChange={onDomisiliFilterChange}
+          activeColorClass="border-amber-500/50 text-amber-300 ring-amber-500/20"
+          iconColorClass="text-amber-400"
+        />
+      </div>
     </div>
   );
 }
+```
+
+### `src/features/master/components/SantriDetailModal.tsx`
+```tsx
+// src/features/master/components/SantriDetailModal.tsx
+import React, { useState, useEffect } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
+import type { MasterResponse } from "@/types/pocketbase-types";
+import {
+  User,
+  GraduationCap,
+  Home,
+  MapPin,
+  Users,
+  Phone,
+  FileText,
+  CheckCircle2,
+  XCircle,
+  ShieldAlert,
+} from "lucide-react";
+
+interface SantriDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  santri: MasterResponse | null;
+}
+
+export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
+  isOpen,
+  onClose,
+  santri,
+}) => {
+  // 🔮 KUNCI ANIMASI SMOOTH:
+  // Simpan data santri di state lokal agar saat modal ditutup (santri = null),
+  // BaseModal masih memegang data untuk memutar animasi exit Framer Motion.
+  const [displaySantri, setDisplaySantri] = useState<MasterResponse | null>(santri);
+
+  useEffect(() => {
+    if (santri) {
+      setDisplaySantri(santri);
+    }
+  }, [santri]);
+
+  if (!displaySantri) return null;
+
+  const alamatLengkap =
+    [displaySantri.desa, displaySantri.kecamatan, displaySantri.kabupaten, displaySantri.provinsi]
+      .map((v) => v?.toString().trim())
+      .filter(Boolean)
+      .join(", ") || "-";
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Detail Data Santri"
+      icon={<User className="w-5 h-5 text-indigo-400" />}
+      maxWidth="max-w-3xl"
+    >
+      <div className="space-y-4 py-1 px-1 font-mono text-xs select-none no-scrollbar">
+
+        {/* 1. HERO PROFILE CARD */}
+        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-5 shadow-xl backdrop-blur-xl">
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-600/30 border border-indigo-400/30 shrink-0">
+              {displaySantri.nama ? displaySantri.nama.charAt(0).toUpperCase() : "?"}
+            </div>
+
+            <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold text-[11px]">
+                  ID PPS: {displaySantri.id_pps || "-"}
+                </span>
+
+                {displaySantri.status_aktif ? (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 className="w-3 h-3" /> Aktif
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                    <XCircle className="w-3 h-3" /> Nonaktif
+                  </span>
+                )}
+
+                {displaySantri.status_domisili && (
+                  <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-bold">
+                    Domisili: {displaySantri.status_domisili}
+                  </span>
+                )}
+              </div>
+
+              <h2 className="text-lg font-bold text-white font-sans truncate">
+                {displaySantri.nama || "Tanpa Nama"}
+              </h2>
+
+              <p className="text-gray-400 text-[11px] font-sans truncate">
+                {displaySantri.nama_akte ? `Nama Akte: ${displaySantri.nama_akte}` : "Nama Akte sesuai nama induk"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* 2. GRID DETAILS SECTION */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+
+          {/* SEKSI A: AKADEMIK & PESANTREN */}
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-indigo-400 font-bold">
+              <GraduationCap className="w-4 h-4" />
+              <span>Akademik & Domisili Pesantren</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <span className="text-gray-500 block text-[10px]">Tingkatan</span>
+                <span className="font-bold text-gray-200">{displaySantri.tingkatan || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Kelas / Ruang</span>
+                <span className="font-bold text-gray-200">
+                  {displaySantri.kelas || "-"} {displaySantri.ruang_kelas ? `(${displaySantri.ruang_kelas})` : ""}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">No. Absen</span>
+                <span className="font-bold text-gray-200">{displaySantri.noabsen || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Kompleks Domisili</span>
+                <span className="font-bold text-amber-300">{displaySantri.domisili || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">No. Pendaftaran</span>
+                <span className="font-bold text-gray-300">{displaySantri.nomor_daftar || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Tgl. Pendaftaran</span>
+                <span className="font-bold text-gray-300">{displaySantri.tanggal_daftar || "-"}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* SEKSI B: IDENTITAS BERKAS KEPENDUDUKAN */}
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-purple-400 font-bold">
+              <FileText className="w-4 h-4" />
+              <span>Identitas Berkas Kependudukan</span>
+            </div>
+
+            <div className="space-y-2 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">NIK Santri</span>
+                <span className="font-bold text-gray-200 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                  {displaySantri.nik || "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">No. Kartu Keluarga (KK)</span>
+                <span className="font-bold text-gray-200 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                  {displaySantri.kk || "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">NISN</span>
+                <span className="font-bold text-gray-200 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                  {displaySantri.nisn || "-"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* SEKSI C: ALAMAT DAERAH ASAL */}
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-emerald-400 font-bold">
+              <MapPin className="w-4 h-4" />
+              <span>Alamat Daerah Asal Santri</span>
+            </div>
+
+            <div className="flex items-start gap-2 text-gray-300 font-sans text-xs">
+              <Home className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">{alamatLengkap}</p>
+            </div>
+          </div>
+
+          {/* SEKSI D: DATA ORANG TUA & WALI */}
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-amber-400 font-bold">
+              <Users className="w-4 h-4" />
+              <span>Informasi Orang Tua & Wali Santri</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 font-sans text-xs">
+              <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800/80 space-y-1">
+                <span className="text-[10px] font-mono text-gray-500 font-bold uppercase">Ayah Kandung</span>
+                <p className="font-bold text-white truncate">{displaySantri.nama_ayah || "-"}</p>
+                <p className="text-[10px] font-mono text-gray-400">NIK: {displaySantri.nik_ayah || "-"}</p>
+              </div>
+
+              <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800/80 space-y-1">
+                <span className="text-[10px] font-mono text-gray-500 font-bold uppercase">Ibu Kandung</span>
+                <p className="font-bold text-white truncate">{displaySantri.nama_ibu || "-"}</p>
+                <p className="text-[10px] font-mono text-gray-400">NIK: {displaySantri.nik_ibu || "-"}</p>
+              </div>
+
+              <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800/80 space-y-1">
+                <span className="text-[10px] font-mono text-gray-500 font-bold uppercase">Wali Santri</span>
+                <p className="font-bold text-amber-300 truncate">{displaySantri.nama_wali || "-"}</p>
+                <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400">
+                  <Phone className="w-3 h-3" />
+                  <span>{displaySantri.kontak_wali || "-"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* SEKSI E: CATATAN UPDATE SISTEM */}
+          {(displaySantri.alasan_update_status || displaySantri.keterangan_update_domisi) && (
+            <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2 shadow-inner md:col-span-2">
+              <div className="flex items-center gap-2 text-rose-400 font-bold border-b border-gray-800/80 pb-1.5">
+                <ShieldAlert className="w-4 h-4" />
+                <span>Catatan Histori Sistem / Sinkronisasi</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] font-sans">
+                {displaySantri.alasan_update_status && (
+                  <div className="p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
+                    <span className="text-[10px] font-mono text-gray-500 block">Alasan Update Status</span>
+                    <p className="text-gray-300 mt-0.5">{displaySantri.alasan_update_status}</p>
+                  </div>
+                )}
+                {displaySantri.keterangan_update_domisi && (
+                  <div className="p-2.5 rounded-xl bg-gray-900/50 border border-gray-800">
+                    <span className="text-[10px] font-mono text-gray-500 block">Ket. Update Domisili</span>
+                    <p className="text-amber-300 mt-0.5">{displaySantri.keterangan_update_domisi}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+        </div>
+
+        {/* 3. FOOTER ACTION */}
+        <div className="flex items-center justify-end pt-3 border-t border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-2xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white font-mono text-xs font-bold transition-all active:scale-95"
+          >
+            Tutup
+          </button>
+        </div>
+
+      </div>
+    </BaseModal>
+  );
+};
 ```
 
 ### `src/features/master/components/SyncReportBanner.tsx`
@@ -892,58 +1553,178 @@ export default function SyncReportBanner({ report, onClose }: SyncReportBannerPr
 
 ### `src/features/master/hooks/useMaster.ts`
 ```typescript
-// useMaster.ts
+// src/features/master/hooks/useMaster.ts
 import {
   useQuery,
   useMutation,
   useQueryClient,
-  keepPreviousData // ✨ 1. Import helper dari TanStack Query
+  keepPreviousData,
 } from "@tanstack/react-query";
 import { pb } from "@/lib/pocketbase";
 import { MasterResponse, MasterRecord } from "@/types/pocketbase-types";
 
-/**
- * Parameter yang digunakan untuk filter dan pagination pada useMasterList.
- */
 export interface UseMasterParams {
   page: number;
   perPage: number;
   search: string;
   statusFilter: "all" | "aktif" | "nonaktif";
+  tingkatanFilter?: string;
+  kelasFilter?: string;
+  statusDomisiliFilter?: string;
+  domisiliFilter?: string;
+}
+
+export interface UseMasterFilterOptionsParams {
+  statusFilter?: "all" | "aktif" | "nonaktif";
+  tingkatanFilter?: string;
+  kelasFilter?: string;
+  statusDomisiliFilter?: string;
+  domisiliFilter?: string;
 }
 
 /**
- * Custom hook utama untuk mengelola data master (data induk santri).
- * Menyediakan sub‑hook untuk query list, create, update, dan toggle status.
+ * 🚀 Hook Interdependen: Menghasilkan opsi filter yang saling menyaring secara dinamis (Cascading)
  */
+export function useMasterFilterOptions(params?: UseMasterFilterOptionsParams) {
+  const statusFilter = params?.statusFilter || "all";
+  const tingkatanFilter = params?.tingkatanFilter || "all";
+  const kelasFilter = params?.kelasFilter || "all";
+  const statusDomisiliFilter = params?.statusDomisiliFilter || "all";
+  const domisiliFilter = params?.domisiliFilter || "all";
+
+  return useQuery({
+    queryKey: [
+      "master-filter-options",
+      statusFilter,
+      tingkatanFilter,
+      kelasFilter,
+      statusDomisiliFilter,
+      domisiliFilter,
+    ],
+    queryFn: async () => {
+      const records = await pb.collection("master").getFullList<MasterResponse>({
+        fields: "status_aktif,tingkatan,kelas,status_domisili,domisili",
+      });
+
+      // Helper pencocokan kondisi filter silang
+      const matchesFilter = (
+        r: MasterResponse,
+        skipField: "status" | "tingkatan" | "kelas" | "status_domisili" | "domisili"
+      ) => {
+        if (skipField !== "status") {
+          if (statusFilter === "aktif" && !r.status_aktif) return false;
+          if (statusFilter === "nonaktif" && r.status_aktif) return false;
+        }
+        if (skipField !== "tingkatan" && tingkatanFilter !== "all") {
+          if (!r.tingkatan?.toLowerCase().includes(tingkatanFilter.toLowerCase())) return false;
+        }
+        if (skipField !== "kelas" && kelasFilter !== "all") {
+          if (!r.kelas?.toLowerCase().includes(kelasFilter.toLowerCase())) return false;
+        }
+        if (skipField !== "status_domisili" && statusDomisiliFilter !== "all") {
+          if (r.status_domisili?.trim() !== statusDomisiliFilter) return false;
+        }
+        if (skipField !== "domisili" && domisiliFilter !== "all") {
+          if (!r.domisili?.toLowerCase().includes(domisiliFilter.toLowerCase())) return false;
+        }
+        return true;
+      };
+
+      const tingkatanSet = new Set<string>();
+      const kelasSet = new Set<string>();
+      const statusDomisiliSet = new Set<string>();
+      const domisiliSet = new Set<string>();
+
+      records.forEach((r) => {
+        // Ekstrak opsi Tingkatan berdasarkan filter aktif lainnya
+        if (matchesFilter(r, "tingkatan") && r.tingkatan?.trim()) {
+          tingkatanSet.add(r.tingkatan.trim());
+        }
+        // Ekstrak opsi Kelas berdasarkan filter aktif lainnya
+        if (matchesFilter(r, "kelas") && r.kelas?.trim()) {
+          kelasSet.add(r.kelas.trim());
+        }
+        // Ekstrak opsi Status Domisili berdasarkan filter aktif lainnya
+        if (matchesFilter(r, "status_domisili") && r.status_domisili?.trim()) {
+          statusDomisiliSet.add(r.status_domisili.trim());
+        }
+        // Ekstrak opsi Kompleks Domisili berdasarkan filter aktif lainnya
+        if (matchesFilter(r, "domisili") && r.domisili?.trim()) {
+          const cleanDom = r.domisili.trim();
+          if (cleanDom.toUpperCase() !== "PPS" && cleanDom.toUpperCase() !== "LPPS") {
+            domisiliSet.add(cleanDom);
+          }
+        }
+      });
+
+      return {
+        tingkatanOptions: Array.from(tingkatanSet).sort(),
+        kelasOptions: Array.from(kelasSet).sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+        ),
+        statusDomisiliOptions: Array.from(statusDomisiliSet).sort(),
+        domisiliOptions: Array.from(domisiliSet).sort(),
+      };
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
 export function useMaster() {
   const queryClient = useQueryClient();
 
-  /**
-   * Mengambil daftar data master dengan dukungan pagination, server‑side search,
-   * dan filter status (aktif/nonaktif). Query key otomatis berubah saat parameter
-   * berubah sehingga React Query akan mem‑fetch ulang.
-   */
   const useMasterList = (params: UseMasterParams) => {
-    const { page, perPage, search, statusFilter } = params;
+    const {
+      page,
+      perPage,
+      search,
+      statusFilter,
+      tingkatanFilter,
+      kelasFilter,
+      statusDomisiliFilter,
+      domisiliFilter,
+    } = params;
 
     return useQuery({
-      queryKey: ["master", page, perPage, search, statusFilter],
+      queryKey: [
+        "master",
+        page,
+        perPage,
+        search,
+        statusFilter,
+        tingkatanFilter,
+        kelasFilter,
+        statusDomisiliFilter,
+        domisiliFilter,
+      ],
       queryFn: async () => {
-        // Bangun filter string dinamis
         const filters: string[] = [];
 
-        // Filter pencarian gabungan pada field nama & id_pps
         if (search) {
           const escapedSearch = search.replace(/"/g, '\\"');
           filters.push(`(nama ~ "${escapedSearch}" || id_pps ~ "${escapedSearch}")`);
         }
 
-        // Filter status berdasarkan pilihan
         if (statusFilter === "aktif") {
           filters.push("status_aktif = true");
         } else if (statusFilter === "nonaktif") {
           filters.push("status_aktif = false");
+        }
+
+        if (tingkatanFilter && tingkatanFilter !== "all") {
+          filters.push(`tingkatan ~ "${tingkatanFilter}"`);
+        }
+
+        if (kelasFilter && kelasFilter !== "all") {
+          filters.push(`kelas ~ "${kelasFilter}"`);
+        }
+
+        if (statusDomisiliFilter && statusDomisiliFilter !== "all") {
+          filters.push(`status_domisili = "${statusDomisiliFilter}"`);
+        }
+
+        if (domisiliFilter && domisiliFilter !== "all") {
+          filters.push(`domisili ~ "${domisiliFilter}"`);
         }
 
         const filter = filters.length > 0 ? filters.join(" && ") : "";
@@ -952,29 +1733,21 @@ export function useMaster() {
           filter,
         });
       },
-      // ✨ 2. KUNCI PERBAIKAN: Tahan data lama saat ganti page agar layar tidak melompat ke atas!
       placeholderData: keepPreviousData,
     });
   };
 
-  /**
-   * Menambah data master baru. Setelah berhasil, seluruh cache master
-   * diinvalidasi agar data di UI selalu segar.
-   */
   const useCreateMaster = () => {
     return useMutation({
       mutationFn: (data: Omit<MasterRecord, "id" | "created" | "updated">) =>
         pb.collection("master").create(data),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["master"] });
+        queryClient.invalidateQueries({ queryKey: ["master-filter-options"] });
       },
     });
   };
 
-  /**
-   * Memperbarui data master berdasarkan ID. Cache langsung diinvalidasi
-   * agar perubahan terlihat tanpa perlu refresh halaman.
-   */
   const useUpdateMaster = () => {
     return useMutation({
       mutationFn: ({
@@ -984,35 +1757,7 @@ export function useMaster() {
         pb.collection("master").update(id, data),
       onSuccess: () => {
         queryClient.invalidateQueries({ queryKey: ["master"] });
-      },
-    });
-  };
-
-  /**
-   * Soft‑delete / reaktivasi akun dengan membalikkan status_aktif.
-   * Field `alasan_update_status` diisi secara otomatis sesuai aksi.
-   */
-  const useToggleStatusMaster = () => {
-    return useMutation({
-      mutationFn: async ({
-        id,
-        currentStatus,
-      }: {
-        id: string;
-        currentStatus: boolean;
-      }) => {
-        const newStatus = !currentStatus;
-        const alasan = newStatus
-          ? "Aktifkan akun kembali"
-          : "Nonaktifkan akun";
-
-        return pb.collection("master").update(id, {
-          status_aktif: newStatus,
-          alasan_update_status: alasan,
-        });
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["master"] });
+        queryClient.invalidateQueries({ queryKey: ["master-filter-options"] });
       },
     });
   };
@@ -1021,7 +1766,6 @@ export function useMaster() {
     useMasterList,
     useCreateMaster,
     useUpdateMaster,
-    useToggleStatusMaster,
   };
 }
 ```
@@ -1035,57 +1779,108 @@ export {default as MasterPagination} from "./components/MasterPagination"
 
 ### `src/features/master/pages/Master.tsx`
 ```tsx
-// src/pages/Master.tsx
-import { useState } from "react";
-import { useMaster } from "../hooks/useMaster";
-import {
-  syncExcelToPocketBase,
-  type ExcelSantriRow,
-} from "@/utils/syncExcelToPocketBase";
-import * as XLSX from "xlsx";
+// src/features/master/pages/Master.tsx
+import { useState, useEffect } from "react";
+import { useMaster, useMasterFilterOptions } from "../hooks/useMaster";
+import { useAuth } from "@/features/auth";
 import MasterHeader from "../components/MasterHeader";
 import SyncReportBanner from "../components/SyncReportBanner";
-import ImportErrorBanner from "../components/ImportErrorBanner";
 import MasterToolbar from "../components/MasterToolbar";
 import MasterTable from "../components/MasterTable";
 import MasterPagination from "../components/MasterPagination";
+import { ImportMasterModal } from "../components/ImportMasterModal";
+import { SantriDetailModal } from "../components/SantriDetailModal";
+import type { UsersResponse, MasterResponse } from "@/types/pocketbase-types";
+
 const PER_PAGE = 15;
 
 export default function MasterPage() {
-  // ---- State ----
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdmin = Boolean(currentUser?.role?.startsWith("admin"));
+
+  // State Filters
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | "aktif" | "nonaktif"
-  >("aktif");
-  const [isImporting, setIsImporting] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<"all" | "aktif" | "nonaktif">("aktif");
+  const [tingkatanFilter, setTingkatanFilter] = useState("all");
+  const [kelasFilter, setKelasFilter] = useState("all");
+  const [statusDomisiliFilter, setStatusDomisiliFilter] = useState("all");
+  const [domisiliFilter, setDomisiliFilter] = useState("all");
 
-  // State Laporan Sukses & Laporan Eror Kustom
+  // Modals
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedSantriDetail, setSelectedSantriDetail] = useState<MasterResponse | null>(null);
+
   const [syncReport, setSyncReport] = useState<{
     inserted: number;
     updated: number;
     softDeleted: number;
     skipped: number;
   } | null>(null);
-  const [importError, setImportError] = useState<string | null>(null); // ✨ State baru penampung pesan eror
 
-  // ---- Hooks ----
-  const { useMasterList, useToggleStatusMaster } = useMaster();
+  const { useMasterList } = useMaster();
+
+  // 🔄 KIRIM STATE FILTER AKTIF KE HOOK OPTIONS
+  const { data: dynamicFilterOptions } = useMasterFilterOptions({
+    statusFilter,
+    tingkatanFilter,
+    kelasFilter,
+    statusDomisiliFilter,
+    domisiliFilter,
+  });
+
+  // 🛡️ AUTO-RESET: Jika pilihan filter saat ini tidak ada di opsi baru yang tersedia, reset ke "all"
+  useEffect(() => {
+    if (
+      domisiliFilter !== "all" &&
+      dynamicFilterOptions?.domisiliOptions &&
+      !dynamicFilterOptions.domisiliOptions.includes(domisiliFilter)
+    ) {
+      setDomisiliFilter("all");
+    }
+  }, [dynamicFilterOptions?.domisiliOptions, domisiliFilter]);
+
+  useEffect(() => {
+    if (
+      kelasFilter !== "all" &&
+      dynamicFilterOptions?.kelasOptions &&
+      !dynamicFilterOptions.kelasOptions.includes(kelasFilter)
+    ) {
+      setKelasFilter("all");
+    }
+  }, [dynamicFilterOptions?.kelasOptions, kelasFilter]);
+
+  useEffect(() => {
+    if (
+      tingkatanFilter !== "all" &&
+      dynamicFilterOptions?.tingkatanOptions &&
+      !dynamicFilterOptions.tingkatanOptions.includes(tingkatanFilter)
+    ) {
+      setTingkatanFilter("all");
+    }
+  }, [dynamicFilterOptions?.tingkatanOptions, tingkatanFilter]);
 
   const {
     data: masterData,
     isLoading,
     isFetching,
     refetch,
-  } = useMasterList({ page, perPage: PER_PAGE, search, statusFilter });
-
-  const toggleMutation = useToggleStatusMaster();
+  } = useMasterList({
+    page,
+    perPage: PER_PAGE,
+    search,
+    statusFilter,
+    tingkatanFilter,
+    kelasFilter,
+    statusDomisiliFilter,
+    domisiliFilter,
+  });
 
   const items = masterData?.items ?? [];
   const totalItems = masterData?.totalItems ?? 0;
   const totalPages = masterData?.totalPages ?? 0;
 
-  // ---- Handlers ----
   const handleSearchChange = (val: string) => {
     setSearch(val);
     setPage(1);
@@ -1096,126 +1891,46 @@ export default function MasterPage() {
     setPage(1);
   };
 
-  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // 📅 Hitung Cetakan Waktu Tanggal Hari Ini
-    const now = new Date();
-    const day = String(now.getDate()).padStart(2, "0");
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const year = now.getFullYear();
-    const expectedName = `${year}-${month}-${day}-database`;
-    const uploadedFileName = file.name.substring(0, file.name.lastIndexOf("."));
-
-    if (uploadedFileName !== expectedName) {
-      setImportError(
-        `Nama berkas tidak sesuai dengan tanggal hari ini.\n\n` +
-          `💡 Wajib: ${expectedName}.xlsx\n` +
-          `📂 Berkas Anda: ${file.name}`,
-      );
-      e.target.value = "";
-      return;
-    }
-
-    setIsImporting(true);
-    setSyncReport(null);
-    setImportError(null); // Bersihkan riwayat eror lama jika ada
-
-    try {
-      // 🚀 OPTIMASI UTAMA: Menggunakan modern ArrayBuffer API langsung dari objek File
-      // Menghilangkan instansiasi `new FileReader()` dan penumpukan callback `reader.onload`
-      const buffer = await file.arrayBuffer();
-      const workbook = XLSX.read(buffer, { type: "array" }); // type diubah menjadi 'array'
-
-      const sheetName = workbook.SheetNames[0];
-      const sheet = workbook.Sheets[sheetName];
-      const rawData: unknown[] = XLSX.utils.sheet_to_json(sheet, {
-        defval: "",
-      });
-
-      const mapped: ExcelSantriRow[] = (rawData as any[])
-        .filter((row: any) => {
-          const idPps = row["ID PPS"]?.toString().trim();
-          return idPps && idPps.length > 0;
-        })
-        .map((row: any) => ({
-          id_pps: row["ID PPS"]?.toString().trim() ?? "",
-          nomor_daftar: row["Nomor Daftar"]?.toString().trim() ?? "",
-          tanggal_daftar: row["Tanggal Daftar"]?.toString().trim() ?? "",
-          nama: row["Nama"]?.toString().trim() ?? "",
-          nama_akte: row["Nama Akte"]?.toString().trim() ?? "",
-          desa: row["Desa"]?.toString().trim() ?? "",
-          kecamatan: row["Kecamatan"]?.toString().trim() ?? "",
-          kabupaten: row["Kabupaten"]?.toString().trim() ?? "",
-          provinsi: row["Provinsi"]?.toString().trim() ?? "",
-          nik: row["NIK"]?.toString().trim() ?? "",
-          kk: row["KK"]?.toString().trim() ?? "",
-          nisn: row["NISN"]?.toString().trim() ?? "",
-          nik_ayah: row["NIK Ayah"]?.toString().trim() ?? "",
-          nama_ayah: row["Nama Ayah"]?.toString().trim() ?? "",
-          nik_ibu: row["NIK Ibu"]?.toString().trim() ?? "",
-          nama_ibu: row["Nama Ibu"]?.toString().trim() ?? "",
-          nik_wali: row["NIK Wali"]?.toString().trim() ?? "",
-          nama_wali: row["Nama Wali"]?.toString().trim() ?? "",
-          kontak_wali: row["Kontak Wali"]?.toString().trim() ?? "",
-          status_domisili: row["Status Domisili"]?.toString().trim() ?? "",
-          domisili: row["Domisili"]?.toString().trim() ?? "",
-          kelas: row["Kelas"]?.toString().trim() ?? "",
-          tingkatan: row["Tingkat"]?.toString().trim() ?? "",
-          noabsen: row["NoAbsen"]?.toString().trim() ?? "",
-          ruang_kelas: row["Ruang Kelas"]?.toString().trim() ?? "",
-          alasan_update_status:
-            row["Alasan Update Status"]?.toString().trim() ?? "",
-          keterangan_update_domisi:
-            row["Ket. Update Domisili"]?.toString().trim() ?? "",
-        }));
-
-      const report = await syncExcelToPocketBase(mapped);
-      setSyncReport(report);
-      refetch();
-    } catch (err) {
-      console.error("Gagal sinkronisasi berkas:", err);
-      setImportError(
-        "Struktur dokumen Excel tidak valid, rusak, atau gagal diproses oleh sistem. Periksa kembali berkas Anda.",
-      );
-    } finally {
-      // Blok finally terpadu menjamin state loading & input element selalu dibersihkan dengan aman
-      setIsImporting(false);
-      e.target.value = "";
-    }
+  const handleTingkatanFilterChange = (val: string) => {
+    setTingkatanFilter(val);
+    setPage(1);
   };
 
-  const handleToggleStatus = (
-    id: string,
-    currentStatus: boolean,
-    nama: string,
-  ) => {
-    const msg = currentStatus
-      ? `Nonaktifkan santri "${nama}"? Santri tidak akan muncul di daftar aktif.`
-      : `Aktifkan kembali santri "${nama}"?`;
-    if (window.confirm(msg)) {
-      toggleMutation.mutate({ id, currentStatus });
-    }
+  const handleKelasFilterChange = (val: string) => {
+    setKelasFilter(val);
+    setPage(1);
+  };
+
+  const handleStatusDomisiliFilterChange = (val: string) => {
+    setStatusDomisiliFilter(val);
+    setPage(1);
+  };
+
+  const handleDomisiliFilterChange = (val: string) => {
+    setDomisiliFilter(val);
+    setPage(1);
+  };
+
+  const handleImportSuccess = (report: {
+    inserted: number;
+    updated: number;
+    softDeleted: number;
+    skipped: number;
+  }) => {
+    setSyncReport(report);
+    refetch();
   };
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
       <MasterHeader
-        isImporting={isImporting}
-        onExcelImport={handleExcelImport}
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        isAdmin={isAdmin}
       />
 
-      {/* 🟢 Pasangkan onClose ke setSyncReport */}
       <SyncReportBanner
         report={syncReport}
         onClose={() => setSyncReport(null)}
-      />
-
-      {/* 🔴 Pastikan ini sudah terpasang rapi ke setImportError */}
-      <ImportErrorBanner
-        message={importError}
-        onClose={() => setImportError(null)}
       />
 
       <MasterToolbar
@@ -1223,6 +1938,18 @@ export default function MasterPage() {
         onSearchChange={handleSearchChange}
         statusFilter={statusFilter}
         onStatusFilterChange={handleStatusFilterChange}
+        tingkatanFilter={tingkatanFilter}
+        onTingkatanFilterChange={handleTingkatanFilterChange}
+        kelasFilter={kelasFilter}
+        onKelasFilterChange={handleKelasFilterChange}
+        statusDomisiliFilter={statusDomisiliFilter}
+        onStatusDomisiliFilterChange={handleStatusDomisiliFilterChange}
+        domisiliFilter={domisiliFilter}
+        onDomisiliFilterChange={handleDomisiliFilterChange}
+        tingkatanOptions={dynamicFilterOptions?.tingkatanOptions}
+        kelasOptions={dynamicFilterOptions?.kelasOptions}
+        statusDomisiliOptions={dynamicFilterOptions?.statusDomisiliOptions}
+        domisiliOptions={dynamicFilterOptions?.domisiliOptions}
         onRefresh={refetch}
         isListLoading={isLoading || isFetching}
       />
@@ -1231,10 +1958,9 @@ export default function MasterPage() {
         items={items}
         isLoading={isLoading}
         isFetching={isFetching}
-        isPendingToggle={toggleMutation.isPending}
-        onToggleStatus={handleToggleStatus}
         page={page}
         perPage={PER_PAGE}
+        onSelectSantri={(santri) => setSelectedSantriDetail(santri)}
       />
 
       <MasterPagination
@@ -1244,7 +1970,145 @@ export default function MasterPage() {
         perPage={PER_PAGE}
         onPageChange={setPage}
       />
+
+      <ImportMasterModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      <SantriDetailModal
+        isOpen={!!selectedSantriDetail}
+        onClose={() => setSelectedSantriDetail(null)}
+        santri={selectedSantriDetail}
+      />
     </div>
   );
 }
+```
+
+### `src/features/master/utils/syncExcelToPocketBase.ts`
+```typescript
+// src/utils/syncExcelToPocketBase.ts
+import { pb } from "@/lib/pocketbase";
+import type { MasterRecord, MasterResponse } from "@/types/pocketbase-types";
+
+export type ExcelSantriRow = Omit<MasterRecord, "id" | "created" | "updated" | "status_aktif">;
+
+const hasChanges = (excelRow: ExcelSantriRow, dbRecord: MasterResponse): boolean => {
+  if (!dbRecord.status_aktif) return true;
+
+  const IGNORED_FIELDS = ["alasan_update_status", "keterangan_update_domisi"];
+
+  for (const key in excelRow) {
+    if (IGNORED_FIELDS.includes(key)) continue;
+
+    const excelVal = excelRow[key as keyof ExcelSantriRow];
+    const dbVal = dbRecord[key as keyof MasterResponse];
+
+    const normalize = (val: any) => (val === undefined || val === null ? "" : String(val).trim());
+
+    if (normalize(excelVal) !== normalize(dbVal)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+export const syncExcelToPocketBase = async (
+  excelData: ExcelSantriRow[],
+  onProgress?: (processed: number, total: number) => void // 👈 Callback Progress
+): Promise<{
+  inserted: number;
+  updated: number;
+  softDeleted: number;
+  skipped: number;
+}> => {
+  const report = { inserted: 0, updated: 0, softDeleted: 0, skipped: 0 };
+  if (!excelData || excelData.length === 0) return report;
+
+  const existingRecords = await pb.collection("master").getFullList<MasterResponse>();
+  const dbMap = new Map<string, MasterResponse>();
+  existingRecords.forEach((rec) => {
+    if (rec.id_pps) dbMap.set(rec.id_pps.trim(), rec);
+  });
+
+  const totalItemsToProcess = excelData.length + dbMap.size;
+  let processedCounter = 0;
+
+  const BATCH_LIMIT = 150;
+  let batch = pb.createBatch();
+  let batchCount = 0;
+
+  const commitBatchIfFull = async () => {
+    if (batchCount >= BATCH_LIMIT) {
+      await batch.send();
+      batch = pb.createBatch();
+      batchCount = 0;
+    }
+  };
+
+  const processedExcelIds = new Set<string>();
+
+  for (const excelRow of excelData) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
+    if (!excelRow.id_pps) continue;
+
+    const id_pps_key = excelRow.id_pps.trim();
+    processedExcelIds.add(id_pps_key);
+
+    const matchDbRecord = dbMap.get(id_pps_key);
+
+    if (!matchDbRecord) {
+      batch.collection("master").create({
+        ...excelRow,
+        status_aktif: true,
+        alasan_update_status: "Santri baru terdaftar via sistem import massal",
+      });
+      report.inserted++;
+      batchCount++;
+      await commitBatchIfFull();
+    } else {
+      if (hasChanges(excelRow, matchDbRecord)) {
+        batch.collection("master").update(matchDbRecord.id, {
+          ...excelRow,
+          status_aktif: true,
+          alasan_update_status: matchDbRecord.status_aktif
+            ? "Pembaruan informasi data berkas induk"
+            : "Santri aktif kembali melalui import berkas terbaru",
+        });
+        report.updated++;
+        batchCount++;
+        await commitBatchIfFull();
+      } else {
+        report.skipped++;
+      }
+    }
+  }
+
+  for (const [id_pps, dbRecord] of dbMap.entries()) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
+    if (!processedExcelIds.has(id_pps) && dbRecord.status_aktif) {
+      batch.collection("master").update(dbRecord.id, {
+        status_aktif: false,
+        alasan_update_status: `Tidak terdaftar di Excel import terbaru pada tanggal ${new Date().toLocaleDateString("id-ID")}`,
+      });
+      report.softDeleted++;
+      batchCount++;
+      await commitBatchIfFull();
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.send();
+  }
+
+  if (onProgress) onProgress(totalItemsToProcess, totalItemsToProcess);
+
+  return report;
+};
 ```

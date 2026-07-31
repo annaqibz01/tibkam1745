@@ -1,6 +1,6 @@
-// src/pages/Users.tsx
+// src/features/users/pages/Users.tsx
 import { useState, useMemo } from "react";
-import { useUsers } from "../hooks/useUsers";    
+import { useUsers } from "../hooks/useUsers";
 import { useToast } from "@/context/ToastContext";
 import type { UsersResponse } from "@/types/pocketbase-types";
 
@@ -18,25 +18,21 @@ import DeleteUserModal from "../components/DeleteUserModal";
 import { Loader2, AlertCircle } from "lucide-react";
 
 const UsersPage = () => {
-  const { getUsers, createUser, adminUpdateUser, deleteUser, getAvatarUrl } = useUsers();
+  const { getUsers, createUser, adminUpdateUser, deleteUser, getAvatarUrl, isAdminRambut } = useUsers();
   const { data: users, isLoading, isError, error } = getUsers;
 
-  // ✨ Global Toast Trigger
   const { showSuccess, showError } = useToast();
 
-  // Search & Filter States
   const [searchTerm, setSearchTerm] = useState("");
-  const [roleFilter, setRoleFilter] = useState<string>("Semua Role");
+  const [roleFilter, setRoleFilter] = useState<string>(isAdminRambut ? "rambut" : "Semua Role");
   const [statusFilter, setStatusFilter] = useState<string>("Semua Status");
 
-  // Modal States
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UsersResponse | null>(null);
 
-  // Filtered Users Logic
   const filteredUsers = useMemo(() => {
     if (!users) return [];
     return users.filter((u) => {
@@ -45,7 +41,8 @@ const UsersPage = () => {
         u.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         u.username?.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const matchRole = roleFilter === "Semua Role" || u.role === roleFilter;
+      const matchRole =
+        isAdminRambut ? u.role === "rambut" : roleFilter === "Semua Role" || u.role === roleFilter;
 
       const matchStatus =
         statusFilter === "Semua Status" ||
@@ -54,21 +51,17 @@ const UsersPage = () => {
 
       return matchSearch && matchRole && matchStatus;
     });
-  }, [users, searchTerm, roleFilter, statusFilter]);
+  }, [users, searchTerm, roleFilter, statusFilter, isAdminRambut]);
 
-  // Statistics
   const stats = useMemo(() => {
     if (!users) return { total: 0, active: 0, admin: 0 };
     return {
       total: users.length,
       active: users.filter((u) => u.status).length,
-      admin: users.filter((u) => u.role === "admin").length,
+      admin: users.filter((u) => u.role === "admin" || u.role === "admin_rambut").length,
     };
   }, [users]);
 
-  // Modal Handlers
-  // ✨ PERBAIKAN: Hapus setSelectedUser(null) dari closeModals.
-  // Biarkan selectedUser tetap berisi data user terakhir agar animasi penutupan modal berjalan sempurna!
   const closeModals = () => {
     setShowCreateModal(false);
     setShowEditModal(false);
@@ -108,10 +101,11 @@ const UsersPage = () => {
       <UsersToolbar
         searchTerm={searchTerm}
         onSearchChange={setSearchTerm}
-        roleFilter={roleFilter}
+        roleFilter={isAdminRambut ? "rambut" : roleFilter}
         onRoleFilterChange={setRoleFilter}
         statusFilter={statusFilter}
         onStatusFilterChange={setStatusFilter}
+        isAdminRambut={isAdminRambut}
       />
 
       {/* 4. Desktop Users Table */}
@@ -132,9 +126,7 @@ const UsersPage = () => {
         }}
       />
 
-      {/* ════════ 5. MODALS WITH SMOOTH EXIT TRANSITION ════════ */}
-
-      {/* Modal 1: Create User */}
+      {/* 5. Modals */}
       <CreateUserModal
         isOpen={showCreateModal}
         onClose={closeModals}
@@ -145,9 +137,9 @@ const UsersPage = () => {
         }}
         onError={(msg) => showError(msg, "Gagal Membuat Pengguna")}
         createUser={createUser}
+        isAdminRambut={isAdminRambut}
       />
 
-      {/* Modal 2: Edit User */}
       {selectedUser && (
         <EditUserModal
           isOpen={showEditModal}
@@ -164,7 +156,6 @@ const UsersPage = () => {
         />
       )}
 
-      {/* Modal 3: Reset Password */}
       {selectedUser && (
         <ResetPasswordModal
           isOpen={showResetPasswordModal}
@@ -180,7 +171,6 @@ const UsersPage = () => {
         />
       )}
 
-      {/* Modal 4: Delete User */}
       {selectedUser && (
         <DeleteUserModal
           isOpen={showDeleteModal}

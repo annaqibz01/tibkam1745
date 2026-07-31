@@ -35,7 +35,11 @@ export type RambutModalType =
 export function useRambutPage() {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
-  const isAdmin = currentUser?.role === "admin";
+
+  // 🛡️ Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
+  const isAdmin =
+    currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+
   const { showSuccess, showError } = useToast();
 
   const [activeTab, setActiveTab] = useState<RambutTabType>("queue");
@@ -124,7 +128,7 @@ export function useRambutPage() {
       )
     : false;
 
-  // Admin selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
+  // Admin & Admin Rambut selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
   const canExecute =
     isAdmin ||
     (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
@@ -222,7 +226,6 @@ export function useRambutPage() {
   const { data: historyData = [], isLoading: isHistoryLoading } =
     useRiwayatSetorList(currentPeriodeId);
 
-  // 🎯 FIX 1: FILTER TANGGAL AUDIT BERBASIS WAKTU LOKAL (Mencegah Shift Jam UTC)
   const availableHijriDateOptions = useMemo(() => {
     if (!historyData) return [];
     const map = new Map<string, string>();
@@ -343,7 +346,6 @@ export function useRambutPage() {
     );
   };
 
-  // 🎯 FIX 2: SINKRONISASI PAYLOAD LENGKAP MUTASI DISPENSASI (Agar Tercatat di Audit Log)
   const handleConfirmDispensasi = (catatan: string) => {
     if (!selectedDispensasiItem || !currentPeriodeId) return;
     dispensasiMutation.mutate(
@@ -432,6 +434,7 @@ export function useRambutPage() {
 
   return {
     isAdmin,
+    canExecute,
     currentUser,
     activeTab,
     setActiveTab,
@@ -468,10 +471,8 @@ export function useRambutPage() {
     filteredAuditItems,
     isHistoryLoading,
     availableHijriDateOptions,
-    // Unified Modal Registry State
     activeModal,
     setActiveModal,
-    // Data-driven states
     selectedExecuteItem,
     setSelectedExecuteItem,
     selectedDispensasiItem,
@@ -489,7 +490,6 @@ export function useRambutPage() {
     totalAuditItems,
     totalAuditPages,
     paginatedAuditItems,
-    // Callbacks
     refetchAll: () => {
       refetchQueue();
       refetchPengurus();
