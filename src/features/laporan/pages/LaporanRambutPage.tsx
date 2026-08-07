@@ -57,7 +57,7 @@ export const LaporanRambutPage: React.FC = () => {
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Header Banner Glassmorphism */}
+      {/* 1. Header Banner Glassmorphism Shared */}
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
@@ -66,7 +66,7 @@ export const LaporanRambutPage: React.FC = () => {
       {/* 2. Kartu Statistik Presisi */}
       <RambutStats stats={stats} isLoading={isLoading} />
 
-      {/* 3. Toolbar Filter Glassmorphism */}
+      {/* 3. Toolbar Filter Glassmorphism Shared */}
       <LaporanToolbar
         periodeList={periodeList}
         selectedPeriode={selectedPeriode}

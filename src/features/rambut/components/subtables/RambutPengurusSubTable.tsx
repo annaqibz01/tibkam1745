@@ -1,7 +1,8 @@
-// src/components/rambut/subtables/RambutPengurusSubTable.tsx
+// src/features/rambut/components/subtables/RambutPengurusSubTable.tsx
 import React, { useMemo } from "react";
 import { parseNumericIdPps } from "../../hooks/useRambut";
 import type { PengurusItem } from "../RambutQueueTable";
+import { StatusBadge, EmptyState } from "@/components/shared";
 import { UserCheck, User, ShieldCheck, MapPin, Home, CheckCircle2, Trash2 } from "lucide-react";
 
 interface Props {
@@ -21,8 +22,8 @@ const getAlamatStr = (santri: any) => {
 export const RambutPengurusSubTable: React.FC<Props> = ({
   items,
   isLoading,
-  page = 1,        // 👈 1. Destruktur & beri default value
-  perPage = 15,    // 👈 1. Destruktur & beri default value
+  page = 1,
+  perPage = 15,
   onDeletePengurus,
 }) => {
   const sortedItems = useMemo(() => {
@@ -54,18 +55,17 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
           ))
         ) : sortedItems.length === 0 ? (
           <tr>
-            <td colSpan={8} className="px-6 py-16 text-center font-sans">
-              <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                  <UserCheck className="w-6 h-6 text-gray-400" />
-                </div>
-                <p className="text-xs font-semibold text-gray-300">Tidak Ada Pengurus Ditemukan</p>
-              </div>
+            <td colSpan={8} className="px-6 py-8">
+              <EmptyState
+                icon={<UserCheck className="w-6 h-6 text-gray-400" />}
+                title="Tidak Ada Pengurus Ditemukan"
+                description="Tambahkan pengurus baru secara manual atau impor via file Excel."
+              />
             </td>
           </tr>
         ) : (
           sortedItems.map((p, idx) => {
-            const rowNo = (page - 1) * perPage + idx + 1; // 👈 2. Hitung nomor urut di sini
+            const rowNo = (page - 1) * perPage + idx + 1;
             const santriData = p.expand?.santri;
             const isAktif = p.status_aktif !== false;
 
@@ -100,11 +100,12 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
                 </td>
 
                 <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
-                  {isAktif ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"><CheckCircle2 className="w-3 h-3" />Aktif</span>
-                  ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-gray-800 text-gray-400 border border-gray-700">Purna</span>
-                  )}
+                  <StatusBadge
+                    variant={isAktif ? "success" : "danger"}
+                    icon={isAktif ? <CheckCircle2 className="w-3 h-3" /> : undefined}
+                  >
+                    {isAktif ? "Aktif" : "Purna"}
+                  </StatusBadge>
                 </td>
 
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">

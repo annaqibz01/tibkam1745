@@ -7,6 +7,7 @@ import {
 import { pb } from "@/lib/pocketbase";
 import { triggerAutoPrintReceipt } from "../../utils/posPrinter";
 import { fetchHijriByDate } from "@/features/kalender";
+import { StatusBadge, EmptyState } from "@/components/shared";
 import {
   Scissors,
   User,
@@ -25,8 +26,8 @@ interface Props {
   isLoading: boolean;
   page: number;
   perPage: number;
-  canExecute: boolean; // Bernilai true HANYA jika User berhak (Admin/Rambut) AND Periode Aktif AND Dalam Rentang Tanggal
-  disabledReason?: string; // Alasan jika tombol dikunci (Opsional)
+  canExecute: boolean;
+  disabledReason?: string;
   onOpenExecuteModal: (item: WajibSetorExpanded) => void;
   onOpenDispensasiModal: (item: WajibSetorExpanded) => void;
 }
@@ -71,11 +72,9 @@ export const RambutQueueSubTable: React.FC<Props> = ({
         const santri = log.expand?.santri;
         const petugas = log.expand?.petugas_eksekutor;
 
-        // Fetch Tanggal Hijriyah
         const hijriData = await fetchHijriByDate(log.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
 
-        // Format Kelas dulu baru Tingkatan
         const kelasVal = santri?.kelas ? `${santri.kelas}` : "";
         const tingkatanVal = santri?.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
@@ -130,15 +129,12 @@ export const RambutQueueSubTable: React.FC<Props> = ({
           ))
         ) : sortedItems.length === 0 ? (
           <tr>
-            <td colSpan={9} className="px-6 py-16 text-center font-sans">
-              <div className="flex flex-col items-center justify-center space-y-2">
-                <div className="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                  <Scissors className="w-6 h-6 text-gray-400" />
-                </div>
-                <p className="text-xs font-semibold text-gray-300">
-                  Tidak Ada Data Antrean Wajib Setor
-                </p>
-              </div>
+            <td colSpan={9} className="px-6 py-8">
+              <EmptyState
+                icon={<Scissors className="w-6 h-6 text-gray-400" />}
+                title="Tidak Ada Data Antrean Wajib Setor"
+                description="Pastikan antrean periode telah di-generate atau sesuaikan filter Anda."
+              />
             </td>
           </tr>
         ) : (
@@ -203,21 +199,20 @@ export const RambutQueueSubTable: React.FC<Props> = ({
 
                 <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
                   {row.status_setor === "sudah" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                      <CheckCircle2 className="w-3 h-3" /> Sudah
-                    </span>
+                    <StatusBadge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
+                      Sudah
+                    </StatusBadge>
                   ) : row.status_setor === "dispensasi" ? (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                      <ShieldAlert className="w-3 h-3" /> Izin
-                    </span>
+                    <StatusBadge variant="purple" icon={<ShieldAlert className="w-3 h-3" />}>
+                      Izin
+                    </StatusBadge>
                   ) : (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                      <Clock className="w-3 h-3" /> Belum
-                    </span>
+                    <StatusBadge variant="warning" icon={<Clock className="w-3 h-3" />}>
+                      Belum
+                    </StatusBadge>
                   )}
                 </td>
 
-                {/* 🎯 TAMPILAN AKSI DENGAN PROTEKSI STRICT CAN_EXECUTE */}
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
                   {row.status_setor === "belum" ? (
                     canExecute ? (
@@ -238,7 +233,6 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                         </button>
                       </div>
                     ) : (
-                      /* 🛡️ IKON KUNCI JIKA PERIODE TIDAK AKTIF / DI LUAR JADWAL */
                       <div
                         className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-gray-950/60 border border-gray-800 text-gray-500 text-[10px] font-mono cursor-not-allowed select-none"
                         title={disabledReason}

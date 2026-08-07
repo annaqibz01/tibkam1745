@@ -1,9 +1,9 @@
-// src/pages/Kalender.tsx
+// src/features/kalender/pages/Kalender.tsx
 import { useState } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { useAuth } from "@/features/auth";
 import { useAdminKalender } from "../hooks/useKalenderHijriyah";
-import type { UsersResponse } from "../../../types/pocketbase-types";
+import type { UsersResponse } from "@/types/pocketbase-types";
 import { KalenderHeader } from "../components/KalenderHeader";
 import { KalenderGridPreview } from "../components/KalenderGridPreview";
 import { KalenderTable } from "../components/KalenderTable";
@@ -13,20 +13,19 @@ import { LayoutGrid, Table } from "lucide-react";
 
 const PER_PAGE = 15;
 
-// ✨ 2. Beri tipe data ': Variants' agar TypeScript mengenalinya secara presisi
 const transitionVariants: Variants = {
   initial: { opacity: 0, y: 8, scale: 0.995 },
-  animate: { 
-    opacity: 1, 
-    y: 0, 
+  animate: {
+    opacity: 1,
+    y: 0,
     scale: 1,
-    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] } 
+    transition: { duration: 0.2, ease: [0.16, 1, 0.3, 1] },
   },
-  exit: { 
-    opacity: 0, 
-    y: -8, 
+  exit: {
+    opacity: 0,
+    y: -8,
     scale: 0.995,
-    transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] } 
+    transition: { duration: 0.15, ease: [0.16, 1, 0.3, 1] },
   },
 };
 
@@ -35,9 +34,7 @@ export default function KalenderPage() {
   const currentUser = user as UsersResponse | null;
   const isAdmin = currentUser?.role === "admin";
 
-  // Mode Tampilan: 'grid' (Visual Kalender Dinding) | 'table' (Daftar Tabel)
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid");
-
   const [page, setPage] = useState(1);
   const [isGenerateModalOpen, setIsGenerateModalOpen] = useState(false);
 
@@ -53,16 +50,15 @@ export default function KalenderPage() {
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Hero Header Banner */}
+      {/* 1. Hero Header Banner Shared */}
       <KalenderHeader
         isAdmin={isAdmin}
         onOpenGenerateModal={() => setIsGenerateModalOpen(true)}
       />
 
-      {/* 2. TAB VIEW SWITCHER DENGAN ANIMASI PILL */}
-      <div className="flex items-center justify-between border-b border-gray-800/80 pb-3">
+      {/* 2. Tab View Switcher */}
+      <div className="flex items-center justify-between border-b border-gray-800/80 pb-3 select-none">
         <div className="flex items-center gap-1.5 bg-gray-900/80 p-1.5 rounded-2xl border border-gray-800/80 shadow-lg backdrop-blur-xl">
-          {/* Tombol Grid Kalender */}
           <button
             type="button"
             onClick={() => setViewMode("grid")}
@@ -83,7 +79,6 @@ export default function KalenderPage() {
             </span>
           </button>
 
-          {/* Tombol Tabel Data */}
           <button
             type="button"
             onClick={() => setViewMode("table")}
@@ -110,7 +105,7 @@ export default function KalenderPage() {
         </span>
       </div>
 
-      {/* 3. RENDER KONTEN BERTRANSISI HALUS DENGAN ANIMATE PRESENCE */}
+      {/* 3. Transisi Antar View Mode */}
       <AnimatePresence mode="wait">
         {viewMode === "grid" ? (
           <motion.div

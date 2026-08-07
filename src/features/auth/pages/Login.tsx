@@ -1,4 +1,4 @@
-// src/pages/Login.tsx
+// src/features/auth/pages/Login.tsx
 import { useState, useEffect, type FormEvent } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -11,22 +11,20 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useAuth } from "../hooks/useAuth";
-import NotificationToast, {
-  type ToastMessage,
-} from "@/components/shared/NotificationToast";
+import { useToast } from "@/context/ToastContext";
 
 const Login = () => {
   // --- Router ---
   const navigate = useNavigate();
 
-  // --- Auth Hook ---
+  // --- Auth & Toast Hooks ---
   const { login, isLoading, isValid } = useAuth();
+  const { showError, showSuccess } = useToast();
 
   // --- Form State ---
   const [username, setUsername] = useState<string>("");
   const [password, setPassword] = useState<string>("");
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const [toast, setToast] = useState<ToastMessage | null>(null);
 
   // --- Auto-redirect if already authenticated ---
   useEffect(() => {
@@ -38,27 +36,22 @@ const Login = () => {
   // --- Submit Handler ---
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setToast(null);
 
     const res = await login(username, password);
 
     if (res.success) {
+      showSuccess("Selamat datang kembali!", "Login Berhasil");
       navigate("/dashboard", { replace: true });
     } else {
-      setToast({
-        title: "Otentikasi Gagal",
-        message:
-          res.error ?? "Terjadi kesalahan kredensial. Silakan coba lagi.",
-        type: "error",
-      });
+      showError(
+        res.error ?? "Terjadi kesalahan kredensial. Silakan coba lagi.",
+        "Otentikasi Gagal"
+      );
     }
   };
 
   return (
     <div className="relative min-h-screen w-full flex items-center justify-center bg-gray-950 p-4 sm:p-6 overflow-hidden selection:bg-indigo-500/30 selection:text-indigo-200">
-      {/* 🛡️ Floating Notification Toast */}
-      <NotificationToast toast={toast} onClose={() => setToast(null)} />
-
       {/* 🔮 Ambient Glow Mesh Background */}
       <div className="absolute top-1/4 -left-32 w-96 h-96 bg-indigo-600/15 rounded-full blur-[120px] pointer-events-none" />
       <div className="absolute bottom-1/4 -right-32 w-96 h-96 bg-purple-600/15 rounded-full blur-[120px] pointer-events-none" />

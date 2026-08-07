@@ -2,8 +2,8 @@
 import React from "react";
 import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut";
 import type { ReportType } from "../hooks/useLaporanRambut";
+import { StatusBadge, EmptyState, HijriText } from "@/components/shared";
 import { CheckCircle2, Clock, ShieldAlert, FileText, User, MapPin, Home, Moon } from "lucide-react";
-import { HijriText } from "@/components/shared/HijriText";
 
 interface LaporanTableProps {
   reportType: ReportType;
@@ -62,15 +62,12 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center font-sans">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                        <FileText className="w-6 h-6 text-gray-400" />
-                      </div>
-                      <p className="text-xs font-semibold text-gray-300">
-                        Tidak Ada Data Terkait Filter Laporan
-                      </p>
-                    </div>
+                  <td colSpan={8} className="px-6 py-8">
+                    <EmptyState
+                      icon={<FileText className="w-8 h-8 text-gray-400" />}
+                      title="Tidak Ada Data Terkait Filter Laporan"
+                      description="Coba pilih periode lain atau sesuaikan kriteria filter laporan Anda."
+                    />
                   </td>
                 </tr>
               ) : (
@@ -85,7 +82,7 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                   return (
                     <tr key={row.id} className="group transition-colors duration-150 hover:bg-indigo-500/[0.04]">
                       <td className="px-3 py-3.5 text-center text-gray-500">{rowNo}</td>
-                      
+
                       <td className="px-3 py-3.5 font-bold text-indigo-400 whitespace-nowrap overflow-hidden">
                         <span className="px-2 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20 inline-block">
                           {row.id_pps}
@@ -127,19 +124,19 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                         </div>
                       </td>
 
-                      <td className="px-3 py-3.5 text-center font-sans whitespace-nowrap overflow-hidden">
+                      <td className="px-3 py-3.5 text-center whitespace-nowrap overflow-hidden font-sans">
                         {row.status_setor === "sudah" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                            <CheckCircle2 className="w-3 h-3" /> Sudah
-                          </span>
+                          <StatusBadge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
+                            Sudah
+                          </StatusBadge>
                         ) : row.status_setor === "dispensasi" ? (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-purple-500/10 text-purple-300 border border-purple-500/20">
-                            <ShieldAlert className="w-3 h-3" /> Izin
-                          </span>
+                          <StatusBadge variant="purple" icon={<ShieldAlert className="w-3 h-3" />}>
+                            Izin
+                          </StatusBadge>
                         ) : (
-                          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20">
-                            <Clock className="w-3 h-3" /> Belum
-                          </span>
+                          <StatusBadge variant="warning" icon={<Clock className="w-3 h-3" />}>
+                            Belum
+                          </StatusBadge>
                         )}
                       </td>
                     </tr>
@@ -175,15 +172,12 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
                 ))
               ) : items.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-16 text-center font-sans">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                        <FileText className="w-6 h-6 text-gray-400" />
-                      </div>
-                      <p className="text-xs font-semibold text-gray-300">
-                        Tidak Ada Data Riwayat Transaksi Ditemukan
-                      </p>
-                    </div>
+                  <td colSpan={8} className="px-6 py-8">
+                    <EmptyState
+                      icon={<FileText className="w-8 h-8 text-gray-400" />}
+                      title="Tidak Ada Data Riwayat Transaksi Ditemukan"
+                      description="Belum ada transaksi setor yang tercatat untuk kriteria laporan ini."
+                    />
                   </td>
                 </tr>
               ) : (

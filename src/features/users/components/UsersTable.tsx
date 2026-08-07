@@ -1,7 +1,7 @@
-// src/components/users/UsersTable.tsx
+// src/features/users/components/UsersTable.tsx
 import React from "react";
-import type { UsersResponse } from "@/types/pocketbase-types";
-import { roleBadgeClass } from "@/utils/userHelpers";
+import type { UsersResponse, UsersRoleOptions } from "@/types/pocketbase-types";
+import { StatusBadge, type BadgeVariant, EmptyState } from "@/components/shared";
 import { Pencil, KeyRound, Trash2, UserX } from "lucide-react";
 
 interface UsersTableProps {
@@ -12,6 +12,21 @@ interface UsersTableProps {
   onDelete: (user: UsersResponse) => void;
 }
 
+const getRoleBadgeVariant = (role?: UsersRoleOptions | string): BadgeVariant => {
+  switch (role) {
+    case "admin":
+      return "info";
+    case "admin_rambut":
+      return "warning";
+    case "rambut":
+      return "info";
+    case "umum":
+      return "neutral";
+    default:
+      return "neutral";
+  }
+};
+
 export const UsersTable: React.FC<UsersTableProps> = ({
   users,
   getAvatarUrl,
@@ -21,13 +36,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 }) => {
   return (
     <div className="hidden md:block relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl">
-      {/* 🔮 Garis Kilau Top-Border */}
       <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
 
       <div className="overflow-x-auto">
-        <table className="w-full text-sm table-fixed border-collapse">
+        <table className="w-full text-sm table-fixed border-collapse font-sans">
           <thead>
-            <tr className="bg-gray-950/70 border-b border-gray-800/80 backdrop-blur-md">
+            <tr className="bg-gray-950/70 border-b border-gray-800/80 backdrop-blur-md select-none">
               <th className="w-[30%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-left">
                 Pengguna
               </th>
@@ -48,20 +62,12 @@ export const UsersTable: React.FC<UsersTableProps> = ({
           <tbody className="divide-y divide-gray-800/50">
             {users.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-16 text-center">
-                  <div className="flex flex-col items-center justify-center space-y-3">
-                    <div className="p-4 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400 shadow-inner">
-                      <UserX className="w-8 h-8 text-gray-400" />
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-sm font-semibold text-gray-300">
-                        Tidak Ada Pengguna Ditemukan
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Coba sesuaikan kata kunci pencarian atau filter Anda.
-                      </p>
-                    </div>
-                  </div>
+                <td colSpan={5} className="px-6 py-8">
+                  <EmptyState
+                    icon={<UserX className="w-8 h-8 text-gray-400" />}
+                    title="Tidak Ada Pengguna Ditemukan"
+                    description="Coba sesuaikan kata kunci pencarian atau filter role/status Anda."
+                  />
                 </td>
               </tr>
             ) : (
@@ -99,31 +105,19 @@ export const UsersTable: React.FC<UsersTableProps> = ({
 
                     {/* Column 2: Role Badge */}
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-block px-3 py-1 rounded-full text-xs font-semibold border capitalize shadow-sm ${roleBadgeClass(
-                          user.role
-                        )}`}
-                      >
+                      <StatusBadge variant={getRoleBadgeVariant(user.role)}>
                         {user.role}
-                      </span>
+                      </StatusBadge>
                     </td>
 
                     {/* Column 3: Status Badge */}
                     <td className="px-6 py-4">
-                      <span
-                        className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-mono font-medium border shadow-sm ${
-                          user.status
-                            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
-                            : "bg-red-500/10 border-red-500/20 text-red-400"
-                        }`}
+                      <StatusBadge
+                        variant={user.status ? "success" : "danger"}
+                        dot
                       >
-                        <span
-                          className={`w-1.5 h-1.5 rounded-full ${
-                            user.status ? "bg-emerald-400 animate-pulse" : "bg-red-400"
-                          }`}
-                        />
                         {user.status ? "Aktif" : "Nonaktif"}
-                      </span>
+                      </StatusBadge>
                     </td>
 
                     {/* Column 4: Registered Date */}

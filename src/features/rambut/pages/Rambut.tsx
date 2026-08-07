@@ -14,7 +14,7 @@ export default function RambutPage() {
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Header Banner */}
+      {/* 1. Header Banner Shared */}
       <RambutHeader
         activePeriode={p.activePeriode || null}
         selectedPeriode={p.selectedPeriode}
@@ -26,7 +26,7 @@ export default function RambutPage() {
       {/* 2. Stats */}
       <RambutStats stats={p.stats} isLoading={p.isStatsLoading} />
 
-      {/* 3. Toolbar */}
+      {/* 3. Toolbar Shared */}
       <RambutScanToolbar
         activeTab={p.activeTab}
         onTabChange={(tab) => {
@@ -77,7 +77,7 @@ export default function RambutPage() {
         isAuditLoading={p.isHistoryLoading}
         onOpenExecuteModal={(item) => p.setSelectedExecuteItem(item)}
         onOpenDispensasiModal={(item) => p.setSelectedDispensasiItem(item)}
-        canExecute={p.canExecute} // 👈 Dihubungkan langsung dari useRambutPage
+        canExecute={p.canExecute}
       />
 
       {/* 5. Pagination Kontrol */}

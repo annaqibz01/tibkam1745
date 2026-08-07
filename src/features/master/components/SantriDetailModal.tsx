@@ -1,6 +1,6 @@
 // src/features/master/components/SantriDetailModal.tsx
 import React, { useState, useEffect } from "react";
-import { BaseModal } from "@/components/shared/BaseModal";
+import { BaseModal, StatusBadge } from "@/components/shared";
 import type { MasterResponse } from "@/types/pocketbase-types";
 import {
   User,
@@ -26,9 +26,6 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
   onClose,
   santri,
 }) => {
-  // 🔮 KUNCI ANIMASI SMOOTH:
-  // Simpan data santri di state lokal agar saat modal ditutup (santri = null),
-  // BaseModal masih memegang data untuk memutar animasi exit Framer Motion.
   const [displaySantri, setDisplaySantri] = useState<MasterResponse | null>(santri);
 
   useEffect(() => {
@@ -54,44 +51,41 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
       maxWidth="max-w-3xl"
     >
       <div className="space-y-4 py-1 px-1 font-mono text-xs select-none no-scrollbar">
-        
         {/* 1. HERO PROFILE CARD */}
         <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-5 shadow-xl backdrop-blur-xl">
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
-          
+
           <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-600/30 border border-indigo-400/30 shrink-0">
               {displaySantri.nama ? displaySantri.nama.charAt(0).toUpperCase() : "?"}
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0">
+            <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0 font-sans">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
-                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold text-[11px]">
+                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold font-mono text-[11px]">
                   ID PPS: {displaySantri.id_pps || "-"}
                 </span>
 
-                {displaySantri.status_aktif ? (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                    <CheckCircle2 className="w-3 h-3" /> Aktif
-                  </span>
-                ) : (
-                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20">
-                    <XCircle className="w-3 h-3" /> Nonaktif
-                  </span>
-                )}
+                <StatusBadge
+                  variant={displaySantri.status_aktif ? "success" : "danger"}
+                  icon={displaySantri.status_aktif ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  dot
+                >
+                  {displaySantri.status_aktif ? "Aktif" : "Nonaktif"}
+                </StatusBadge>
 
                 {displaySantri.status_domisili && (
-                  <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20 text-[10px] font-bold">
+                  <StatusBadge variant="purple">
                     Domisili: {displaySantri.status_domisili}
-                  </span>
+                  </StatusBadge>
                 )}
               </div>
 
-              <h2 className="text-lg font-bold text-white font-sans truncate">
+              <h2 className="text-lg font-bold text-white truncate">
                 {displaySantri.nama || "Tanpa Nama"}
               </h2>
 
-              <p className="text-gray-400 text-[11px] font-sans truncate">
+              <p className="text-gray-400 text-[11px] truncate">
                 {displaySantri.nama_akte ? `Nama Akte: ${displaySantri.nama_akte}` : "Nama Akte sesuai nama induk"}
               </p>
             </div>
@@ -100,7 +94,6 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
 
         {/* 2. GRID DETAILS SECTION */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-          
           {/* SEKSI A: AKADEMIK & PESANTREN */}
           <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner">
             <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-indigo-400 font-bold">
@@ -235,7 +228,6 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
               </div>
             </div>
           )}
-
         </div>
 
         {/* 3. FOOTER ACTION */}
@@ -248,7 +240,6 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
             Tutup
           </button>
         </div>
-
       </div>
     </BaseModal>
   );

@@ -1,34 +1,30 @@
 // src/features/dashboard/pages/Dashboard.tsx
-import React from 'react';
-import { useAuth } from '@/features/auth';
-import { useUsers } from '@/features/users';
-import { useDashboardSantriStats } from '../hooks/useDashboard';
-import { WelcomeBanner } from '../components/WelcomeBanner';
-import { AdminStatsGrid } from '../components/AdminStatsGrid';
-import { RecentActivityLog } from '../components/RecentActivityLog';
-import SantriStatsSummary from '../components/SantriStatsSummary';
-import { Loader2, Scissors } from 'lucide-react';
+import React from "react";
+import { useAuth } from "@/features/auth";
+import { useUsers } from "@/features/users";
+import { useDashboardSantriStats } from "../hooks/useDashboard";
+import { WelcomeBanner } from "../components/WelcomeBanner";
+import { AdminStatsGrid } from "../components/AdminStatsGrid";
+import { RecentActivityLog } from "../components/RecentActivityLog";
+import SantriStatsSummary from "../components/SantriStatsSummary";
+import { Loader2, Scissors } from "lucide-react";
 
 interface User {
   name: string;
   username: string;
-  role: 'admin' | 'rambut' | 'umum';
+  role: "admin" | "rambut" | "umum";
 }
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth() as { user: User | null };
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = user?.role === "admin";
 
-  // 🛡️ OPSI OPTIMASI: Panggil query users, tetapi gunakan guard logic
   const { getUsers } = useUsers();
   const { data: users, isLoading: isUsersLoading } = getUsers;
 
-  // ⚡ Panggil data statistik santri (ringan & ter-cache di level server query)
-  const { data: santriStats, isLoading: isSantriLoading } = useDashboardSantriStats();
+  const { data: santriStats, isLoading: isSantriLoading } =
+    useDashboardSantriStats();
 
-  // ⏳ State Loading Khusus:
-  // Jika role Admin -> Tunggu user data & users list
-  // Jika Non-Admin -> Cukup tunggu user data saja (Langsung render cepat!)
   const isInitialLoading = !user || (isAdmin && isUsersLoading);
 
   if (isInitialLoading) {
@@ -45,10 +41,9 @@ const Dashboard: React.FC = () => {
     );
   }
 
-  // 🎯 Konten Tambahan Khusus Berdasarkan Role
   const renderRoleSpecificContent = () => {
     switch (user.role) {
-      case 'admin': {
+      case "admin": {
         const safeUsers = users || [];
         return (
           <div className="space-y-6 pt-2">
@@ -60,7 +55,7 @@ const Dashboard: React.FC = () => {
         );
       }
 
-      case 'rambut':
+      case "rambut":
         return (
           <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-8 shadow-2xl backdrop-blur-xl text-center space-y-3">
             <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
@@ -83,10 +78,10 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="bg-gray-950 min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 md:space-y-8">
-      {/* 1. Welcome Banner (Shared untuk Semua Role) */}
+      {/* 1. Welcome Banner (Menggunakan PageHeader shared) */}
       <WelcomeBanner user={user} />
 
-      {/* 2. Ringkasan Statistik Santri Matang */}
+      {/* 2. Ringkasan Statistik Santri */}
       <SantriStatsSummary data={santriStats} isLoading={isSantriLoading} />
 
       {/* 3. Konten Tambahan Khusus Role */}
