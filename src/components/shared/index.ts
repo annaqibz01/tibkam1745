@@ -11,3 +11,4 @@ export * from "./CustomDatePickerHijriyah";
 export * from "./CustomDatePickerMasehi";
 export * from "./HijriText";
 export * from "./NotificationToast";
+export * from "./CustomTitleBar";

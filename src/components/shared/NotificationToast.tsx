@@ -1,7 +1,13 @@
 // src/components/shared/NotificationToast.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom"; // 👈 Kita pakai Portal dari React DOM
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  X,
+} from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -29,7 +35,7 @@ export default function NotificationToast({
   const handleClose = useCallback(() => {
     setIsVisible(false);
     if (timerRef.current) clearTimeout(timerRef.current);
-    
+
     timerRef.current = setTimeout(() => {
       setDisplayToast(null);
       onClose();
@@ -89,7 +95,7 @@ export default function NotificationToast({
 
   // 💡 Menggunakan createPortal untuk merender komponen langsung di bawah <body>
   return createPortal(
-    <div className="fixed top-6 inset-x-0 z-[9999] flex justify-center px-4 pointer-events-none">
+    <div className="fixed top-12 inset-x-0 z-[99999] flex justify-center px-4 pointer-events-none">
       <div
         className={`pointer-events-auto max-w-md w-full rounded-2xl border bg-gray-900/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
           toastConfig.border
@@ -128,6 +134,6 @@ export default function NotificationToast({
         </div>
       </div>
     </div>,
-    document.body // 👈 Target injeksi portal
+    document.body, // 👈 Target injeksi portal
   );
 }

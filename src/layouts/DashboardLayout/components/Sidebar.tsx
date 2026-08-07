@@ -162,15 +162,15 @@ const Sidebar = () => {
       {/* 🚀 ---- Sidebar Desktop & Mobile ---- */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-screen overflow-hidden
-          bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
-          border-r border-gray-800/80 shadow-2xl
-          flex flex-col transform-gpu
-          transition-[width,transform] duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:z-auto
-          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-          ${isCollapsed ? "w-20" : "w-64"}
-        `}
+    fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full overflow-hidden
+    bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
+    border-r border-gray-800/80 shadow-2xl
+    flex flex-col transform-gpu
+    transition-[width,transform] duration-300 ease-in-out
+    lg:translate-x-0 lg:static lg:z-auto
+    ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+    ${isCollapsed ? "w-20" : "w-64"}
+  `}
       >
         {/* 🔮 Garis Kilau Top-Border */}
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />

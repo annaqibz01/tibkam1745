@@ -1,3 +1,4 @@
+// src/App.tsx
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from '@/features/auth';
@@ -10,67 +11,72 @@ import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';
 import { RambutPage as Rambut } from '@/features/rambut';
 import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
+import { CustomTitleBar } from '@/components/shared';
 
 export default function App() {
   return (
     <ToastProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 select-none">
+        <CustomTitleBar />
 
-          <Route
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            {/* 🟢 Akses Umum (Semua User Terautentikasi) */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/master" element={<Master />} />
+        {/* 🔮 KUNCI: Tambahkan min-h-0 agar flex child tidak meluap keluar layar */}
+        <div className="flex-1 min-h-0 w-full overflow-hidden relative">
+          <HashRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-            {/* 🛡️ Kelola Users (Khusus Admin & Admin Rambut) */}
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/master" element={<Master />} />
 
-            {/* ✂️ Layanan Divisi Rambut (Admin, Admin Rambut & Petugas Rambut) */}
-            <Route
-              path="/rambut"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <Rambut />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/laporan/rambut"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <LaporanRambut />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/kalender"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <Kalender />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
+                      <Users />
+                    </ProtectedRoute>
+                  }
+                />
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </HashRouter>
+                <Route
+                  path="/rambut"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <Rambut />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/laporan/rambut"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <LaporanRambut />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kalender"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <Kalender />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
+
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </HashRouter>
+        </div>
+      </div>
     </ToastProvider>
   );
 }

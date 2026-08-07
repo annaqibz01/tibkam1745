@@ -19,7 +19,7 @@ const Login = () => {
 
   // --- Auth & Toast Hooks ---
   const { login, isLoading, isValid } = useAuth();
-  const { showError, showSuccess } = useToast();
+  const { showError } = useToast();
 
   // --- Form State ---
   const [username, setUsername] = useState<string>("");
@@ -40,7 +40,6 @@ const Login = () => {
     const res = await login(username, password);
 
     if (res.success) {
-      showSuccess("Selamat datang kembali!", "Login Berhasil");
       navigate("/dashboard", { replace: true });
     } else {
       showError(
