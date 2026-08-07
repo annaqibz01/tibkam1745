@@ -113,98 +113,102 @@ Aplikasi desktop native berbasis **Tauri 2** + **React 19** dengan backend lokal
 
 ## 5. Struktur Proyek
 
+```text
 tibkam1745/
-├── src/
-│   ├── App.tsx
-│   ├── main.tsx
-│   ├── index.css
-│   ├── components/
-│   │   └── shared/
-│   │       ├── BaseModal.tsx
-│   │       ├── BaseToolbar.tsx
-│   │       ├── GlassDropdown.tsx
-│   │       ├── CustomDatePickerHijriyah.tsx
-│   │       ├── CustomDatePickerMasehi.tsx
-│   │       ├── EmptyState.tsx
-│   │       ├── HijriText.tsx
-│   │       ├── NotificationToast.tsx
-│   │       ├── PageHeader.tsx
-│   │       ├── PageTransition.tsx
-│   │       ├── SegmentedControl.tsx
-│   │       └── StatusBadge.tsx
-│   ├── context/
-│   │   └── ToastContext.tsx
-│   ├── features/
-│   │   ├── auth/
-│   │   ├── dashboard/
-│   │   ├── kalender/
-│   │   ├── laporan/
-│   │   ├── master/
-│   │   ├── profile/
-│   │   ├── rambut/
-│   │   └── users/
-│   ├── hooks/
-│   │   ├── useAutoBackup.ts
-│   │   ├── usePrinter.ts
-│   │   └── useWaktuIstiwa.ts
-│   ├── layouts/
-│   │   └── DashboardLayout/
-│   ├── lib/
-│   │   └── pocketbase.ts
-│   ├── types/
-│   │   ├── pocketbase-types.ts
-│   │   └── printer.ts
-│   └── utils/
-│       ├── dateHelpers.ts
-│       ├── errorHandler.ts
-│       ├── printer.ts
-│       ├── userHelpers.ts
-│       └── waktuIstiwa.ts
-├── src-tauri/
-│   ├── bin/
-│   │   ├── pocketbase.exe
-│   │   ├── koleksi_awal.db
-│   │   └── printer_service.exe
-│   ├── src/
-│   │   ├── commands/
-│   │   │   ├── backup.rs
-│   │   │   ├── mod.rs
-│   │   │   └── printer.rs
-│   │   ├── services/
-│   │   │   ├── backup.rs
-│   │   │   ├── pocketbase.rs
-│   │   │   └── printer.rs
-│   │   ├── lib.rs
-│   │   ├── main.rs
-│   │   └── state.rs
-│   └── tauri.conf.json
-├── public/
-│   ├── favicon.ico
-│   ├── logo_struk.svg
-│   ├── logo_tibkam_1745.svg
-│   └── logo_tibkam_sayap_saja.svg
-├── sidecars/
-│   └── printer-service/
-│       ├── go.mod
-│       └── main.go
-├── generate-tree.js
-├── generate-types.js
-├── postcss.config.js
-├── tailwind.config.js
-├── tsconfig.json
-├── tsconfig.node.json
-├── vite.config.ts
-├── package.json
-└── README.md
+├── src/                                  # Source code utama aplikasi frontend (React + TypeScript)
+│   ├── App.tsx                           # Komponen utama root React
+│   ├── main.tsx                          # Entry point render DOM React
+│   ├── index.css                         # Styling global & konfigurasi Tailwind CSS
+│   ├── components/                       # Komponen UI yang digunakan di banyak tempat
+│   │   └── shared/                       # Komponen umum yang dapat dipakai ulang
+│   │       ├── BaseModal.tsx             # Komponen dialog modal standar
+│   │       ├── BaseToolbar.tsx           # Baris alat/aksi standar halaman
+│   │       ├── GlassDropdown.tsx         # Dropdown UI dengan efek glassmorphism
+│   │       ├── CustomDatePickerHijriyah.tsx # Komponen pemilih tanggal kalender Hijriyah
+│   │       ├── CustomDatePickerMasehi.tsx   # Komponen pemilih tanggal kalender Masehi
+│   │       ├── EmptyState.tsx            # Tampilan visual saat data kosong
+│   │       ├── HijriText.tsx             # Komponen untuk pemformatan teks tanggal Hijriyah
+│   │       ├── NotificationToast.tsx     # Komponen tampilan notifikasi toast
+│   │       ├── PageHeader.tsx            # Header standar bagian atas halaman
+│   │       ├── PageTransition.tsx        # Efek animasi transisi antar halaman
+│   │       ├── SegmentedControl.tsx      # Komponen tombol pilihan segmen/tab
+│   │       └── StatusBadge.tsx           # Badge indikator status
+│   ├── context/                          # State management global via React Context
+│   │   └── ToastContext.tsx              # Context penyedia sistem notifikasi toast
+│   ├── features/                         # Modul bisnis terisolasi berdasarkan fitur
+│   │   ├── auth/                         # Fitur autentikasi (login, logout, hak akses)
+│   │   ├── dashboard/                    # Fitur halaman utama & ringkasan statistik
+│   │   ├── kalender/                     # Fitur pengelolaan kalender & penanggalan
+│   │   ├── laporan/                      # Fitur pencetakan & rekapitulasi laporan
+│   │   ├── master/                       # Fitur manajemen data induk (Master Data)
+│   │   ├── profile/                      # Fitur manajemen profil pengguna/lembaga
+│   │   ├── rambut/                       # Modul khusus pangkas rambut/layanan spesifik
+│   │   └── users/                        # Fitur manajemen akun & peran pengguna
+│   ├── hooks/                            # Custom React Hooks
+│   │   ├── useAutoBackup.ts              # Hook logika otomatisasi pembuatan cadangan data
+│   │   ├── usePrinter.ts                 # Hook antarmuka perintah pencetakan struk/laporan
+│   │   └── useWaktuIstiwa.ts             # Hook perhitungan otomatis waktu Istiwa
+│   ├── layouts/                          # Template tata letak halaman
+│   │   └── DashboardLayout/              # Tata letak utama halaman berdasar sidebar & header
+│   ├── lib/                              # Integrasi pustaka pihak ketiga
+│   │   └── pocketbase.ts                 # Inisialisasi Klien PocketBase SDK
+│   ├── types/                            # Deklarasi tipe data TypeScript
+│   │   ├── pocketbase-types.ts           # Definisi tipe skema database PocketBase
+│   │   └── printer.ts                    # Definisi tipe konfigurasi & payload printer
+│   └── utils/                            # Fungsi pembantu (helper logic)
+│       ├── dateHelpers.ts                # Fungsi pembantu konversi & format tanggal
+│       ├── errorHandler.ts               # Handler penanganan error terpusat
+│       ├── printer.ts                    # Utility pembentukan data struk pencetakan
+│       ├── userHelpers.ts                # Utility ekstraksi & pemformatan data user
+│       └── waktuIstiwa.ts                # Algoritma perhitungan waktu Istiwa
+├── src-tauri/                            # Source code backend desktop (Tauri / Rust)
+│   ├── bin/                              # File biner eksternal yang dibundel
+│   │   ├── pocketbase.exe                # Executable database backend PocketBase
+│   │   ├── koleksi_awal.db               # Database SQLite/PocketBase bawaan awal
+│   │   └── printer_service.exe           # Biner sidecar service printer bawaan
+│   ├── src/                              # Source code Rust
+│   │   ├── commands/                     # Tauri Commands (fungsi Rust yang dipanggil dari TS)
+│   │   │   ├── backup.rs                 # Perintah pencadangan & pemulihan data
+│   │   │   ├── mod.rs                    # Eksport seluruh modul commands
+│   │   │   └── printer.rs                # Perintah komunikasi dengan printer hardware
+│   │   ├── services/                     # Layanan latar belakang Rust
+│   │   │   ├── backup.rs                 # Proses enkripsi/kompresi backup database
+│   │   │   ├── pocketbase.rs             # Pengelola lifecycle & jalannya proses PocketBase
+│   │   │   └── printer.rs                # Layanan pengelolaan soket/port printer
+│   │   ├── lib.rs                        # Pustaka utama pembangun aplikasi Tauri v2
+│   │   ├── main.rs                       # Entry point aplikasi Rust/Tauri
+│   │   └── state.rs                      # Pengelola state aplikasi internal di sisi Rust
+│   └── tauri.conf.json                   # Konfigurasi aplikasi Tauri (jendela, izin, build)
+├── public/                               # Aset statis terbuka (bebas diakses langsung)
+│   ├── favicon.ico                       # Ikon tab peramban/aplikasi
+│   ├── logo_struk.svg                    # Gambar logo khusus untuk dicetak di struk
+│   ├── logo_tibkam_1745.svg              # Logo utama aplikasi
+│   └── logo_tibkam_sayap_saja.svg        # Aset gambar logo variasi
+├── sidecars/                             # Project terpisah yang dikompilasi menjadi biner tambahan
+│   └── printer-service/                  # Microservice khusus pencetakan berbasis Go
+│       ├── go.mod                        # File dependensi modul Go
+│       └── main.go                       # Entry point program printer service Go
+├── generate-tree.js                      # Skrip pembuatan otomatis struktur direktori
+├── generate-types.js                     # Skrip ekstraksi tipe otomatis dari skema database
+├── postcss.config.js                     # Konfigurasi plugin PostCSS
+├── tailwind.config.js                    # Konfigurasi tema, warna, & breakpoint Tailwind CSS
+├── tsconfig.json                         # Konfigurasi utama TypeScript untuk frontend
+├── tsconfig.node.json                    # Konfigurasi TypeScript untuk lingkungan Node/Vite
+├── vite.config.ts                        # Konfigurasi bundler Vite
+├── package.json                          # Manifest dependensi & skrip npm
+└── README.md                             # Dokumentasi utama proyek
+```
 
 Setiap fitur dikemas dalam folder `src/features/<modul>` dengan pola:
 
-    features/<modul>/
-    ├── components/
-    ├── hooks/
-    ├── pages/
-    ├── utils/
-    └── index.ts
+```text
+features/<modul>/
+├── components/ # Komponen UI internal modul
+├── hooks/      # Custom hooks internal modul
+├── pages/      # Komponen tampilan halaman fitur
+├── utils/      # Fungsi helper internal modul
+└── index.ts    # Public API gerbang modul
+```
 
 `index.ts` berperan sebagai public API gerbang modul.
 
@@ -533,7 +537,15 @@ Pastikan `.env` sudah diisi.
 
 ## 16. Lisensi
 
-Proyek ini menggunakan lisensi yang tertera pada file `LICENSE`.
+Copyright (c) 2026 annaqibz01. All rights reserved.
+
+This software and all associated documentation files are the intellectual property 
+of annaqibz01.
+
+Unauthorized copying, modification, distribution, sublicensing, or reverse 
+engineering of this software, via any medium, is strictly prohibited. 
+Any use of this software without prior written permission is a violation 
+of copyright law.
 
 ---
 
