@@ -1,17 +1,19 @@
 // src/features/laporan/components/LaporanHeader.tsx
 import React from "react";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 import { PageHeader, StatusBadge } from "@/components/shared";
 
 interface LaporanHeaderProps {
   selectedPeriode: PeriodeRambutResponse | null;
   onExportExcel: () => void;
+  isExporting?: boolean;
 }
 
 export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
   selectedPeriode,
   onExportExcel,
+  isExporting = false,
 }) => {
   return (
     <PageHeader
@@ -41,10 +43,20 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
         <button
           type="button"
           onClick={onExportExcel}
-          className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30 select-none"
+          disabled={isExporting}
+          className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30 select-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Export Excel (.xlsx)</span>
+          {isExporting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Memproses Excel...</span>
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export Excel (.xlsx)</span>
+            </>
+          )}
         </button>
       }
     />

@@ -11,6 +11,7 @@
 - `src/components/shared/BaseToolbar.tsx`
 - `src/components/shared/CustomDatePickerHijriyah.tsx`
 - `src/components/shared/CustomDatePickerMasehi.tsx`
+- `src/components/shared/CustomTitleBar.tsx`
 - `src/components/shared/EmptyState.tsx`
 - `src/components/shared/GlassDropdown.tsx`
 - `src/components/shared/HijriText.tsx`
@@ -195,6 +196,7 @@ export default {
 
 ### `src/App.tsx`
 ```tsx
+// src/App.tsx
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { ToastProvider } from './context/ToastContext';
 import { ProtectedRoute } from '@/features/auth';
@@ -207,67 +209,72 @@ import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';
 import { RambutPage as Rambut } from '@/features/rambut';
 import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
+import { CustomTitleBar } from '@/components/shared';
 
 export default function App() {
   return (
     <ToastProvider>
-      <HashRouter>
-        <Routes>
-          <Route path="/login" element={<Login />} />
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 select-none">
+        <CustomTitleBar />
 
-          <Route
-            element={
-              <ProtectedRoute>
-                <DashboardLayout />
-              </ProtectedRoute>
-            }
-          >
-            {/* 🟢 Akses Umum (Semua User Terautentikasi) */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/master" element={<Master />} />
+        {/* 🔮 KUNCI: Tambahkan min-h-0 agar flex child tidak meluap keluar layar */}
+        <div className="flex-1 min-h-0 w-full overflow-hidden relative">
+          <HashRouter>
+            <Routes>
+              <Route path="/login" element={<Login />} />
 
-            {/* 🛡️ Kelola Users (Khusus Admin & Admin Rambut) */}
-            <Route
-              path="/users"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
-                  <Users />
-                </ProtectedRoute>
-              }
-            />
+              <Route
+                element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }
+              >
+                <Route path="/dashboard" element={<Dashboard />} />
+                <Route path="/profile" element={<Profile />} />
+                <Route path="/master" element={<Master />} />
 
-            {/* ✂️ Layanan Divisi Rambut (Admin, Admin Rambut & Petugas Rambut) */}
-            <Route
-              path="/rambut"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <Rambut />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/laporan/rambut"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <LaporanRambut />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/kalender"
-              element={
-                <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                  <Kalender />
-                </ProtectedRoute>
-              }
-            />
-          </Route>
+                <Route
+                  path="/users"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
+                      <Users />
+                    </ProtectedRoute>
+                  }
+                />
 
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
-        </Routes>
-      </HashRouter>
+                <Route
+                  path="/rambut"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <Rambut />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/laporan/rambut"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <LaporanRambut />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/kalender"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <Kalender />
+                    </ProtectedRoute>
+                  }
+                />
+              </Route>
+
+              <Route path="/" element={<Navigate to="/dashboard" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </HashRouter>
+        </div>
+      </div>
     </ToastProvider>
   );
 }
@@ -1156,6 +1163,133 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
 export { CustomDatePickerMasehi as CustomDatePicker };
 ```
 
+### `src/components/shared/CustomTitleBar.tsx`
+```tsx
+// src/components/shared/CustomTitleBar.tsx
+import React, { useState, useEffect } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
+import { getVersion } from "@tauri-apps/api/app";
+import { Minus, Square, Copy, X } from "lucide-react";
+
+const appWindow = getCurrentWindow();
+
+export const CustomTitleBar: React.FC = () => {
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [appVersion, setAppVersion] = useState<string>("");
+
+  useEffect(() => {
+    // 🔮 Ambil versi murni dari tauri.conf.json via capabilities API
+    getVersion()
+      .then((ver) => setAppVersion(`v${ver}`))
+      .catch((err) => console.warn("Gagal membaca versi Tauri:", err));
+
+    const updateMaximizedState = async () => {
+      try {
+        setIsMaximized(await appWindow.isMaximized());
+      } catch (err) {
+        console.warn("Gagal membaca status maximize:", err);
+      }
+    };
+    updateMaximizedState();
+
+    const unlistenPromise = appWindow.onResized(async () => {
+      try {
+        setIsMaximized(await appWindow.isMaximized());
+      } catch {}
+    });
+
+    return () => {
+      unlistenPromise.then((unlisten) => unlisten());
+    };
+  }, []);
+
+  const handleMinimize = async () => {
+    try {
+      await appWindow.minimize();
+    } catch (err) {
+      console.error("Gagal minimize:", err);
+    }
+  };
+
+  const handleToggleMaximize = async () => {
+    try {
+      await appWindow.toggleMaximize();
+      setIsMaximized(await appWindow.isMaximized());
+    } catch (err) {
+      console.error("Gagal toggle maximize:", err);
+    }
+  };
+
+  const handleClose = async () => {
+    try {
+      await appWindow.close();
+    } catch (err) {
+      console.error("Gagal close:", err);
+    }
+  };
+
+  return (
+    <header className="h-9 w-full bg-gray-950/95 backdrop-blur-xl border-b border-gray-800/80 flex items-center justify-between px-3 select-none text-xs font-mono z-[99999] shrink-0">
+      {/* 🔮 Area Drag Kiri */}
+      <div data-tauri-drag-region className="flex items-center gap-2.5 cursor-default">
+        <img
+          src="logo_tibkam_sayap_saja.svg"
+          alt="Tibkam Logo"
+          className="h-4 w-auto object-contain pointer-events-none"
+        />
+        <span className="font-extrabold tracking-wider text-gray-200 pointer-events-none">
+          TIBKAM<span className="text-indigo-400">1745</span>
+        </span>
+
+        {/* Render badge hanya jika versi berhasil dibaca dari Tauri API */}
+        {appVersion && (
+          <span className="text-[10px] bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 px-1.5 py-0.5 rounded-md font-semibold leading-none pointer-events-none">
+            {appVersion}
+          </span>
+        )}
+      </div>
+
+      {/* 🔮 Area Drag Tengah (Kosong) */}
+      <div data-tauri-drag-region className="flex-1 h-full cursor-default" />
+
+      {/* 🔮 Area Tombol Kontrol */}
+      <div className="flex items-center gap-2 z-50">
+        <button
+          type="button"
+          onClick={handleMinimize}
+          className="w-9 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800/80 rounded-xl transition-all active:scale-95"
+          title="Minimize"
+        >
+          <Minus className="w-4 h-4" />
+        </button>
+
+        <button
+          type="button"
+          onClick={handleToggleMaximize}
+          className="w-9 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-gray-800/80 rounded-xl transition-all active:scale-95"
+          title={isMaximized ? "Restore" : "Maximize"}
+        >
+          {isMaximized ? (
+            <Copy className="w-3.5 h-3.5 rotate-180" />
+          ) : (
+            <Square className="w-3.5 h-3.5" />
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={handleClose}
+          className="w-9 h-7 flex items-center justify-center text-gray-400 hover:text-white hover:bg-rose-600/90 rounded-xl transition-all active:scale-95"
+          title="Tutup Aplikasi"
+        >
+          <X className="w-4 h-4" />
+        </button>
+      </div>
+    </header>
+  );
+};
+```
+
 ### `src/components/shared/EmptyState.tsx`
 ```tsx
 // src/components/shared/EmptyState.tsx
@@ -1432,6 +1566,7 @@ export * from "./CustomDatePickerHijriyah";
 export * from "./CustomDatePickerMasehi";
 export * from "./HijriText";
 export * from "./NotificationToast";
+export * from "./CustomTitleBar";
 ```
 
 ### `src/components/shared/NotificationToast.tsx`
@@ -1439,7 +1574,13 @@ export * from "./NotificationToast";
 // src/components/shared/NotificationToast.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
 import { createPortal } from "react-dom"; // 👈 Kita pakai Portal dari React DOM
-import { CheckCircle2, AlertCircle, AlertTriangle, Info, X } from "lucide-react";
+import {
+  CheckCircle2,
+  AlertCircle,
+  AlertTriangle,
+  Info,
+  X,
+} from "lucide-react";
 
 export type ToastType = "success" | "error" | "warning" | "info";
 
@@ -1527,7 +1668,7 @@ export default function NotificationToast({
 
   // 💡 Menggunakan createPortal untuk merender komponen langsung di bawah <body>
   return createPortal(
-    <div className="fixed top-6 inset-x-0 z-[9999] flex justify-center px-4 pointer-events-none">
+    <div className="fixed top-12 inset-x-0 z-[99999] flex justify-center px-4 pointer-events-none">
       <div
         className={`pointer-events-auto max-w-md w-full rounded-2xl border bg-gray-900/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
           toastConfig.border
@@ -1566,7 +1707,7 @@ export default function NotificationToast({
         </div>
       </div>
     </div>,
-    document.body // 👈 Target injeksi portal
+    document.body, // 👈 Target injeksi portal
   );
 }
 ```
@@ -2336,15 +2477,15 @@ const Sidebar = () => {
       {/* 🚀 ---- Sidebar Desktop & Mobile ---- */}
       <aside
         className={`
-          fixed top-0 left-0 z-50 h-screen overflow-hidden
-          bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
-          border-r border-gray-800/80 shadow-2xl
-          flex flex-col transform-gpu
-          transition-[width,transform] duration-300 ease-in-out
-          lg:translate-x-0 lg:static lg:z-auto
-          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-          ${isCollapsed ? "w-20" : "w-64"}
-        `}
+    fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full overflow-hidden
+    bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
+    border-r border-gray-800/80 shadow-2xl
+    flex flex-col transform-gpu
+    transition-[width,transform] duration-300 ease-in-out
+    lg:translate-x-0 lg:static lg:z-auto
+    ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+    ${isCollapsed ? "w-20" : "w-64"}
+  `}
       >
         {/* 🔮 Garis Kilau Top-Border */}
         <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />
@@ -2557,21 +2698,19 @@ export default Sidebar;
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import { PageTransition } from '@/components/shared/PageTransition';
-import { useAutoBackup } from '@/hooks/useAutoBackup'; // 👈 1. Import Hook
+import { useAutoBackup } from '@/hooks/useAutoBackup';
 
 export default function DashboardLayout() {
   const location = useLocation();
 
-  // 🚀 2. Panggil Hook di sini (Akan berjalan silent 1x sehari)
   useAutoBackup();
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-950 text-gray-100">
-      {/* Sidebar Navigasi Utama */}
+    <div className="flex h-full w-full overflow-hidden bg-gray-950 text-gray-100">
       <Sidebar />
 
-      {/* Area Konten Utama */}
-      <main className="flex-1 h-full overflow-y-auto">
+      {/* 🔮 Tambahkan min-h-0 agar scrollbar internal hanya bekerja di dalam area main */}
+      <main className="flex-1 h-full min-h-0 overflow-y-auto">
         <PageTransition key={location.pathname}>
           <Outlet />
         </PageTransition>

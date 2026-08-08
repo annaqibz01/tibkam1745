@@ -85,10 +85,10 @@ const Sidebar = () => {
       allowedRoles: ["admin", "admin_rambut", "rambut"],
     },
     {
-      title: "Laporan Rambut",
-      path: "/laporan/rambut",
+      title: "Laporan",
+      path: "/laporan",
       icon: FileText,
-      allowedRoles: ["admin", "admin_rambut", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "rambut"], // Tambahkan role penyidik di sini jika sudah dibuat kelak
     },
     {
       title: "Kalender",

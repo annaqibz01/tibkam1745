@@ -10,7 +10,7 @@ import { UsersPage as Users } from '@/features/users';
 import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';
 import { RambutPage as Rambut } from '@/features/rambut';
-import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
+import { LaporanRambutPage as LaporanRambut, LaporanRedirect } from "@/features/laporan";
 import { CustomTitleBar } from '@/components/shared';
 
 export default function App() {
@@ -53,6 +53,18 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* 🎯 Rute Induk /laporan memicu Smart Redirector berdasarkan Role */}
+                <Route
+                  path="/laporan"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <LaporanRedirect />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Sub-Rute Laporan Spesifik */}
                 <Route
                   path="/laporan/rambut"
                   element={
@@ -61,6 +73,7 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
                 <Route
                   path="/kalender"
                   element={

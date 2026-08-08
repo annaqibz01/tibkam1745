@@ -1,6 +1,6 @@
 // src/features/laporan/hooks/useLaporanRambut.ts
 import { useState, useEffect, useMemo } from "react";
-import { useRambut, useRambutStats } from "@/features/rambut";
+import { useRambut, useRambutStats, parseNumericIdPps } from "@/features/rambut";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export type ReportType = "all" | "belum_setor" | "sudah_setor" | "riwayat";
@@ -24,7 +24,6 @@ export function useLaporanRambut() {
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // Auto-select periode aktif/terbaru saat pertama dimuat
   useEffect(() => {
     if (!selectedPeriode) {
       if (activePeriode) {
@@ -37,14 +36,12 @@ export function useLaporanRambut() {
 
   const currentPeriodeId = selectedPeriode?.id || activePeriode?.id || "";
 
-  // Query data antrean & riwayat berdasarkan periode terpilih
   const { data: fullQueueData = [], isLoading: isQueueLoading, refetch: refetchQueue } = useWajibSetorFullList(currentPeriodeId);
   const { data: fullRiwayatData = [], isLoading: isRiwayatLoading, refetch: refetchRiwayat } = useRiwayatSetorList(currentPeriodeId);
   const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
 
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
-  // Opsi Filter Daerah Domisili Ekstrak Otomatis (A - Z)
   const daerahOptions = useMemo(() => {
     const set = new Set<string>();
     fullQueueData.forEach((item) => {
@@ -57,9 +54,9 @@ export function useLaporanRambut() {
     return Array.from(set).sort();
   }, [fullQueueData]);
 
-  // Filter Queue Data
+  // Filter Queue Data + Sorting Global ID PPS
   const filteredQueueData = useMemo(() => {
-    return fullQueueData.filter((item) => {
+    let list = fullQueueData.filter((item) => {
       if (reportType === "belum_setor" && item.status_setor !== "belum") return false;
       if (reportType === "sudah_setor" && item.status_setor !== "sudah") return false;
       if (filterKategori !== "all" && item.kategori_wajib !== filterKategori) return false;
@@ -77,11 +74,16 @@ export function useLaporanRambut() {
 
       return true;
     });
+
+    // 🎯 FIX: Urutkan ID PPS secara global sebelum dipotong pagination
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [fullQueueData, reportType, filterKategori, filterDaerah, searchQuery]);
 
-  // Filter Audit Data
+  // Filter Audit Data + Sorting Global ID PPS
   const filteredAuditData = useMemo(() => {
-    return fullRiwayatData.filter((item) => {
+    let list = fullRiwayatData.filter((item) => {
       const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
       const firstChar = dom.toString().trim().toUpperCase().charAt(0);
       if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
@@ -95,9 +97,13 @@ export function useLaporanRambut() {
       }
       return true;
     });
+
+    // 🎯 FIX: Urutkan ID PPS secara global sebelum dipotong pagination
+    return list.sort(
+      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [fullRiwayatData, filterDaerah, searchQuery]);
 
-  // Pagination Data
   const activeDataset = reportType === "riwayat" ? filteredAuditData : filteredQueueData;
   const totalItems = activeDataset.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);

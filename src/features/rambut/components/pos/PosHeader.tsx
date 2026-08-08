@@ -32,7 +32,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
           MODE SCAN
         </span>
         <span className="text-[11px] font-mono text-gray-400 hidden sm:inline">
-          Arahkan scanner / ketik ID PPS lalu tekan Enter
+          Scan barcode / ketik ID PPS + Enter
         </span>
       </div>
 
@@ -50,21 +50,24 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
             e.stopPropagation();
             onToggleSound();
           }}
-          className={`p-1.5 rounded-xl border transition-all ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition-all font-mono text-xs font-bold ${
             enableSound
               ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
               : "bg-gray-900 border-gray-800 text-gray-500"
           }`}
-          title={enableSound ? "Suara Beep Aktif" : "Suara Beep Bisu"}
+          title="Toggle Suara Beep (Shortcut: F1)"
         >
-          {enableSound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          {enableSound ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          <span className="text-[10px] text-gray-400">F1</span>
         </button>
 
-        {/* 🖨️ Segmented Toggle 3-Mode Printing */}
-        <div 
+        {/* Segmented Toggle 3-Mode Printing */}
+        <div
           className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-xl text-xs font-mono select-none"
           onClick={(e) => e.stopPropagation()}
+          title="Ganti Mode Cetak (Shortcut: F2)"
         >
+          <span className="px-1.5 text-[10px] font-bold text-gray-500">F2</span>
           {modes.map((m) => {
             const isActive = printMode === m.id;
             const Icon = m.icon;

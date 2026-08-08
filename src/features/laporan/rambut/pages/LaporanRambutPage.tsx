@@ -1,8 +1,7 @@
 // src/features/laporan/pages/LaporanRambutPage.tsx
-import React from "react";
+import React, { useState } from "react";
 import { useToast } from "@/context/ToastContext";
 
-// Reuse Controls & Components
 import { RambutStats } from "@/features/rambut";
 import { MasterPagination } from "@/features/master";
 
@@ -14,6 +13,7 @@ import { LaporanTable } from "../components/LaporanTable";
 
 export const LaporanRambutPage: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
   const {
     periodeList,
@@ -41,9 +41,12 @@ export const LaporanRambutPage: React.FC = () => {
     onRefresh,
   } = useLaporanRambut();
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
     try {
-      exportRambutToExcel({
+      await exportRambutToExcel({
         periode: selectedPeriode,
         queueData: filteredQueueData,
         riwayatData: filteredAuditData,
@@ -52,6 +55,8 @@ export const LaporanRambutPage: React.FC = () => {
       showSuccess("File Excel laporan berhasil diunduh!", "Export Sukses");
     } catch (err: any) {
       showError("Gagal mengunduh Excel: " + err.message, "Export Gagal");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -61,6 +66,7 @@ export const LaporanRambutPage: React.FC = () => {
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
+        isExporting={isExporting}
       />
 
       {/* 2. Kartu Statistik Presisi */}

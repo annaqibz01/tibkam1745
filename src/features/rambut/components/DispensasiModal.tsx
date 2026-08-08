@@ -1,5 +1,5 @@
-// src/components/rambut/DispensasiModal.tsx
-import React, { useState, useEffect } from "react";
+// src/features/rambut/components/DispensasiModal.tsx
+import React, { useState, useEffect, useRef } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import type { WajibSetorExpanded } from "../hooks/useRambut";
 import { ShieldAlert, Loader2, Save, User } from "lucide-react";
@@ -20,9 +20,17 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
   isPending,
 }) => {
   const [alasan, setAlasan] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // 🎯 Auto Focus ke input alasan saat modal dibuka
   useEffect(() => {
-    if (!isOpen) setAlasan("");
+    if (isOpen) {
+      setAlasan("");
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [isOpen]);
 
   if (!item) return null;
@@ -30,7 +38,7 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!alasan.trim()) return;
+    if (!alasan.trim() || isPending) return;
     onConfirm(alasan.trim());
   };
 
@@ -63,23 +71,24 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
                 {santriData?.nama || "Santri"}
               </p>
               <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.kelas || "-"}  {santriData?.tingkatan || "-"}
+                {santriData?.kelas || "-"} {santriData?.tingkatan || "-"}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Input Alasan Dispensasi */}
+        {/* Input Alasan Dispensasi (Auto-focused) */}
         <div className="space-y-1.5">
           <label className="block text-xs font-mono font-medium text-gray-300">
             Alasan / Keterangan Dispensasi <span className="text-rose-400">*</span>
           </label>
           <input
+            ref={inputRef}
             type="text"
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
-            placeholder="Contoh: Sakit Atau Pulang"
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
+            placeholder=""
+            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
             required
           />
         </div>

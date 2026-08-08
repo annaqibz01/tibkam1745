@@ -2,6 +2,7 @@
 import React, { useState, useEffect } from "react";
 import { BaseModal, StatusBadge } from "@/components/shared";
 import type { MasterResponse } from "@/types/pocketbase-types";
+import { pb } from "@/lib/pocketbase";
 import {
   User,
   GraduationCap,
@@ -13,6 +14,7 @@ import {
   CheckCircle2,
   XCircle,
   ShieldAlert,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface SantriDetailModalProps {
@@ -27,10 +29,12 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
   santri,
 }) => {
   const [displaySantri, setDisplaySantri] = useState<MasterResponse | null>(santri);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (santri) {
       setDisplaySantri(santri);
+      setImageError(false);
     }
   }, [santri]);
 
@@ -41,6 +45,10 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
       .map((v) => v?.toString().trim())
       .filter(Boolean)
       .join(", ") || "-";
+
+  const fotoUrl = displaySantri.foto
+    ? pb.getFileUrl(displaySantri, displaySantri.foto)
+    : null;
 
   return (
     <BaseModal
@@ -55,12 +63,24 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
         <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-5 shadow-xl backdrop-blur-xl">
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-600/30 border border-indigo-400/30 shrink-0">
-              {displaySantri.nama ? displaySantri.nama.charAt(0).toUpperCase() : "?"}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            {/* 🖼️ FRAME FOTO DIBESARKAN KE W-32 H-40 (128px x 160px) */}
+            <div className="relative w-32 h-40 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 border-2 border-indigo-400/30 shrink-0 overflow-hidden group">
+              {fotoUrl && !imageError ? (
+                <img
+                  src={fotoUrl}
+                  alt={displaySantri.nama || "Foto Santri"}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="font-sans font-extrabold text-5xl leading-none tracking-wider uppercase select-none drop-shadow-md">
+                  {displaySantri.nama ? displaySantri.nama.charAt(0) : "?"}
+                </span>
+              )}
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0 font-sans">
+            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 font-sans pt-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold font-mono text-[11px]">
                   ID PPS: {displaySantri.id_pps || "-"}
@@ -79,13 +99,20 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
                     Domisili: {displaySantri.status_domisili}
                   </StatusBadge>
                 )}
+
+                {displaySantri.foto_subfolder && (
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[10px] flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    {displaySantri.foto_subfolder}
+                  </span>
+                )}
               </div>
 
-              <h2 className="text-lg font-bold text-white truncate">
+              <h2 className="text-xl font-bold text-white truncate">
                 {displaySantri.nama || "Tanpa Nama"}
               </h2>
 
-              <p className="text-gray-400 text-[11px] truncate">
+              <p className="text-gray-400 text-xs truncate">
                 {displaySantri.nama_akte ? `Nama Akte: ${displaySantri.nama_akte}` : "Nama Akte sesuai nama induk"}
               </p>
             </div>

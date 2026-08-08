@@ -36,7 +36,7 @@ export function useRambutPage() {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
 
-  // 🛡️ Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
+  // Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
   const isAdmin =
     currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
@@ -133,7 +133,7 @@ export function useRambutPage() {
     isAdmin ||
     (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
 
-  // 1. Pengurus Data
+  // 1. Pengurus Data (Filtered -> Sorted secara Global -> Paginated)
   const {
     data: rawPengurusData = [],
     isLoading: isPengurusLoading,
@@ -163,7 +163,7 @@ export function useRambutPage() {
   }, [rawPengurusData]);
 
   const filteredPengurusData = useMemo(() => {
-    return rawPengurusData.filter((p) => {
+    let list = rawPengurusData.filter((p) => {
       const santriNama = p.expand?.santri?.nama || "";
       const matchSearch =
         !pengurusSearch ||
@@ -179,6 +179,11 @@ export function useRambutPage() {
 
       return matchSearch && matchDaerah;
     });
+
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
 
   const totalPengurusItems = filteredPengurusData.length;
@@ -189,7 +194,7 @@ export function useRambutPage() {
     return filteredPengurusData.slice(start, start + PER_PAGE);
   }, [filteredPengurusData, pengurusPage]);
 
-  // 2. Queue Data
+  // 2. Queue Data (Filtered -> Sorted secara Global -> Paginated)
   const {
     data: fullQueueData = [],
     isLoading: isQueueLoading,
@@ -210,19 +215,21 @@ export function useRambutPage() {
       return matchSearch && matchStatus;
     });
 
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
     return list.sort(
-      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps),
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
     );
   }, [fullQueueData, search, statusFilter]);
 
   const totalItems = filteredSortedQueue.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);
+
   const paginatedQueueItems = useMemo(() => {
     const start = (page - 1) * PER_PAGE;
     return filteredSortedQueue.slice(start, start + PER_PAGE);
   }, [filteredSortedQueue, page]);
 
-  // 3. Audit Data
+  // 3. Audit Data (Filtered -> Sorted secara Global -> Paginated)
   const { data: historyData = [], isLoading: isHistoryLoading } =
     useRiwayatSetorList(currentPeriodeId);
 
@@ -243,7 +250,7 @@ export function useRambutPage() {
 
   const filteredAuditItems = useMemo(() => {
     if (!historyData) return [];
-    return historyData.filter((item: any) => {
+    let list = historyData.filter((item: any) => {
       const santriNama = item.expand?.santri?.nama || "";
       const petugasNama =
         item.expand?.petugas_eksekutor?.name ||
@@ -264,6 +271,11 @@ export function useRambutPage() {
 
       return matchSearch && matchDate;
     });
+
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
+    return list.sort(
+      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [historyData, auditSearch, auditDateFilter]);
 
   const totalAuditItems = filteredAuditItems.length;
@@ -300,11 +312,12 @@ export function useRambutPage() {
     updateStatusPeriodeMutation.mutate(
       { periodeId, status },
       {
-        onSuccess: () =>
+        onSuccess: () => {
           showSuccess(
             `Status periode diubah ke ${status.toUpperCase()}`,
             "Status Diperbarui",
-          ),
+          );
+        },
         onError: (err) => showError(err.message, "Gagal Ubah Status"),
       },
     );

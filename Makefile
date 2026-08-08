@@ -6,7 +6,7 @@ SIDECAR_DIR   := sidecars
 SIDECAR_DIRS  := $(wildcard $(SIDECAR_DIR)/*)
 SIDECAR_NAMES := $(notdir $(SIDECAR_DIRS))
 
-.PHONY: help dev tauri sidecars sidecar-printer-service typegen check build clean
+.PHONY: help dev tauri sidecars sidecar-printer-service sidecar-photo-processor typegen check build clean sweep clean-rust
 
 # -----------------------------------------------------------------------------
 # MENU BANTUAN LENGKAP & SAFE UNTUK WINDOWS
@@ -15,14 +15,15 @@ help:
 	@echo "================================================================="
 	@echo "                TIBKAM 1745 - MAKEFILE COMMANDS                  "
 	@echo "================================================================="
-	@echo "  make dev                 : Jalankan Vite Dev Server (Frontend)"
-	@echo "  make tauri               : Jalankan Tauri Desktop (Dev Mode)"
-	@echo "  make sidecars            : Build SEMUA sidecar Go secara otomatis"
-	@echo "  make sidecar-printer-service : Build sidecar printer_service.exe"
-	@echo "  make typegen             : Generate TypeScript types dari PocketBase"
-	@echo "  make check               : Cek error kompilasi Rust (cargo check)"
-	@echo "  make build               : Build installer production (.exe)"
-	@echo "  make clean               : Bersihkan dist & build artifacts"
+	@echo "  make dev                    : Jalankan Vite Dev Server (Frontend)"
+	@echo "  make tauri                  : Jalankan Tauri Desktop (Dev Mode)"
+	@echo "  make sidecars               : Build SEMUA sidecar Go secara otomatis"
+	@echo "  make sidecar-printer-service: Build sidecar printer_service.exe"
+	@echo "  make sidecar-photo-processor: Build sidecar photo_processor.exe"
+	@echo "  make typegen                : Generate TypeScript types dari PocketBase"
+	@echo "  make check                  : Cek error kompilasi Rust (cargo check)"
+	@echo "  make build                  : Build installer production (.exe)"
+	@echo "  make clean                  : Bersihkan dist & build artifacts"
 	@echo "================================================================="
 	@echo "  Sidecar terdeteksi saat ini : $(SIDECAR_NAMES)"
 	@echo "================================================================="
@@ -35,13 +36,18 @@ tauri:
 	npx tauri dev
 
 # 🖨️ SIDECAR BUILDERS
-sidecars: sidecar-printer-service
+sidecars: sidecar-printer-service sidecar-photo-processor
 	@echo "✅ Semua sidecar berhasil dikompilasi ke $(BIN_DIR)/"
 
 sidecar-printer-service:
 	@echo "🔨 Compiling Go Printer Service..."
 	cd sidecars/printer-service && go build -ldflags="-H windowsgui -s -w" -o ../../$(BIN_DIR)/printer_service.exe main.go
 	@echo "✅ Done: $(BIN_DIR)/printer_service.exe"
+
+sidecar-photo-processor:
+	@echo "🔨 Compiling Go Photo Processor..."
+	cd sidecars/photo-processor && go build -ldflags="-H windowsgui -s -w" -o ../../$(BIN_DIR)/photo_processor.exe main.go
+	@echo "✅ Done: $(BIN_DIR)/photo_processor.exe"
 
 # 🧬 POCKETBASE & RUST
 typegen:

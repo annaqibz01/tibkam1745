@@ -35,13 +35,16 @@ export interface LastResultState {
   tanggalHijri?: string;
   waktu?: string;
   penerima?: string;
+  fotoUrl?: string;
+  foto?: string;
+  record?: any;
 }
 
 export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   const queryClient = useQueryClient();
 
   const [enableSound, setEnableSound] = useState(true);
-  const [printMode, setPrintMode] = useState<PrintMode>("auto"); // Default Mode: AUTO
+  const [printMode, setPrintMode] = useState<PrintMode>("auto");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [wisTimeStr, setWisTimeStr] = useState("");
@@ -54,6 +57,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   const [sessionLogs, setSessionLogs] = useState<ScanSessionLog[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Update Clock Waktu Istiwa'
   useEffect(() => {
     const updateWisClock = () => {
       const detailWis = dapatkanDetailWis();
@@ -65,39 +69,58 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
     return () => clearInterval(interval);
   }, []);
 
-  // 🎯 Focus & Select otomatis agar scan berikutnya langsung menimpa isi teks
+  // Smart Focus Management (Bebas dari focus-trap)
   const focusInput = useCallback(() => {
     setTimeout(() => {
-      if (inputRef.current) {
+      if (inputRef.current && !isProcessing) {
         inputRef.current.focus();
         inputRef.current.select();
       }
-    }, 50);
-  }, []);
+    }, 60);
+  }, [isProcessing]);
 
+  // Focus otomatis saat modal dibuka & setelah proses selesai
   useEffect(() => {
     if (isOpen && !isProcessing) {
       focusInput();
     }
   }, [isOpen, isProcessing, focusInput]);
 
+  // Shortcut Keyboard: F1 (Toggle Sound) & F2 (Cycle Print Mode)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if (e.key === "F1") {
+        e.preventDefault();
+        setEnableSound((prev) => !prev);
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        setPrintMode((prev) => {
+          if (prev === "off") return "auto";
+          if (prev === "auto") return "silent";
+          return "off";
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalShortcuts);
+    return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+  }, [isOpen]);
+
   const handleProcessScan = async (codeToProcess: string) => {
     const queryCode = codeToProcess.trim();
     if (!queryCode || isProcessing) return;
 
     setIsProcessing(true);
-    setBarcodeInput("");
 
     try {
       const currentUser = pb.authStore.record || pb.authStore.model;
-      // 🛡️ Buka proteksi POS jika role adalah admin ATAU admin_rambut
       const isAdmin =
         currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
       if (!periodeId) {
-        throw new Error(
-          "Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.",
-        );
+        throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
       }
 
       const periode = await pb
@@ -111,7 +134,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (!isAdmin) {
         if (periode.status_periode !== "aktif") {
           throw new Error(
-            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`
           );
         }
 
@@ -119,16 +142,15 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
           !isDateWithinRange(
             new Date(),
             periode.tanggal_mulai,
-            periode.tanggal_selesai,
+            periode.tanggal_selesai
           )
         ) {
           throw new Error(
-            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`
           );
         }
       }
 
-      // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
       const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
 
       const matchRecord = await pb
@@ -138,9 +160,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         });
 
       if (!matchRecord) {
-        throw new Error(
-          `ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`,
-        );
+        throw new Error(`ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`);
       }
 
       const santriData = matchRecord.expand?.santri;
@@ -149,13 +169,13 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       if (matchRecord.status_setor === "sudah") {
         throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`,
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`
         );
       }
 
       if (matchRecord.status_setor === "dispensasi") {
         throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`,
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`
         );
       }
 
@@ -166,13 +186,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         currentUser?.username || "PETUGAS TIBKAM"
       ).toUpperCase();
 
-      // Update status wajib_setor_rambut
       await pb.collection("wajib_setor_rambut").update(matchRecord.id, {
         status_setor: "sudah",
         tanggal_setor: nowIso,
       });
 
-      // Catat ke riwayat_setor_rambut
       const riwayatRecord = await pb.collection("riwayat_setor_rambut").create({
         wajib_setor: matchRecord.id,
         santri: matchRecord.santri || matchRecord.expand?.santri?.id || "",
@@ -186,15 +204,17 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const kelasVal = santriData?.kelas ? `${santriData.kelas}` : "";
       const tingkatanVal = santriData?.tingkatan || "";
-      const kelasTingkatanStr = [kelasVal, tingkatanVal]
-        .filter(Boolean)
-        .join(" ");
-      const domisiliStr =
-        santriData?.domisili || santriData?.status_domisili || "-";
+      const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
+      const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
       const alamatStr = getAlamatStr(santriData);
 
       const hijriData = await fetchHijriByDate(nowIso);
       const stringHijri = hijriData?.string_hijri || "-";
+
+      // Ambil URL Foto Santri jika berkas foto tersedia
+      const fotoUrl = santriData?.foto
+        ? pb.getFileUrl(santriData, santriData.foto)
+        : undefined;
 
       const receiptDetails = {
         idPps: matchRecord.id_pps,
@@ -211,18 +231,19 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         status: "success",
         message: "SETORAN PERAPIAN RAMBUT TERVERIFIKASI LUNAS!",
         santriName: santriNama,
+        fotoUrl,
+        foto: santriData?.foto,
+        record: santriData,
         ...receiptDetails,
       });
 
       if (enableSound) playAudioFeedback("success");
 
-      // ⚡ PROSES CETAK ASINKRONUS (Non-blocking)
       const htmlReceipt = buildReceiptHtml(receiptDetails);
       executePrint(htmlReceipt, { mode: printMode }).catch((err) => {
         console.error("❌ Background Print Error:", err);
       });
 
-      // Update log UI POS
       setSessionLogs((prev) => [
         {
           id: riwayatRecord.id,
@@ -237,14 +258,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         ...prev.slice(0, 9),
       ]);
 
-      queryClient.invalidateQueries({
-        queryKey: ["rambut-wajib-setor-list-full"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
-      const errMsg =
-        parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
+      const errMsg = parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
 
       setLastResult({
         status: "error",
@@ -254,6 +272,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (enableSound) playAudioFeedback("error");
     } finally {
       setIsProcessing(false);
+      setBarcodeInput(""); // Bersihkan input otomatis untuk scan selanjutnya
       focusInput();
     }
   };

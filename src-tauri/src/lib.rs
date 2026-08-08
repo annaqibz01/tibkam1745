@@ -16,10 +16,14 @@ pub fn run() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             commands::printer::get_available_printers,
             commands::printer::print_image_silently,
-            commands::backup::execute_native_auto_backup
+            commands::backup::execute_native_auto_backup,
+            commands::photo::scan_photo_directory,
+            commands::photo::execute_photo_compressor_sidecar,
+            commands::photo::read_file_base64
         ])
         .setup(|app| {
             // 1. Matikan instance PocketBase lama jika ada

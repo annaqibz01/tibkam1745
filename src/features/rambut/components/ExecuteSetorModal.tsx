@@ -1,5 +1,5 @@
-// src/components/rambut/ExecuteSetorModal.tsx
-import React, { useState } from "react";
+// src/features/rambut/components/ExecuteSetorModal.tsx
+import React, { useState, useEffect, useRef } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import type { WajibSetorExpanded } from "../hooks/useRambut";
 import { useWaktuIstiwa } from "@/hooks/useWaktuIstiwa";
@@ -22,12 +22,27 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
 }) => {
   const waktuWis = useWaktuIstiwa();
   const [catatan, setCatatan] = useState("");
+  
+  // Ref untuk Auto-Focus ke input saat modal terbuka
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCatatan("");
+      // Focus otomatis ke input catatan saat modal aktif
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
 
   if (!item) return null;
   const santriData = item.expand?.santri;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) return;
     onConfirm(catatan);
   };
 
@@ -77,17 +92,18 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
           </span>
         </div>
 
-        {/* Catatan Tambahan */}
+        {/* Catatan Tambahan (Auto-Focused & Placeholder Kosong) */}
         <div className="space-y-1.5">
           <label className="block text-xs font-mono font-medium text-gray-300">
             Catatan Tambahan (Opsional)
           </label>
           <input
+            ref={inputRef}
             type="text"
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
             placeholder=""
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
+            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
           />
         </div>
 
@@ -108,9 +124,11 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
             {isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <>
+                <Save className="w-4 h-4" />
+                <span>Verifikasi Setor</span>
+              </>
             )}
-            <span>Verifikasi Setor</span>
           </button>
         </div>
       </form>

@@ -36,6 +36,13 @@ fn main() {
     "core:default",
     "core:event:default",
     "core:window:default",
+    "core:window:allow-minimize",
+    "core:window:allow-toggle-maximize",
+    "core:window:allow-maximize",
+    "core:window:allow-unmaximize",
+    "core:window:allow-close",
+    "core:window:allow-is-maximized",
+    "core:app:allow-version",
     "core:webview:default"
   ]
 }
@@ -433,7 +440,8 @@ pub struct PocketbaseChild(pub Mutex<Option<Child>>);
         "center": true,
         "minWidth": 600,
         "minHeight": 450,
-        "maximized": true
+        "maximized": true,
+        "decorations": false
       }
     ],
     "security": {

@@ -131,6 +131,8 @@ export type MasterRecord = {
 	created: IsoAutoDateString
 	desa?: string
 	domisili?: string
+	foto?: FileNameString
+	foto_subfolder?: string
 	id: string
 	id_pps: string
 	kabupaten?: string

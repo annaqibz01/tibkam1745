@@ -9,6 +9,7 @@ import MasterTable from "../components/MasterTable";
 import MasterPagination from "../components/MasterPagination";
 import { ImportMasterModal } from "../components/ImportMasterModal";
 import { SantriDetailModal } from "../components/SantriDetailModal";
+import { SyncFotoModal } from "../components/SyncFotoModal";
 import type { UsersResponse, MasterResponse } from "@/types/pocketbase-types";
 
 const PER_PAGE = 15;
@@ -29,6 +30,7 @@ export default function MasterPage() {
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSyncFotoModalOpen, setIsSyncFotoModalOpen] = useState(false);
   const [selectedSantriDetail, setSelectedSantriDetail] = useState<MasterResponse | null>(null);
 
   const [syncReport, setSyncReport] = useState<{
@@ -145,6 +147,7 @@ export default function MasterPage() {
       {/* 1. Header Hero Banner Shared */}
       <MasterHeader
         onOpenImportModal={() => setIsImportModalOpen(true)}
+        onOpenSyncFotoModal={() => setIsSyncFotoModalOpen(true)}
         isAdmin={isAdmin}
       />
 
@@ -200,6 +203,12 @@ export default function MasterPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={handleImportSuccess}
+      />
+
+      <SyncFotoModal
+        isOpen={isSyncFotoModalOpen}
+        onClose={() => setIsSyncFotoModalOpen(false)}
+        onSuccessSync={refetch}
       />
 
       <SantriDetailModal

@@ -7,8 +7,8 @@ import {
   THIN_BORDER,
   applyA4PrintSetup,
   applyHeaderStyle,
-} from "../excelHelpers";
-import { generateChartBase64 } from "../generateChart";
+} from "../../../core/utils/excelHelpers";
+import { generateChartBase64 } from "../../../core/utils/generateChart";
 import type { WajibSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
 const renderKpiCard = (

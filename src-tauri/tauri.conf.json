@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "tibkam1745",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "identifier": "com.tibkam1745",
   "build": {
     "frontendDist": "../dist",
@@ -42,13 +42,15 @@
       "bin/pocketbase.exe": "bin/pocketbase.exe",
       "bin/koleksi_awal.db": "bin/koleksi_awal.db",
       "bin/printer_service.exe": "bin/printer_service.exe",
+      "bin/photo_processor.exe": "bin/photo_processor.exe",
       "../../backend/pb_migrations/*": "pb_migrations/",
       "../../backend/pb_hooks/*": "pb_hooks/"
     },
     "windows": {
       "nsis": {
         "installMode": "currentUser",
-        "installerIcon": "icons/icon.ico"
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
       }
     },
     "android": {
