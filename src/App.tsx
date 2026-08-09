@@ -11,6 +11,7 @@ import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';
 import { RambutPage as Rambut } from '@/features/rambut';
 import { LaporanRambutPage as LaporanRambut, LaporanRedirect } from "@/features/laporan";
+import { PersonilPage as Personil } from '@/features/personil'; // 👈 1. Impor Fitur Personil
 import { CustomTitleBar } from '@/components/shared';
 
 export default function App() {
@@ -19,7 +20,6 @@ export default function App() {
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 select-none">
         <CustomTitleBar />
 
-        {/* 🔮 KUNCI: Tambahkan min-h-0 agar flex child tidak meluap keluar layar */}
         <div className="flex-1 min-h-0 w-full overflow-hidden relative">
           <HashRouter>
             <Routes>
@@ -45,6 +45,16 @@ export default function App() {
                   }
                 />
 
+                {/* 👈 2. Tambahkan Rute Personil Tibkam */}
+                <Route
+                  path="/personil"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
+                      <Personil />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/rambut"
                   element={
@@ -54,7 +64,6 @@ export default function App() {
                   }
                 />
 
-                {/* 🎯 Rute Induk /laporan memicu Smart Redirector berdasarkan Role */}
                 <Route
                   path="/laporan"
                   element={
@@ -64,7 +73,6 @@ export default function App() {
                   }
                 />
 
-                {/* Sub-Rute Laporan Spesifik */}
                 <Route
                   path="/laporan/rambut"
                   element={

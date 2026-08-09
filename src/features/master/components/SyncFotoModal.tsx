@@ -175,9 +175,6 @@ export const SyncFotoModal: React.FC<SyncFotoModalProps> = ({
                 <p className="text-xs font-bold text-white">
                   Klik untuk Memilih Folder Foto Santri
                 </p>
-                <p className="text-gray-500 text-[10px] mt-0.5">
-                  Membuka Windows File Explorer Native
-                </p>
               </div>
             </div>
           ) : (

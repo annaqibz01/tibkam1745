@@ -21,6 +21,7 @@ import {
   Database,
   Sparkles,
   CalendarDays,
+  ShieldCheck,
   FileText,
   type LucideIcon,
 } from "lucide-react";
@@ -70,6 +71,12 @@ const Sidebar = () => {
       title: "Kelola Pengguna",
       path: "/users",
       icon: Users,
+      allowedRoles: ["admin", "admin_rambut"],
+    },
+    {
+      title: "Personil Tibkam",
+      path: "/personil",
+      icon: ShieldCheck,
       allowedRoles: ["admin", "admin_rambut"],
     },
     {
@@ -164,7 +171,7 @@ const Sidebar = () => {
         className={`
     fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full overflow-hidden
     bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
-    border-r border-gray-800/80 shadow-2xl
+    border-r border-transparent shadow-2xl
     flex flex-col transform-gpu
     transition-[width,transform] duration-300 ease-in-out
     lg:translate-x-0 lg:static lg:z-auto

@@ -8,11 +8,13 @@
 - `src/features/master/components/MasterTable.tsx`
 - `src/features/master/components/MasterToolbar.tsx`
 - `src/features/master/components/SantriDetailModal.tsx`
+- `src/features/master/components/SyncFotoModal.tsx`
 - `src/features/master/components/SyncReportBanner.tsx`
 - `src/features/master/hooks/useMaster.ts`
 - `src/features/master/index.ts`
 - `src/features/master/pages/Master.tsx`
 - `src/features/master/utils/syncExcelToPocketBase.ts`
+- `src/features/master/utils/syncFotoToPocketBase.ts`
 
 ---
 
@@ -407,16 +409,18 @@ export const ImportMasterModal: React.FC<ImportMasterModalProps> = ({
 ```tsx
 // src/features/master/components/MasterHeader.tsx
 import React from "react";
-import { UploadCloud, Database } from "lucide-react";
+import { UploadCloud, Database, Image } from "lucide-react";
 import { PageHeader } from "@/components/shared";
 
 interface MasterHeaderProps {
   onOpenImportModal: () => void;
+  onOpenSyncFotoModal: () => void;
   isAdmin?: boolean;
 }
 
 export default function MasterHeader({
   onOpenImportModal,
+  onOpenSyncFotoModal,
   isAdmin = false,
 }: MasterHeaderProps) {
   return (
@@ -431,20 +435,31 @@ export default function MasterHeader({
           </span>
         </>
       }
-      description="Manajemen Database Induk dan sinkronisasi data massal santri dalam satu tempat terpadu."
+      description="Manajemen Database Induk, sinkronisasi data massal, dan pembaruan foto santri terpadu."
       actions={
         isAdmin && (
-          <button
-            type="button"
-            onClick={onOpenImportModal}
-            className="relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30 select-none font-mono"
-          >
-            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
-            <div className="relative flex items-center gap-2">
-              <UploadCloud className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
-              <span>Update DB via Excel</span>
-            </div>
-          </button>
+          <div className="flex items-center gap-2.5">
+            <button
+              type="button"
+              onClick={onOpenSyncFotoModal}
+              className="inline-flex items-center gap-2 px-4 py-3 bg-gray-900 hover:bg-gray-800 text-indigo-300 hover:text-white font-mono font-bold text-xs rounded-2xl border border-indigo-500/30 transition-all shadow-lg active:scale-95 select-none"
+            >
+              <Image className="w-4 h-4 text-indigo-400" />
+              <span>Sync Foto Santri</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={onOpenImportModal}
+              className="relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30 select-none font-mono"
+            >
+              <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+              <div className="relative flex items-center gap-2">
+                <UploadCloud className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
+                <span>Update DB via Excel</span>
+              </div>
+            </button>
+          </div>
         )
       }
     />
@@ -599,7 +614,6 @@ export default function MasterPagination({
 ```tsx
 // src/features/master/components/MasterTable.tsx
 import React, { useMemo } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, FileSpreadsheet, UserCheck, UserX } from "lucide-react";
 import type { MasterResponse } from "@/types/pocketbase-types";
 import { StatusBadge, EmptyState } from "@/components/shared";
@@ -653,37 +667,35 @@ const MasterTable: React.FC<MasterTableProps> = ({
     });
   }, [items, isLoading, page, perPage]);
 
-  const tableKey = useMemo(() => {
-    return `page-${page}-item-${items[0]?.id || "empty"}`;
-  }, [page, items]);
-
+  // 🎯 FIX: Skeleton rows presisi 15 baris (sesuai perPage) & tinggi h-[52px]
   const skeletonRows = useMemo(() => {
-    return Array.from({ length: 8 }).map((_, idx) => (
-      <tr key={`skeleton-${idx}`} className="animate-pulse border-b border-gray-800/40">
+    return Array.from({ length: perPage }).map((_, idx) => (
+      <tr key={`skeleton-${idx}`} className="animate-pulse border-b border-gray-800/40 h-[52px]">
         {Array.from({ length: 15 }).map((_, cellIdx) => (
-          <td key={cellIdx} className="px-4 py-3.5">
+          <td key={cellIdx} className="px-4 py-3">
             <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
           </td>
         ))}
       </tr>
     ));
-  }, []);
+  }, [perPage]);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[520px]">
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[580px] flex flex-col justify-between select-none">
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />
 
+      {/* Top Overlay Loader (Tidak merusak layout) */}
       {isFetching && !isLoading && (
-        <div className="flex items-center justify-center gap-2 px-5 py-2 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/40 border-b border-indigo-500/20 backdrop-blur-md">
+        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-center gap-2 px-5 py-1.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/80 border-b border-indigo-500/20 backdrop-blur-md">
           <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
           <span>Memperbarui data...</span>
         </div>
       )}
 
-      <div className="overflow-x-auto custom-scrollbar">
+      <div className="overflow-x-auto custom-scrollbar flex-1">
         <table className="w-full min-w-[2000px] text-center text-sm border-collapse table-auto font-mono">
           <thead>
-            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
+            <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none h-12">
               <th className="px-4 py-4 w-14 whitespace-nowrap">No</th>
               <th className="px-4 py-4 w-32 whitespace-nowrap">ID PPS</th>
               <th className="px-4 py-4 min-w-[220px] whitespace-nowrap text-left font-sans">Nama Lengkap</th>
@@ -702,107 +714,98 @@ const MasterTable: React.FC<MasterTableProps> = ({
             </tr>
           </thead>
 
-          <AnimatePresence mode="wait">
+          {/* 🔮 FIX: Redupkan isi tabel lama (opacity-40) saat refetch tanpa meruntuhkan tinggi tabel */}
+          <tbody
+            className={`divide-y divide-gray-800/50 bg-gray-900/30 transition-opacity duration-200 ${
+              isFetching && !isLoading ? "opacity-40 pointer-events-none" : "opacity-100"
+            }`}
+          >
             {isLoading ? (
-              <tbody key="loading-body" className="divide-y divide-gray-800/50 bg-gray-900/30">
-                {skeletonRows}
-              </tbody>
+              skeletonRows
             ) : rows.length === 0 ? (
-              <tbody key="empty-body" className="divide-y divide-gray-800/50 bg-gray-900/30">
-                <tr>
-                  <td colSpan={15} className="px-6 py-8">
-                    <EmptyState
-                      icon={<FileSpreadsheet className="w-8 h-8 text-gray-400" />}
-                      title="Tidak Ada Data Master Santri Ditemukan"
-                      description="Coba sesuaikan kata kunci pencarian atau kombinasi filter kriteria Anda."
-                    />
+              <tr>
+                <td colSpan={15} className="px-6 py-12">
+                  <EmptyState
+                    icon={<FileSpreadsheet className="w-8 h-8 text-gray-400" />}
+                    title="Tidak Ada Data Master Santri Ditemukan"
+                    description="Coba sesuaikan kata kunci pencarian atau kombinasi filter kriteria Anda."
+                  />
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => onSelectSantri && onSelectSantri(row.rawRecord)}
+                  className="group cursor-pointer transition-colors duration-150 hover:bg-indigo-500/[0.05] h-[52px]"
+                >
+                  <td className="px-4 py-3.5 text-gray-500 text-xs whitespace-nowrap">
+                    {row.no}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs font-bold text-indigo-400 whitespace-nowrap">
+                    <span className="px-2 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20">
+                      {row.id_pps}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 whitespace-nowrap text-left font-sans">
+                    <span className="font-semibold text-gray-200 text-sm group-hover:text-indigo-300 transition-colors">
+                      {row.nama}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                    {row.alamat}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-300 font-medium whitespace-nowrap font-sans">
+                    {row.tingkatan}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
+                    {row.kelas}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
+                    <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-medium">
+                      {row.status_domisili}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-300 font-semibold whitespace-nowrap font-sans">
+                    {row.domisili}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                    {row.nama_ayah}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
+                    {row.nama_ibu}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-300 whitespace-nowrap text-left font-sans">
+                    {row.nama_wali}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 font-mono whitespace-nowrap">
+                    {row.kontak_wali}
+                  </td>
+                  <td className="px-4 py-3.5 whitespace-nowrap font-sans">
+                    <StatusBadge
+                      variant={row.status_aktif ? "success" : "danger"}
+                      icon={row.status_aktif ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                      dot
+                    >
+                      {row.status_aktif ? "Aktif" : "Nonaktif"}
+                    </StatusBadge>
+                  </td>
+                  <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap font-sans">
+                    {row.alasan_update_status}
+                  </td>
+                  <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
+                    {row.keterangan_update_domisi !== "-" ? (
+                      <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-medium">
+                        {row.keterangan_update_domisi}
+                      </span>
+                    ) : (
+                      <span className="text-gray-500">-</span>
+                    )}
                   </td>
                 </tr>
-              </tbody>
-            ) : (
-              <motion.tbody
-                key={tableKey}
-                initial={{ opacity: 0, y: 4 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -4 }}
-                transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
-                className="divide-y divide-gray-800/50 bg-gray-900/30 transform-gpu"
-                style={{ willChange: "opacity, transform" }}
-              >
-                {rows.map((row) => (
-                  <tr
-                    key={row.id}
-                    onClick={() => onSelectSantri && onSelectSantri(row.rawRecord)}
-                    className="group cursor-pointer transition-colors duration-150 hover:bg-indigo-500/[0.05]"
-                  >
-                    <td className="px-4 py-3.5 text-gray-500 text-xs whitespace-nowrap">
-                      {row.no}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs font-bold text-indigo-400 whitespace-nowrap">
-                      <span className="px-2 py-1 rounded-md bg-indigo-500/10 border border-indigo-500/20">
-                        {row.id_pps}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap text-left font-sans">
-                      <span className="font-semibold text-gray-200 text-sm group-hover:text-indigo-300 transition-colors">
-                        {row.nama}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
-                      {row.alamat}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-300 font-medium whitespace-nowrap font-sans">
-                      {row.tingkatan}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap">
-                      {row.kelas}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
-                      <span className="inline-block px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-medium">
-                        {row.status_domisili}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-300 font-semibold whitespace-nowrap font-sans">
-                      {row.domisili}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
-                      {row.nama_ayah}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap text-left font-sans">
-                      {row.nama_ibu}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-300 whitespace-nowrap text-left font-sans">
-                      {row.nama_wali}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 font-mono whitespace-nowrap">
-                      {row.kontak_wali}
-                    </td>
-                    <td className="px-4 py-3.5 whitespace-nowrap font-sans">
-                      <StatusBadge
-                        variant={row.status_aktif ? "success" : "danger"}
-                        icon={row.status_aktif ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
-                        dot
-                      >
-                        {row.status_aktif ? "Aktif" : "Nonaktif"}
-                      </StatusBadge>
-                    </td>
-                    <td className="px-4 py-3.5 text-xs text-gray-400 whitespace-nowrap font-sans">
-                      {row.alasan_update_status}
-                    </td>
-                    <td className="px-4 py-3.5 text-xs whitespace-nowrap font-sans">
-                      {row.keterangan_update_domisi !== "-" ? (
-                        <span className="px-2 py-0.5 rounded-md bg-amber-500/10 border border-amber-500/20 text-amber-300 font-medium">
-                          {row.keterangan_update_domisi}
-                        </span>
-                      ) : (
-                        <span className="text-gray-500">-</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </motion.tbody>
+              ))
             )}
-          </AnimatePresence>
+          </tbody>
         </table>
       </div>
     </div>
@@ -868,7 +871,7 @@ export default function MasterToolbar({
 
   const tingkatanDropdownOptions: DropdownOption[] = useMemo(
     () => [
-      { value: "all", label: "Semua Jenjang" },
+      { value: "all", label: "Semua Tingkatan" },
       ...tingkatanOptions.map((t) => ({ value: t, label: t })),
     ],
     [tingkatanOptions]
@@ -892,7 +895,7 @@ export default function MasterToolbar({
 
   const domisiliDropdownOptions: DropdownOption[] = useMemo(
     () => [
-      { value: "all", label: "Semua Kompleks" },
+      { value: "all", label: "Semua Domisili" },
       ...domisiliOptions.map((d) => ({ value: d, label: d })),
     ],
     [domisiliOptions]
@@ -929,11 +932,11 @@ export default function MasterToolbar({
           value={tingkatanFilter}
           onChange={onTingkatanFilterChange}
           options={tingkatanDropdownOptions}
-          defaultLabel="Semua Jenjang"
+          defaultLabel="Semua Tingkatan"
           icon={<GraduationCap className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
           activeColorClass="border-purple-500/50 text-purple-300 ring-purple-500/20"
           minWidthClass="w-full"
-          searchPlaceholder="Cari jenjang..."
+          searchPlaceholder="Cari Tingkatan..."
         />
 
         {/* 3. Kelas */}
@@ -965,11 +968,11 @@ export default function MasterToolbar({
           value={domisiliFilter}
           onChange={onDomisiliFilterChange}
           options={domisiliDropdownOptions}
-          defaultLabel="Semua Kompleks"
+          defaultLabel="Semua Domisili"
           icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
           activeColorClass="border-amber-500/50 text-amber-300 ring-amber-500/20"
           minWidthClass="w-full"
-          searchPlaceholder="Cari kompleks..."
+          searchPlaceholder="Cari domisili..."
         />
       </div>
     </div>
@@ -983,6 +986,7 @@ export default function MasterToolbar({
 import React, { useState, useEffect } from "react";
 import { BaseModal, StatusBadge } from "@/components/shared";
 import type { MasterResponse } from "@/types/pocketbase-types";
+import { pb } from "@/lib/pocketbase";
 import {
   User,
   GraduationCap,
@@ -994,6 +998,7 @@ import {
   CheckCircle2,
   XCircle,
   ShieldAlert,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface SantriDetailModalProps {
@@ -1008,10 +1013,12 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
   santri,
 }) => {
   const [displaySantri, setDisplaySantri] = useState<MasterResponse | null>(santri);
+  const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     if (santri) {
       setDisplaySantri(santri);
+      setImageError(false);
     }
   }, [santri]);
 
@@ -1022,6 +1029,10 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
       .map((v) => v?.toString().trim())
       .filter(Boolean)
       .join(", ") || "-";
+
+  const fotoUrl = displaySantri.foto
+    ? pb.getFileUrl(displaySantri, displaySantri.foto)
+    : null;
 
   return (
     <BaseModal
@@ -1036,12 +1047,24 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
         <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-5 shadow-xl backdrop-blur-xl">
           <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
 
-          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-indigo-600 to-purple-700 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-indigo-600/30 border border-indigo-400/30 shrink-0">
-              {displaySantri.nama ? displaySantri.nama.charAt(0).toUpperCase() : "?"}
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            {/* 🖼️ FRAME FOTO DIBESARKAN KE W-32 H-40 (128px x 160px) */}
+            <div className="relative w-32 h-40 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 border-2 border-indigo-400/30 shrink-0 overflow-hidden group">
+              {fotoUrl && !imageError ? (
+                <img
+                  src={fotoUrl}
+                  alt={displaySantri.nama || "Foto Santri"}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="font-sans font-extrabold text-5xl leading-none tracking-wider uppercase select-none drop-shadow-md">
+                  {displaySantri.nama ? displaySantri.nama.charAt(0) : "?"}
+                </span>
+              )}
             </div>
 
-            <div className="flex-1 text-center sm:text-left space-y-1.5 min-w-0 font-sans">
+            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 font-sans pt-1">
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
                 <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold font-mono text-[11px]">
                   ID PPS: {displaySantri.id_pps || "-"}
@@ -1060,13 +1083,20 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
                     Domisili: {displaySantri.status_domisili}
                   </StatusBadge>
                 )}
+
+                {displaySantri.foto_subfolder && (
+                  <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 font-mono text-[10px] flex items-center gap-1">
+                    <ImageIcon className="w-3 h-3" />
+                    {displaySantri.foto_subfolder}
+                  </span>
+                )}
               </div>
 
-              <h2 className="text-lg font-bold text-white truncate">
+              <h2 className="text-xl font-bold text-white truncate">
                 {displaySantri.nama || "Tanpa Nama"}
               </h2>
 
-              <p className="text-gray-400 text-[11px] truncate">
+              <p className="text-gray-400 text-xs truncate">
                 {displaySantri.nama_akte ? `Nama Akte: ${displaySantri.nama_akte}` : "Nama Akte sesuai nama induk"}
               </p>
             </div>
@@ -1220,6 +1250,376 @@ export const SantriDetailModal: React.FC<SantriDetailModalProps> = ({
           >
             Tutup
           </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+};
+```
+
+### `src/features/master/components/SyncFotoModal.tsx`
+```tsx
+// src/features/master/components/SyncFotoModal.tsx
+import React, { useState, useRef } from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
+import { open } from "@tauri-apps/plugin-dialog";
+import {
+  syncFotoToPocketBase,
+  type SyncFotoReport,
+  type LogType,
+} from "../utils/syncFotoToPocketBase";
+import {
+  Image,
+  FolderSearch,
+  CheckCircle2,
+  Loader2,
+  Cpu,
+  UploadCloud,
+  Terminal,
+  FolderOpen,
+  RefreshCw,
+  FolderCheck,
+  Play,
+  Square,
+  Info,
+} from "lucide-react";
+
+interface SyncFotoModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccessSync: () => void;
+}
+
+export interface LogEntry {
+  timestamp: string;
+  message: string;
+  type: LogType;
+}
+
+export const SyncFotoModal: React.FC<SyncFotoModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccessSync,
+}) => {
+  const [selectedFolderPath, setSelectedFolderPath] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [currentStep, setCurrentStep] = useState<
+    "idle" | "scanning" | "matching" | "compressing" | "uploading" | "completed"
+  >("idle");
+  const [progressPercent, setProgressPercent] = useState(0);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [report, setReport] = useState<SyncFotoReport | null>(null);
+
+  const cancelRef = useRef(false);
+
+  const addLog = (message: string, type: LogType = "info") => {
+    const timestamp = new Date().toLocaleTimeString("id-ID");
+    setLogs((prev) => [{ timestamp, message, type }, ...prev.slice(0, 99)]);
+  };
+
+  const handleOpenNativeFolderPicker = async () => {
+    if (isSyncing) return;
+    try {
+      const selected = await open({
+        directory: true,
+        multiple: false,
+        title: "Pilih Folder Induk Foto Santri",
+      });
+
+      if (selected && typeof selected === "string") {
+        setSelectedFolderPath(selected);
+      }
+    } catch (err: any) {
+      addLog(`Gagal membuka dialog folder: ${err?.message || err}`, "error");
+    }
+  };
+
+  const handleReset = () => {
+    if (isSyncing) return;
+    setSelectedFolderPath(null);
+    setCurrentStep("idle");
+    setProgressPercent(0);
+    setReport(null);
+    setLogs([]);
+  };
+
+  const handleStartSync = async () => {
+    if (!selectedFolderPath || isSyncing) return;
+
+    cancelRef.current = false;
+    setIsSyncing(true);
+    setLogs([]);
+    setReport(null);
+    setProgressPercent(0);
+
+    try {
+      const res = await syncFotoToPocketBase(
+        selectedFolderPath,
+        (prog) => {
+          setCurrentStep(prog.step);
+          setProgressPercent(prog.percent);
+          setStatusMessage(prog.message);
+        },
+        (msg, type) => {
+          addLog(msg, type);
+        },
+        () => cancelRef.current
+      );
+
+      setReport(res);
+      setCurrentStep("completed");
+      setProgressPercent(100);
+      setStatusMessage(res.isCancelled ? "Sinkronisasi dibatalkan." : "Sinkronisasi foto selesai!");
+    } catch (err: any) {
+      addLog(`Terjadi kesalahan: ${err.message}`, "error");
+      setStatusMessage("Gagal memproses sinkronisasi foto.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleStopSync = () => {
+    if (!isSyncing) return;
+    cancelRef.current = true;
+    addLog("Menghentikan proses sinkronisasi...", "warning");
+  };
+
+  const handleCloseModal = () => {
+    if (isSyncing) {
+      handleStopSync();
+      return;
+    }
+    if (currentStep === "completed") {
+      onSuccessSync();
+    }
+    handleReset();
+    onClose();
+  };
+
+  const getStepBadgeClass = (stepName: string) => {
+    const steps = ["scanning", "matching", "compressing", "uploading", "completed"];
+    const currentIdx = steps.indexOf(currentStep);
+    const targetIdx = steps.indexOf(stepName);
+
+    if (currentIdx === targetIdx) {
+      return "bg-indigo-500/20 text-indigo-300 border-indigo-500/40 ring-2 ring-indigo-500/20 font-bold";
+    }
+    if (currentIdx > targetIdx || currentStep === "completed") {
+      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/30 font-bold";
+    }
+    return "bg-gray-900 text-gray-500 border-gray-800";
+  };
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleCloseModal}
+      title="Smart Incremental Sync Foto Santri"
+      icon={<Image className="w-5 h-5 text-indigo-400" />}
+      maxWidth="max-w-2xl"
+    >
+      {/* 🛑 CONTAINER PRESISI: TINGGI 490PX DENGAN TERKUNCI BOTTOM FOOTER */}
+      <div className="h-[490px] flex flex-col justify-between font-mono text-xs select-none">
+
+        {/* 1. SLOT DROPZONE / FOLDER TERPILIH (SHRINK-0, TINGGI 66PX) */}
+        <div className="h-[66px] shrink-0">
+          {!selectedFolderPath ? (
+            <div
+              onClick={handleOpenNativeFolderPicker}
+              className="h-full border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-2xl px-4 flex items-center justify-center gap-3 bg-gray-950/40 hover:bg-indigo-500/[0.02] cursor-pointer transition-all duration-200 group"
+            >
+              <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                <FolderOpen className="w-5 h-5" />
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-white">
+                  Klik untuk Memilih Folder Foto Santri
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full px-4 rounded-2xl bg-gray-950/80 border border-gray-800 flex items-center justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 shrink-0">
+                  <FolderCheck className="w-5 h-5" />
+                </div>
+                <div className="min-w-0">
+                  <p className="font-bold text-white text-xs truncate">
+                    {selectedFolderPath}
+                  </p>
+                  <p className="text-emerald-400 text-[10px] mt-0.5 font-bold">
+                    ✓ Folder Terpilih & Siap Diproses
+                  </p>
+                </div>
+              </div>
+
+              {!isSyncing && currentStep !== "completed" && (
+                <button
+                  type="button"
+                  onClick={handleReset}
+                  className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors shrink-0 ml-2"
+                  title="Ganti Folder"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* 2. TAHAPAN PROGRESS MULTI-STEP (SHRINK-0) */}
+        <div className="grid grid-cols-4 gap-1.5 text-[10px] text-center shrink-0 my-1.5">
+          <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 ${getStepBadgeClass("scanning")}`}>
+            <FolderSearch className="w-3.5 h-3.5" />
+            <span>1. Scan Foto</span>
+          </div>
+          <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 ${getStepBadgeClass("matching")}`}>
+            <CheckCircle2 className="w-3.5 h-3.5" />
+            <span>2. Match DB</span>
+          </div>
+          <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 ${getStepBadgeClass("compressing")}`}>
+            <Cpu className="w-3.5 h-3.5" />
+            <span>3. Kompresi Go</span>
+          </div>
+          <div className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-1 ${getStepBadgeClass("uploading")}`}>
+            <UploadCloud className="w-3.5 h-3.5" />
+            <span>4. Upload DB</span>
+          </div>
+        </div>
+
+        {/* 3. SLOT MONITORING STATUS / PROGRESS / LAPORAN (SHRINK-0, TINGGI 66PX) */}
+        <div className="h-[66px] shrink-0">
+          {isSyncing ? (
+            <div className="h-full p-3 rounded-2xl bg-gray-950/90 border border-gray-800 flex flex-col justify-center space-y-1.5">
+              <div className="flex items-center justify-between text-[11px]">
+                <span className="text-indigo-300 font-bold flex items-center gap-2 truncate">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400 shrink-0" />
+                  <span className="truncate">{statusMessage}</span>
+                </span>
+                <span className="font-bold text-white shrink-0">{progressPercent}%</span>
+              </div>
+
+              <div className="w-full h-2.5 bg-gray-900 border border-gray-800 rounded-full overflow-hidden p-0.5">
+                <div
+                  className="h-full bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-400 rounded-full transition-all duration-200"
+                  style={{ width: `${progressPercent}%` }}
+                />
+              </div>
+            </div>
+          ) : report && currentStep === "completed" ? (
+            <div className={`h-full p-2.5 rounded-2xl border flex flex-col justify-center space-y-1 ${report.isCancelled ? "bg-amber-500/10 border-amber-500/30 text-amber-300" : "bg-emerald-500/10 border-emerald-500/30 text-emerald-300"}`}>
+              <div className="flex items-center gap-2 font-bold text-xs">
+                <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                <span>{report.isCancelled ? "Sinkronisasi Dibatalkan" : "Sinkronisasi Foto Selesai!"}</span>
+              </div>
+              <div className="grid grid-cols-4 gap-1.5 text-[9.5px] text-gray-300 font-mono">
+                <div className="bg-gray-950/60 p-1 rounded-lg border border-gray-800/80 text-center">
+                  <span className="text-gray-500 block text-[8.5px]">Scanned</span>
+                  <b className="text-white text-xs">{report.totalScanned}</b>
+                </div>
+                <div className="bg-gray-950/60 p-1 rounded-lg border border-gray-800/80 text-center">
+                  <span className="text-gray-500 block text-[8.5px]">Match DB</span>
+                  <b className="text-indigo-300 text-xs">{report.matchedCount}</b>
+                </div>
+                <div className="bg-gray-950/60 p-1 rounded-lg border border-gray-800/80 text-center">
+                  <span className="text-gray-500 block text-[8.5px]">Skipped</span>
+                  <b className="text-emerald-400 text-xs">{report.skippedUpToDate}</b>
+                </div>
+                <div className="bg-gray-950/60 p-1 rounded-lg border border-gray-800/80 text-center">
+                  <span className="text-gray-500 block text-[8.5px]">Uploaded</span>
+                  <b className="text-purple-300 text-xs">{report.successUpload}</b>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full p-3 rounded-2xl bg-gray-950/40 border border-gray-800/80 flex items-center gap-2.5 text-gray-400">
+              <Info className="w-4 h-4 text-indigo-400 shrink-0" />
+              <p className="text-[10.5px] leading-relaxed">
+                Hanya memproses foto yang sesuai nama berkasnya dengan <b>ID PPS Santri</b>. Foto yang sudah sama versi subfoldernya di DB akan otomatis dilewati.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* 4. TERMINAL LOG (FLEX-1 MIN-H-0: DILENGKAPI SCROLL INTERNAL TANPA MENDORONG FOOTER) */}
+        <div className="flex-1 min-h-0 my-1.5 p-2.5 rounded-2xl bg-gray-950 border border-gray-800 flex flex-col overflow-hidden">
+          <div className="flex items-center justify-between text-[10px] text-gray-500 border-b border-gray-800/80 pb-1 mb-1 shrink-0">
+            <span className="flex items-center gap-1.5 font-bold">
+              <Terminal className="w-3.5 h-3.5 text-indigo-400" /> Live Status Terminal
+            </span>
+            <span>{logs.length} entri</span>
+          </div>
+
+          <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1 font-mono text-[10px]">
+            {logs.length === 0 ? (
+              <p className="text-gray-600 italic py-6 text-center">
+                Pilih folder foto untuk memulai sinkronisasi...
+              </p>
+            ) : (
+              logs.map((log, idx) => (
+                <div key={idx} className="flex items-start gap-2 leading-relaxed">
+                  <span className="text-gray-600 text-[9px] shrink-0">[{log.timestamp}]</span>
+                  <span
+                    className={
+                      log.type === "success"
+                        ? "text-emerald-400"
+                        : log.type === "error"
+                        ? "text-rose-400"
+                        : log.type === "warning"
+                        ? "text-amber-300"
+                        : "text-gray-300"
+                    }
+                  >
+                    {log.message}
+                  </span>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 5. FOOTER BUTTON ACTIONS (SHRINK-0, SELALU TAMPIL DI BAWAH) */}
+        <div className="shrink-0 pt-2 border-t border-gray-800 flex items-center justify-end gap-2.5">
+          {isSyncing ? (
+            <button
+              type="button"
+              onClick={handleStopSync}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 text-xs font-bold transition-all"
+            >
+              <Square className="w-3.5 h-3.5 fill-current" />
+              <span>Hentikan Sync</span>
+            </button>
+          ) : currentStep === "completed" ? (
+            <button
+              type="button"
+              onClick={handleCloseModal}
+              className="inline-flex items-center gap-2 px-6 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/25 active:scale-95 transition-all border border-emerald-400/30"
+            >
+              <CheckCircle2 className="w-4 h-4" />
+              <span>Selesai & Tutup</span>
+            </button>
+          ) : (
+            <>
+              <button
+                type="button"
+                onClick={handleCloseModal}
+                className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white text-xs font-bold transition-all"
+              >
+                Batal
+              </button>
+
+              <button
+                type="button"
+                onClick={handleStartSync}
+                disabled={!selectedFolderPath}
+                className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-bold text-xs shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30 disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                <Play className="w-4 h-4 fill-current" />
+                <span>Mulai Sinkronisasi Foto</span>
+              </button>
+            </>
+          )}
         </div>
       </div>
     </BaseModal>
@@ -1566,6 +1966,7 @@ import MasterTable from "../components/MasterTable";
 import MasterPagination from "../components/MasterPagination";
 import { ImportMasterModal } from "../components/ImportMasterModal";
 import { SantriDetailModal } from "../components/SantriDetailModal";
+import { SyncFotoModal } from "../components/SyncFotoModal";
 import type { UsersResponse, MasterResponse } from "@/types/pocketbase-types";
 
 const PER_PAGE = 15;
@@ -1586,6 +1987,7 @@ export default function MasterPage() {
 
   // Modals
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [isSyncFotoModalOpen, setIsSyncFotoModalOpen] = useState(false);
   const [selectedSantriDetail, setSelectedSantriDetail] = useState<MasterResponse | null>(null);
 
   const [syncReport, setSyncReport] = useState<{
@@ -1702,6 +2104,7 @@ export default function MasterPage() {
       {/* 1. Header Hero Banner Shared */}
       <MasterHeader
         onOpenImportModal={() => setIsImportModalOpen(true)}
+        onOpenSyncFotoModal={() => setIsSyncFotoModalOpen(true)}
         isAdmin={isAdmin}
       />
 
@@ -1757,6 +2160,12 @@ export default function MasterPage() {
         isOpen={isImportModalOpen}
         onClose={() => setIsImportModalOpen(false)}
         onSuccess={handleImportSuccess}
+      />
+
+      <SyncFotoModal
+        isOpen={isSyncFotoModalOpen}
+        onClose={() => setIsSyncFotoModalOpen(false)}
+        onSuccessSync={refetch}
       />
 
       <SantriDetailModal
@@ -1892,5 +2301,284 @@ export const syncExcelToPocketBase = async (
   if (onProgress) onProgress(totalItemsToProcess, totalItemsToProcess);
 
   return report;
+};
+```
+
+### `src/features/master/utils/syncFotoToPocketBase.ts`
+```typescript
+// src/features/master/utils/syncFotoToPocketBase.ts
+import { listen } from "@tauri-apps/api/event";
+import { invoke } from "@tauri-apps/api/core";
+import { pb } from "@/lib/pocketbase";
+import type { MasterResponse } from "@/types/pocketbase-types";
+
+export interface PhotoScanItem {
+  id_pps: string;
+  source_path: string;
+  subfolder: string;
+}
+
+export interface SyncFotoProgress {
+  step: "scanning" | "matching" | "compressing" | "uploading";
+  current: number;
+  total: number;
+  message: string;
+  percent: number;
+}
+
+export interface SyncFotoReport {
+  totalScanned: number;
+  matchedCount: number;
+  skippedUpToDate: number;
+  successUpload: number;
+  failedUpload: number;
+  isCancelled?: boolean;
+}
+
+export type LogType = "info" | "success" | "warning" | "error";
+
+const getErrorMessage = (err: any): string => {
+  if (typeof err === "string") return err;
+  if (err && typeof err === "object") {
+    if (err.message) return err.message;
+    return JSON.stringify(err);
+  }
+  return String(err);
+};
+
+export const syncFotoToPocketBase = async (
+  sourceRootDir: string,
+  onProgress?: (progress: SyncFotoProgress) => void,
+  onLog?: (message: string, type?: LogType) => void,
+  checkCancelled?: () => boolean
+): Promise<SyncFotoReport> => {
+  const log = (msg: string, type: LogType = "info") => {
+    if (onLog) onLog(msg, type);
+  };
+
+  const isCancelled = () => checkCancelled && checkCancelled();
+
+  log(`Mulai memindai folder foto: ${sourceRootDir}`, "info");
+
+  // 1. SCANNING FOLDER LOKAL VIA RUST
+  if (onProgress) {
+    onProgress({
+      step: "scanning",
+      current: 0,
+      total: 100,
+      message: "Memindai foto di folder lokal...",
+      percent: 15,
+    });
+  }
+
+  let scannedPhotos: PhotoScanItem[] = [];
+  try {
+    scannedPhotos = await invoke<PhotoScanItem[]>("scan_photo_directory", {
+      rootDir: sourceRootDir,
+    });
+  } catch (err) {
+    throw new Error(getErrorMessage(err));
+  }
+
+  if (isCancelled()) {
+    log("Proses dibatalkan oleh pengguna.", "warning");
+    return { totalScanned: 0, matchedCount: 0, skippedUpToDate: 0, successUpload: 0, failedUpload: 0, isCancelled: true };
+  }
+
+  log(`Ditemukan ${scannedPhotos.length} file foto unik di folder & subfolder lokal.`, "success");
+
+  // 2. FETCH DATABASE MASTER & MATCHING REAL
+  if (onProgress) {
+    onProgress({
+      step: "matching",
+      current: 0,
+      total: 100,
+      message: "Mencocokkan foto dengan database santri...",
+      percent: 35,
+    });
+  }
+
+  const masterList = await pb.collection("master").getFullList<MasterResponse>({
+    fields: "id,id_pps,nama,foto,foto_subfolder",
+  });
+
+  const dbMap = new Map<string, MasterResponse>();
+  masterList.forEach((rec) => {
+    if (rec.id_pps) dbMap.set(rec.id_pps.trim(), rec);
+  });
+
+  const jobsToCompress: Array<{
+    id_pps: string;
+    source_path: string;
+    output_path: string;
+    subfolder: string;
+    recordId: string;
+  }> = [];
+
+  let matchedCount = 0;
+  let skippedCount = 0;
+
+  for (const photo of scannedPhotos) {
+    const dbRecord = dbMap.get(photo.id_pps);
+    if (!dbRecord) continue;
+
+    matchedCount++;
+
+    const hasFotoInDb = Boolean(dbRecord.foto);
+    const dbSubfolder = dbRecord.foto_subfolder || "";
+
+    if (hasFotoInDb && dbSubfolder === photo.subfolder) {
+      skippedCount++;
+      continue;
+    }
+
+    const tempOutPath = `C:/Users/Public/Tibkam_Temp_Photos/${photo.id_pps}.jpg`;
+    jobsToCompress.push({
+      id_pps: photo.id_pps,
+      source_path: photo.source_path,
+      output_path: tempOutPath,
+      subfolder: photo.subfolder,
+      recordId: dbRecord.id,
+    });
+  }
+
+  // ✨ TAMPILKAN RINCIAN CONTOH BERKAS YANG DICOCOKKAN
+  if (jobsToCompress.length > 0) {
+    const sample = jobsToCompress.slice(0, 3).map((j) => `${j.id_pps} (${j.subfolder || "root"})`).join(", ");
+    log(`Contoh foto diproses: ${sample}...`, "info");
+  }
+
+  log(`Pencocokan DB: ${matchedCount} dari ${scannedPhotos.length} foto cocok dengan data santri.`, "info");
+  log(`Status Inkremental: ${skippedCount} foto sudah versi terbaru (dilewati), ${jobsToCompress.length} foto diproses.`, "info");
+
+  if (jobsToCompress.length === 0) {
+    log("Seluruh foto lokal yang ditemukan sudah versi terbaru di database!", "success");
+    return {
+      totalScanned: scannedPhotos.length,
+      matchedCount,
+      skippedUpToDate: skippedCount,
+      successUpload: 0,
+      failedUpload: 0,
+    };
+  }
+
+  if (isCancelled()) {
+    log("Proses dibatalkan oleh pengguna.", "warning");
+    return { totalScanned: scannedPhotos.length, matchedCount, skippedUpToDate: skippedCount, successUpload: 0, failedUpload: 0, isCancelled: true };
+  }
+
+  // 3. KOMPRESI GO SIDECAR
+  if (onProgress) {
+    onProgress({
+      step: "compressing",
+      current: 0,
+      total: jobsToCompress.length,
+      message: "Mengompresi foto via Go Sidecar...",
+      percent: 50,
+    });
+  }
+
+  const unlisten = await listen<string>("photo-compress-progress", (event) => {
+    try {
+      const parsed = JSON.parse(event.payload);
+      if (parsed.type === "progress" && onProgress) {
+        const pct = Math.round(50 + (parsed.current / parsed.total) * 30);
+        onProgress({
+          step: "compressing",
+          current: parsed.current,
+          total: parsed.total,
+          message: parsed.message,
+          percent: pct,
+        });
+      }
+    } catch {}
+  });
+
+  try {
+    await invoke("execute_photo_compressor_sidecar", {
+      jobsJson: JSON.stringify(jobsToCompress),
+    });
+  } catch (err) {
+    unlisten();
+    throw new Error(getErrorMessage(err));
+  }
+
+  unlisten();
+  log(`Kompresi Go sidecar selesai: ${jobsToCompress.length} foto dikompresi.`, "success");
+
+  if (isCancelled()) {
+    log("Proses dibatalkan oleh pengguna.", "warning");
+    return { totalScanned: scannedPhotos.length, matchedCount, skippedUpToDate: skippedCount, successUpload: 0, failedUpload: 0, isCancelled: true };
+  }
+
+  // 4. PARALLEL BATCH UPLOAD KE POCKETBASE
+  if (onProgress) {
+    onProgress({
+      step: "uploading",
+      current: 0,
+      total: jobsToCompress.length,
+      message: "Mengunggah foto ke PocketBase...",
+      percent: 80,
+    });
+  }
+
+  let successUpload = 0;
+  let failedUpload = 0;
+  const CONCURRENCY_LIMIT = 8;
+
+  for (let i = 0; i < jobsToCompress.length; i += CONCURRENCY_LIMIT) {
+    if (isCancelled()) {
+      log("Pengunggahan foto dibatalkan oleh pengguna.", "warning");
+      break;
+    }
+
+    const chunk = jobsToCompress.slice(i, i + CONCURRENCY_LIMIT);
+    const processedSoFar = Math.min(i + CONCURRENCY_LIMIT, jobsToCompress.length);
+    const pct = Math.round(80 + (processedSoFar / jobsToCompress.length) * 20);
+
+    if (onProgress) {
+      onProgress({
+        step: "uploading",
+        current: processedSoFar,
+        total: jobsToCompress.length,
+        message: `Mengunggah Foto: ${processedSoFar} / ${jobsToCompress.length}`,
+        percent: pct,
+      });
+    }
+
+    await Promise.all(
+      chunk.map(async (job) => {
+        try {
+          const base64Str = await invoke<string>("read_file_base64", {
+            path: job.output_path,
+          });
+
+          const response = await fetch(`data:image/jpeg;base64,${base64Str}`);
+          const blob = await response.blob();
+
+          const formData = new FormData();
+          formData.append("foto", blob, `${job.id_pps}.jpg`);
+          formData.append("foto_subfolder", job.subfolder);
+
+          await pb.collection("master").update(job.recordId, formData);
+          successUpload++;
+        } catch (err: any) {
+          failedUpload++;
+          log(`Gagal ID PPS ${job.id_pps}: ${getErrorMessage(err)}`, "error");
+        }
+      })
+    );
+  }
+
+  log(`Proses Selesai! ${successUpload} foto berhasil diunggah, ${failedUpload} gagal.`, "success");
+
+  return {
+    totalScanned: scannedPhotos.length,
+    matchedCount,
+    skippedUpToDate: skippedCount,
+    successUpload,
+    failedUpload,
+    isCancelled: isCancelled(),
+  };
 };
 ```

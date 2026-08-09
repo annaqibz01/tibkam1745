@@ -1,40 +1,387 @@
 # CONTEXT: FEATURE-LAPORAN
 
 ## Included Files:
-- `src/features/laporan/components/LaporanHeader.tsx`
-- `src/features/laporan/components/LaporanTable.tsx`
-- `src/features/laporan/components/LaporanToolbar.tsx`
-- `src/features/laporan/components/RambutReportPrint.tsx`
-- `src/features/laporan/hooks/useLaporanRambut.ts`
+- `src/features/laporan/components/LaporanRedirect.tsx`
+- `src/features/laporan/core/utils/excelHelpers.ts`
+- `src/features/laporan/core/utils/generateBarcode.ts`
+- `src/features/laporan/core/utils/generateChart.ts`
 - `src/features/laporan/index.ts`
-- `src/features/laporan/pages/LaporanRambutPage.tsx`
-- `src/features/laporan/utils/excel/excelHelpers.ts`
-- `src/features/laporan/utils/excel/generateBarcode.ts`
-- `src/features/laporan/utils/excel/generateChart.ts`
-- `src/features/laporan/utils/excel/sheets/pengurusSheet.ts`
-- `src/features/laporan/utils/excel/sheets/queueSheet.ts`
-- `src/features/laporan/utils/excel/sheets/riwayatSheet.ts`
-- `src/features/laporan/utils/excel/sheets/summarySheet.ts`
-- `src/features/laporan/utils/exportRambutExcel.ts`
+- `src/features/laporan/rambut/components/LaporanHeader.tsx`
+- `src/features/laporan/rambut/components/LaporanTable.tsx`
+- `src/features/laporan/rambut/components/LaporanToolbar.tsx`
+- `src/features/laporan/rambut/hooks/useLaporanRambut.ts`
+- `src/features/laporan/rambut/pages/LaporanRambutPage.tsx`
+- `src/features/laporan/rambut/utils/exportRambutExcel.ts`
+- `src/features/laporan/rambut/utils/sheets/pengurusSheet.ts`
+- `src/features/laporan/rambut/utils/sheets/queueSheet.ts`
+- `src/features/laporan/rambut/utils/sheets/riwayatSheet.ts`
+- `src/features/laporan/rambut/utils/sheets/summarySheet.ts`
 
 ---
 
-### `src/features/laporan/components/LaporanHeader.tsx`
+### `src/features/laporan/components/LaporanRedirect.tsx`
+```tsx
+// src/features/laporan/components/LaporanRedirect.tsx
+import React from "react";
+import { Navigate } from "react-router-dom";
+import { useAuth } from "@/features/auth";
+import type { UsersResponse } from "@/types/pocketbase-types";
+
+export const LaporanRedirect: React.FC = () => {
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+
+  // 🎯 Cast ke string agar TypeScript mengizinkan pengecekan role baru di masa depan
+  const role = currentUser?.role as string | undefined;
+
+  // 1. Role Penyidik / Admin Penyidik -> Auto Redirect ke Laporan Penyidik (Masa Depan)
+  if (role === "admin_penyidik" || role === "penyidik") {
+    return <Navigate to="/laporan/penyidik" replace />;
+  }
+
+  // 2. Role Superadmin, Admin Rambut, Rambut -> Auto Redirect ke Laporan Rambut
+  if (role === "admin" || role === "admin_rambut" || role === "rambut") {
+    return <Navigate to="/laporan/rambut" replace />;
+  }
+
+  // 3. Role tanpa akses laporan (misal: "umum") -> Kembali ke Dashboard
+  return <Navigate to="/dashboard" replace />;
+};
+```
+
+### `src/features/laporan/core/utils/excelHelpers.ts`
+```typescript
+// src/features/laporan/utils/excel/excelHelpers.ts
+import ExcelJS from "exceljs";
+import { fetchHijriByDate } from "@/features/kalender";
+
+export const COLOR_PRIMARY = "1B4D3E";
+export const COLOR_SECONDARY = "0F766E";
+export const COLOR_ZEBRA_FILL = "F8FAFC";
+export const COLOR_BORDER = "CBD5E1";
+
+export const STATUS_STYLES = {
+  sudah: { fill: "DCFCE7", color: "15803D" },
+  belum: { fill: "FEE2E2", color: "B91C1C" },
+  dispensasi: { fill: "FEF3C7", color: "B45309" },
+} as const;
+
+export const THIN_BORDER: Partial<ExcelJS.Borders> = {
+  top: { style: "thin", color: { argb: COLOR_BORDER } },
+  left: { style: "thin", color: { argb: COLOR_BORDER } },
+  bottom: { style: "thin", color: { argb: COLOR_BORDER } },
+  right: { style: "thin", color: { argb: COLOR_BORDER } },
+};
+
+export const applyA4PrintSetup = (
+  worksheet: ExcelJS.Worksheet,
+  orientation: "portrait" | "landscape" = "landscape",
+  headerRowNumber: number = 4,
+  strictSinglePage: boolean = false
+) => {
+  worksheet.pageSetup = {
+    paperSize: 9,
+    orientation,
+    fitToPage: true,
+    fitToWidth: 1,
+    fitToHeight: strictSinglePage ? 1 : 0,
+    margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
+    printTitlesRow: `${headerRowNumber}:${headerRowNumber}`,
+  };
+
+  worksheet.headerFooter = {
+    oddFooter: '&L&"Segoe UI,Regular"&8TIBKAM 1745 - PONDOK PESANTREN SIDOGIRI&C&"Segoe UI,Regular"&8Halaman &P dari &N&R&8Tgl Cetak: &D',
+    evenFooter: '&L&"Segoe UI,Regular"&8TIBKAM 1745 - PONDOK PESANTREN SIDOGIRI&C&"Segoe UI,Regular"&8Halaman &P dari &N&R&8Tgl Cetak: &D',
+  };
+};
+
+export const applyHeaderStyle = (row: ExcelJS.Row, bgHex: string = COLOR_PRIMARY) => {
+  row.height = 22;
+  row.eachCell((cell) => {
+    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgHex } };
+    cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFF" } };
+    cell.alignment = { horizontal: "center", vertical: "middle" };
+    cell.border = THIN_BORDER;
+  });
+};
+
+export const autoFitColumnWidths = (
+  worksheet: ExcelJS.Worksheet,
+  minWidthMap: Record<number, number> = {},
+  maxWidthMap: Record<number, number> = {}
+) => {
+  worksheet.columns?.forEach((column, colIndex) => {
+    const colNum = colIndex + 1;
+    let maxLen = 0;
+
+    column.eachCell?.({ includeEmpty: true }, (cell, rowNum) => {
+      if (rowNum <= 3) return;
+      const val = cell.value ? cell.value.toString() : "";
+      if (val.length > maxLen) maxLen = val.length;
+    });
+
+    const minW = minWidthMap[colNum] ?? 10;
+    const maxW = maxWidthMap[colNum] ?? 35;
+    column.width = Math.min(Math.max(maxLen + 3, minW), maxW);
+  });
+};
+
+export const capitalizeText = (str?: string | null) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : "-");
+export const parseIdPps = (val?: string | number | null) => (!val ? "-" : !isNaN(Number(val)) ? Number(val) : String(val));
+export const sanitizeFileName = (str: string) => str.replace(/[^a-zA-Z0-9_-]/g, "_");
+
+export const getAlamatStr = (santri: any) => {
+  if (!santri) return "-";
+  const parts = [santri.desa, santri.kecamatan, santri.kabupaten].map((v) => v?.toString().trim()).filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "-";
+};
+
+const hijriCache = new Map<string, string | null>();
+export const formatDateHijri = async (dateStr?: string | null): Promise<string> => {
+  if (!dateStr) return "-";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "-";
+
+  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  if (!hijriCache.has(dateKey)) {
+    const res = await fetchHijriByDate(d);
+    hijriCache.set(dateKey, res?.string_hijri || null);
+  }
+  return hijriCache.get(dateKey) || `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+};
+```
+
+### `src/features/laporan/core/utils/generateBarcode.ts`
+```typescript
+// src/features/laporan/utils/excel/generateBarcode.ts
+export const generateBarcodeBase64 = (text: string): string => {
+  if (typeof document === "undefined") return "";
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const code39Patterns: Record<string, string> = {
+      '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
+      '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
+      '8': '110100101101', '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
+      'C': '110110100101', 'D': '101011001011', 'E': '110101100101', 'F': '101101100101',
+      'G': '101010011011', 'H': '110101001101', 'I': '101101001101', 'J': '101011001101',
+      'K': '110101010011', 'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
+      'O': '110101101001', 'P': '101101101001', 'Q': '101010110011', 'R': '110101011001',
+      'S': '101101011001', 'T': '101011011001', 'U': '110010101011', 'V': '100110101011',
+      'W': '110011010101', 'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
+      '-': '100101011011', '.': '110010101101', ' ': '100110101101', '*': '100101101101'
+    };
+
+    const cleanText = `*${text.toUpperCase().replace(/[^0-9A-Z\-.\s]/g, '')}*`;
+    let bitString = "";
+    for (let i = 0; i < cleanText.length; i++) {
+      bitString += (code39Patterns[cleanText[i]] || code39Patterns['*']) + "0";
+    }
+
+    const barWidth = 2;
+    const height = 48;
+    const padding = 8;
+    const width = bitString.length * barWidth + padding * 2;
+
+    canvas.width = width;
+    canvas.height = height;
+
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.fillStyle = "#000000";
+    for (let i = 0; i < bitString.length; i++) {
+      if (bitString[i] === "1") {
+        ctx.fillRect(padding + i * barWidth, 4, barWidth, height - 8);
+      }
+    }
+
+    return canvas.toDataURL("image/png");
+  } catch (err) {
+    return "";
+  }
+};
+```
+
+### `src/features/laporan/core/utils/generateChart.ts`
+```typescript
+// src/features/laporan/utils/excel/generateChart.ts
+
+/**
+ * 📊 Generator Donut Chart Base64 PNG via HTML5 Canvas API (Tanpa Teks Bentrok)
+ */
+export const generateChartBase64 = (
+  sudah: number,
+  belum: number,
+  dispensasi: number
+): string => {
+  if (typeof document === "undefined") return "";
+  try {
+    const canvas = document.createElement("canvas");
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return "";
+
+    const total = sudah + belum + dispensasi;
+
+    // Dimensi Canvas Wide Presisi A4
+    const width = 560;
+    const height = 180;
+    canvas.width = width;
+    canvas.height = height;
+
+    // Background & Frame Border
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fillRect(0, 0, width, height);
+
+    ctx.strokeStyle = "#CBD5E1";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(1, 1, width - 2, height - 2);
+
+    const items = [
+      { label: "Sudah Setor", value: sudah, color: "#16A34A", bg: "#DCFCE7" },
+      { label: "Belum Setor", value: belum, color: "#DC2626", bg: "#FEE2E2" },
+      { label: "Dispensasi Khusus", value: dispensasi, color: "#D97706", bg: "#FEF3C7" },
+    ];
+
+    // Geometri Donut Chart
+    const cx = 115;
+    const cy = 90;
+    const outerRadius = 62;
+    const innerRadius = 36;
+
+    let startAngle = -Math.PI / 2;
+
+    if (total === 0) {
+      ctx.beginPath();
+      ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
+      ctx.fillStyle = "#E2E8F0";
+      ctx.fill();
+    } else {
+      items.forEach((item) => {
+        if (item.value <= 0) return;
+        const sliceAngle = (item.value / total) * (Math.PI * 2);
+        const endAngle = startAngle + sliceAngle;
+
+        ctx.beginPath();
+        ctx.arc(cx, cy, outerRadius, startAngle, endAngle);
+        ctx.arc(cx, cy, innerRadius, endAngle, startAngle, true);
+        ctx.closePath();
+        ctx.fillStyle = item.color;
+        ctx.fill();
+
+        startAngle = endAngle;
+      });
+    }
+
+    // Donut Hole
+    ctx.beginPath();
+    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
+    ctx.fillStyle = "#FFFFFF";
+    ctx.fill();
+
+    // Teks Tengah Donut
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    ctx.font = "bold 14px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#0F172A";
+    ctx.fillText(total.toLocaleString("id-ID"), cx, cy - 6);
+
+    ctx.font = "8px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#64748B";
+    ctx.fillText("TOTAL SANTRI", cx, cy + 8);
+
+    // Judul Legenda
+    const lx = 240;
+    ctx.textAlign = "left";
+    ctx.font = "bold 10.5px 'Segoe UI', sans-serif";
+    ctx.fillStyle = "#1B4D3E";
+    ctx.fillText("DISTRIBUSI STATUS SETOR RAMBUT", lx, 22);
+
+    // Garis Pemisah
+    ctx.strokeStyle = "#E2E8F0";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(lx, 28);
+    ctx.lineTo(width - 20, 28);
+    ctx.stroke();
+
+    // Stat Box 2-Baris (Mencegah Overlap Teks)
+    let ly = 38;
+    items.forEach((item) => {
+      const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) + "%" : "0.0%";
+      const boxWidth = width - lx - 20;
+      const boxHeight = 40;
+
+      // Stat Box Fill & Border
+      ctx.fillStyle = item.bg;
+      ctx.fillRect(lx, ly, boxWidth, boxHeight);
+      ctx.strokeStyle = item.color + "50";
+      ctx.strokeRect(lx, ly, boxWidth, boxHeight);
+
+      // Color Badge Indicator
+      ctx.fillStyle = item.color;
+      ctx.fillRect(lx + 8, ly + 8, 10, 24);
+
+      // Baris 1: Label Nama Status
+      ctx.font = "bold 10px 'Segoe UI', sans-serif";
+      ctx.fillStyle = "#1E293B";
+      ctx.fillText(item.label, lx + 26, ly + 15);
+
+      // Baris 2: Nilai & Persentase
+      ctx.font = "bold 11px 'Segoe UI', monospace";
+      ctx.fillStyle = item.color;
+      ctx.fillText(`${item.value.toLocaleString("id-ID")} Santri (${pct})`, lx + 26, ly + 30);
+
+      ly += 45;
+    });
+
+    return canvas.toDataURL("image/png");
+  } catch (err) {
+    return "";
+  }
+};
+```
+
+### `src/features/laporan/index.ts`
+```typescript
+// src/features/laporan/index.ts
+
+// Shared Core Utilities
+export * from "./core/utils/excelHelpers";
+export * from "./core/utils/generateBarcode";
+export * from "./core/utils/generateChart";
+
+// Sub-Modul Rambut
+export * from "./rambut/pages/LaporanRambutPage";
+export * from "./rambut/hooks/useLaporanRambut";
+
+// Sub-Modul Penyidik (Nanti ditambahkan di sini saat dikembangkan)
+// export * from "./penyidik/pages/LaporanPenyidikPage";
+// Tambahkan di src/features/laporan/index.ts
+export * from "./components/LaporanRedirect";
+```
+
+### `src/features/laporan/rambut/components/LaporanHeader.tsx`
 ```tsx
 // src/features/laporan/components/LaporanHeader.tsx
 import React from "react";
-import { FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 import { PageHeader, StatusBadge } from "@/components/shared";
 
 interface LaporanHeaderProps {
   selectedPeriode: PeriodeRambutResponse | null;
   onExportExcel: () => void;
+  isExporting?: boolean;
 }
 
 export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
   selectedPeriode,
   onExportExcel,
+  isExporting = false,
 }) => {
   return (
     <PageHeader
@@ -64,10 +411,20 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
         <button
           type="button"
           onClick={onExportExcel}
-          className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30 select-none"
+          disabled={isExporting}
+          className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30 select-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          <FileSpreadsheet className="w-4 h-4" />
-          <span>Export Excel (.xlsx)</span>
+          {isExporting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Memproses Excel...</span>
+            </>
+          ) : (
+            <>
+              <FileSpreadsheet className="w-4 h-4" />
+              <span>Export Excel (.xlsx)</span>
+            </>
+          )}
         </button>
       }
     />
@@ -75,7 +432,7 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
 };
 ```
 
-### `src/features/laporan/components/LaporanTable.tsx`
+### `src/features/laporan/rambut/components/LaporanTable.tsx`
 ```tsx
 // src/features/laporan/components/LaporanTable.tsx
 import React from "react";
@@ -325,7 +682,7 @@ export const LaporanTable: React.FC<LaporanTableProps> = ({
 };
 ```
 
-### `src/features/laporan/components/LaporanToolbar.tsx`
+### `src/features/laporan/rambut/components/LaporanToolbar.tsx`
 ```tsx
 // src/features/laporan/components/LaporanToolbar.tsx
 import React from "react";
@@ -453,176 +810,11 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
 };
 ```
 
-### `src/features/laporan/components/RambutReportPrint.tsx`
-```tsx
-// src/features/laporan/components/RambutReportPrint.tsx
-import React from "react";
-import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
-import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut";
-
-interface RambutReportPrintProps {
-  periode: PeriodeRambutResponse | null;
-  queueData: WajibSetorExpanded[];
-  riwayatData: RiwayatSetorExpanded[];
-  stats: { total: number; sudah: number; belum: number; dispensasi: number };
-  reportType: "all" | "belum_setor" | "sudah_setor" | "riwayat";
-  filterKategori: string;
-  filterDaerah: string;
-}
-
-export const RambutReportPrint = React.forwardRef<HTMLDivElement, RambutReportPrintProps>(
-  ({ periode, queueData, riwayatData, stats, reportType, filterKategori, filterDaerah }, ref) => {
-    const todayStr = new Date().toLocaleDateString("id-ID", {
-      weekday: "long",
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-
-    const getJudulLaporan = () => {
-      switch (reportType) {
-        case "belum_setor": return "LAPORAN DAFTAR SANTRI BELUM SETOR CUKUR RAMBUT";
-        case "sudah_setor": return "LAPORAN DAFTAR SANTRI SUDAH SETOR CUKUR RAMBUT";
-        case "riwayat": return "LAPORAN LOG RIWAYAT TRANSAKSI SETOR RAMBUT";
-        default: return "LAPORAN REKAPITULASI PENERTIBAN CUKUR RAMBUT SANTRI";
-      }
-    };
-
-    return (
-      <div className="hidden">
-        <div ref={ref} className="p-8 bg-white text-black font-sans text-xs leading-normal">
-          {/* KOP SURAT RESMI SIDOGIRI */}
-          <div className="text-center border-b-2 border-black pb-3 mb-4">
-            <h2 className="text-base font-bold uppercase tracking-wider">PONDOK PESANTREN SIDOGIRI</h2>
-            <h1 className="text-lg font-black uppercase tracking-tight text-indigo-950">
-              KETERTIBAN DAN KEAMANAN (TIBKAM 1745)
-            </h1>
-            <p className="text-[10px] text-gray-600 font-mono">
-              Sidogiri Kraton Pasuruan Jawa Timur 67183 | Modul Laporan Rambut Santri
-            </p>
-          </div>
-
-          {/* HEADER METAINFO */}
-          <div className="mb-4">
-            <h3 className="text-sm font-bold text-center underline uppercase mb-3">
-              {getJudulLaporan()}
-            </h3>
-            <table className="w-full text-xs mb-3 border-collapse font-mono">
-              <tbody>
-                <tr>
-                  <td className="w-28 font-bold py-0.5">Periode Ditinjau</td>
-                  <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold">{periode?.nama_periode || "Semua Periode"}</td>
-                  <td className="w-28 font-bold py-0.5">Filter Daerah</td>
-                  <td className="w-3 py-0.5">:</td>
-                  <td className="py-0.5 font-bold uppercase">{filterDaerah === "all" ? "Semua Daerah" : `Daerah ${filterDaerah}`}</td>
-                </tr>
-                <tr>
-                  <td className="font-bold py-0.5">Tanggal Cetak</td>
-                  <td className="py-0.5">:</td>
-                  <td className="py-0.5">{todayStr}</td>
-                  <td className="font-bold py-0.5">Filter Kategori</td>
-                  <td className="py-0.5">:</td>
-                  <td className="py-0.5 uppercase">{filterKategori === "all" ? "Semua Kategori" : filterKategori.replace("_", " ")}</td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          {/* TABEL DATA CETAK */}
-          {reportType !== "riwayat" ? (
-            <table className="w-full border-collapse border border-black text-[10px] mb-6 font-sans">
-              <thead>
-                <tr className="bg-gray-200 text-black border-b border-black font-bold">
-                  <th className="border border-black p-1.5 text-center w-8">NO</th>
-                  <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
-                  <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
-                  <th className="border border-black p-1.5 text-center w-24">KATEGORI</th>
-                  <th className="border border-black p-1.5 text-center w-24">TINGKAT/KELAS</th>
-                  <th className="border border-black p-1.5 text-center w-24">DOMISILI</th>
-                  <th className="border border-black p-1.5 text-center w-20">STATUS</th>
-                </tr>
-              </thead>
-              <tbody>
-                {queueData.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center p-4 italic border border-black">Data kosong.</td>
-                  </tr>
-                ) : (
-                  queueData.map((item, idx) => (
-                    <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border border-black p-1 text-center font-mono">{idx + 1}</td>
-                      <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
-                      <td className="border border-black p-1 uppercase font-semibold">{item.expand?.santri?.nama || "-"}</td>
-                      <td className="border border-black p-1 text-center capitalize">{item.kategori_wajib?.replace(/_/g, " ")}</td>
-                      <td className="border border-black p-1 text-center">{item.expand?.santri?.tingkatan || "-"} / {item.expand?.santri?.kelas || "-"}</td>
-                      <td className="border border-black p-1 text-center">{item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "-"}</td>
-                      <td className="border border-black p-1 text-center font-bold uppercase">{item.status_setor}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          ) : (
-            <table className="w-full border-collapse border border-black text-[10px] mb-6 font-sans">
-              <thead>
-                <tr className="bg-gray-200 text-black border-b border-black font-bold">
-                  <th className="border border-black p-1.5 text-center w-8">NO</th>
-                  <th className="border border-black p-1.5 text-center w-20">ID PPS</th>
-                  <th className="border border-black p-1.5 text-left">NAMA SANTRI</th>
-                  <th className="border border-black p-1.5 text-center w-24">DOMISILI</th>
-                  <th className="border border-black p-1.5 text-left">PETUGAS</th>
-                  <th className="border border-black p-1.5 text-center w-28">WAKTU ISTIWA</th>
-                  <th className="border border-black p-1.5 text-left">CATATAN</th>
-                </tr>
-              </thead>
-              <tbody>
-                {riwayatData.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="text-center p-4 italic border border-black">Data riwayat kosong.</td>
-                  </tr>
-                ) : (
-                  riwayatData.map((item, idx) => (
-                    <tr key={item.id} className={idx % 2 === 0 ? "bg-white" : "bg-gray-50"}>
-                      <td className="border border-black p-1 text-center font-mono">{idx + 1}</td>
-                      <td className="border border-black p-1 text-center font-mono font-bold">{item.id_pps}</td>
-                      <td className="border border-black p-1 uppercase font-semibold">{item.expand?.santri?.nama || "-"}</td>
-                      <td className="border border-black p-1 text-center">{item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "-"}</td>
-                      <td className="border border-black p-1">{item.expand?.petugas_eksekutor?.name || item.expand?.petugas_eksekutor?.username || "-"}</td>
-                      <td className="border border-black p-1 text-center font-mono">{item.waktu_wis || "-"}</td>
-                      <td className="border border-black p-1">{item.catatan || "-"}</td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          )}
-
-          {/* AREA TANDA TANGAN */}
-          <div className="mt-8 flex justify-between items-end text-center font-mono">
-            <div className="w-48">
-              <p className="mb-12">Mengetahui,<br /><strong>Kepala Ketertiban</strong></p>
-              <p className="font-bold underline">( .................................... )</p>
-            </div>
-            <div className="w-48">
-              <p className="mb-12">Sidogiri, {todayStr.split(",")[1]?.trim() || todayStr}<br /><strong>Petugas Eksekutor</strong></p>
-              <p className="font-bold underline">( .................................... )</p>
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-);
-
-RambutReportPrint.displayName = "RambutReportPrint";
-```
-
-### `src/features/laporan/hooks/useLaporanRambut.ts`
+### `src/features/laporan/rambut/hooks/useLaporanRambut.ts`
 ```typescript
 // src/features/laporan/hooks/useLaporanRambut.ts
 import { useState, useEffect, useMemo } from "react";
-import { useRambut, useRambutStats } from "@/features/rambut";
+import { useRambut, useRambutStats, parseNumericIdPps } from "@/features/rambut";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export type ReportType = "all" | "belum_setor" | "sudah_setor" | "riwayat";
@@ -646,7 +838,6 @@ export function useLaporanRambut() {
   const [page, setPage] = useState(1);
   const PER_PAGE = 15;
 
-  // Auto-select periode aktif/terbaru saat pertama dimuat
   useEffect(() => {
     if (!selectedPeriode) {
       if (activePeriode) {
@@ -659,14 +850,12 @@ export function useLaporanRambut() {
 
   const currentPeriodeId = selectedPeriode?.id || activePeriode?.id || "";
 
-  // Query data antrean & riwayat berdasarkan periode terpilih
   const { data: fullQueueData = [], isLoading: isQueueLoading, refetch: refetchQueue } = useWajibSetorFullList(currentPeriodeId);
   const { data: fullRiwayatData = [], isLoading: isRiwayatLoading, refetch: refetchRiwayat } = useRiwayatSetorList(currentPeriodeId);
   const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
 
   const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
 
-  // Opsi Filter Daerah Domisili Ekstrak Otomatis (A - Z)
   const daerahOptions = useMemo(() => {
     const set = new Set<string>();
     fullQueueData.forEach((item) => {
@@ -679,9 +868,9 @@ export function useLaporanRambut() {
     return Array.from(set).sort();
   }, [fullQueueData]);
 
-  // Filter Queue Data
+  // Filter Queue Data + Sorting Global ID PPS
   const filteredQueueData = useMemo(() => {
-    return fullQueueData.filter((item) => {
+    let list = fullQueueData.filter((item) => {
       if (reportType === "belum_setor" && item.status_setor !== "belum") return false;
       if (reportType === "sudah_setor" && item.status_setor !== "sudah") return false;
       if (filterKategori !== "all" && item.kategori_wajib !== filterKategori) return false;
@@ -699,11 +888,16 @@ export function useLaporanRambut() {
 
       return true;
     });
+
+    // 🎯 FIX: Urutkan ID PPS secara global sebelum dipotong pagination
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [fullQueueData, reportType, filterKategori, filterDaerah, searchQuery]);
 
-  // Filter Audit Data
+  // Filter Audit Data + Sorting Global ID PPS
   const filteredAuditData = useMemo(() => {
-    return fullRiwayatData.filter((item) => {
+    let list = fullRiwayatData.filter((item) => {
       const dom = item.expand?.santri?.domisili || item.expand?.santri?.status_domisili || "";
       const firstChar = dom.toString().trim().toUpperCase().charAt(0);
       if (filterDaerah !== "all" && firstChar !== filterDaerah) return false;
@@ -717,9 +911,13 @@ export function useLaporanRambut() {
       }
       return true;
     });
+
+    // 🎯 FIX: Urutkan ID PPS secara global sebelum dipotong pagination
+    return list.sort(
+      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [fullRiwayatData, filterDaerah, searchQuery]);
 
-  // Pagination Data
   const activeDataset = reportType === "riwayat" ? filteredAuditData : filteredQueueData;
   const totalItems = activeDataset.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);
@@ -775,19 +973,12 @@ export function useLaporanRambut() {
 }
 ```
 
-### `src/features/laporan/index.ts`
-```typescript
-// src/features/laporan/index.ts
-export * from "./pages/LaporanRambutPage";
-```
-
-### `src/features/laporan/pages/LaporanRambutPage.tsx`
+### `src/features/laporan/rambut/pages/LaporanRambutPage.tsx`
 ```tsx
 // src/features/laporan/pages/LaporanRambutPage.tsx
-import React from "react";
+import React, { useState } from "react";
 import { useToast } from "@/context/ToastContext";
 
-// Reuse Controls & Components
 import { RambutStats } from "@/features/rambut";
 import { MasterPagination } from "@/features/master";
 
@@ -799,6 +990,7 @@ import { LaporanTable } from "../components/LaporanTable";
 
 export const LaporanRambutPage: React.FC = () => {
   const { showSuccess, showError } = useToast();
+  const [isExporting, setIsExporting] = useState(false);
 
   const {
     periodeList,
@@ -826,9 +1018,12 @@ export const LaporanRambutPage: React.FC = () => {
     onRefresh,
   } = useLaporanRambut();
 
-  const handleExportExcel = () => {
+  const handleExportExcel = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+
     try {
-      exportRambutToExcel({
+      await exportRambutToExcel({
         periode: selectedPeriode,
         queueData: filteredQueueData,
         riwayatData: filteredAuditData,
@@ -837,6 +1032,8 @@ export const LaporanRambutPage: React.FC = () => {
       showSuccess("File Excel laporan berhasil diunduh!", "Export Sukses");
     } catch (err: any) {
       showError("Gagal mengunduh Excel: " + err.message, "Export Gagal");
+    } finally {
+      setIsExporting(false);
     }
   };
 
@@ -846,6 +1043,7 @@ export const LaporanRambutPage: React.FC = () => {
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
+        isExporting={isExporting}
       />
 
       {/* 2. Kartu Statistik Presisi */}
@@ -893,303 +1091,56 @@ export const LaporanRambutPage: React.FC = () => {
 };
 ```
 
-### `src/features/laporan/utils/excel/excelHelpers.ts`
+### `src/features/laporan/rambut/utils/exportRambutExcel.ts`
 ```typescript
-// src/features/laporan/utils/excel/excelHelpers.ts
+// src/features/laporan/utils/exportRambutExcel.ts
 import ExcelJS from "exceljs";
-import { fetchHijriByDate } from "@/features/kalender";
+import { saveAs } from "file-saver";
+import { capitalizeText, formatDateHijri, sanitizeFileName } from "../../core/utils/excelHelpers";
+import { buildSummarySheet } from "./sheets/summarySheet";
+import { buildQueueSheet } from "./sheets/queueSheet";
+import { buildRiwayatSheet } from "./sheets/riwayatSheet";
+import { buildPengurusSheet } from "./sheets/pengurusSheet";
+import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
+import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
-export const COLOR_PRIMARY = "1B4D3E";
-export const COLOR_SECONDARY = "0F766E";
-export const COLOR_ZEBRA_FILL = "F8FAFC";
-export const COLOR_BORDER = "CBD5E1";
+export interface ExportRambutParams {
+  periode: PeriodeRambutResponse | null;
+  queueData: WajibSetorExpanded[];
+  riwayatData: RiwayatSetorExpanded[];
+  pengurusData?: any[];
+  stats: { total: number; sudah: number; belum: number; dispensasi: number };
+}
 
-export const STATUS_STYLES = {
-  sudah: { fill: "DCFCE7", color: "15803D" },
-  belum: { fill: "FEE2E2", color: "B91C1C" },
-  dispensasi: { fill: "FEF3C7", color: "B45309" },
-} as const;
+export const exportRambutToExcel = async ({
+  periode,
+  queueData,
+  riwayatData,
+  pengurusData,
+  stats,
+}: ExportRambutParams): Promise<void> => {
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = "Pondok Pesantren Sidogiri - TIBKAM 1745";
+  workbook.created = new Date();
 
-export const THIN_BORDER: Partial<ExcelJS.Borders> = {
-  top: { style: "thin", color: { argb: COLOR_BORDER } },
-  left: { style: "thin", color: { argb: COLOR_BORDER } },
-  bottom: { style: "thin", color: { argb: COLOR_BORDER } },
-  right: { style: "thin", color: { argb: COLOR_BORDER } },
-};
+  const namaPeriode = capitalizeText(periode?.nama_periode || "Semua Periode");
+  const todayMasehi = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
+  const todayHijri = await formatDateHijri(new Date().toISOString());
+  const tanggalExport = todayHijri !== "-" ? `${todayHijri} (${todayMasehi})` : todayMasehi;
 
-export const applyA4PrintSetup = (
-  worksheet: ExcelJS.Worksheet,
-  orientation: "portrait" | "landscape" = "landscape",
-  headerRowNumber: number = 4,
-  strictSinglePage: boolean = false
-) => {
-  worksheet.pageSetup = {
-    paperSize: 9,
-    orientation,
-    fitToPage: true,
-    fitToWidth: 1,
-    fitToHeight: strictSinglePage ? 1 : 0,
-    margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.2, footer: 0.2 },
-    printTitlesRow: `${headerRowNumber}:${headerRowNumber}`,
-  };
+  // Render Ke-4 Sheet Modular
+  buildSummarySheet(workbook, namaPeriode, tanggalExport, stats, queueData);
+  await buildQueueSheet(workbook, namaPeriode, tanggalExport, queueData);
+  await buildRiwayatSheet(workbook, namaPeriode, tanggalExport, riwayatData);
+  await buildPengurusSheet(workbook, namaPeriode, tanggalExport, pengurusData);
 
-  worksheet.headerFooter = {
-    oddFooter: '&L&"Segoe UI,Regular"&8TIBKAM 1745 - PONDOK PESANTREN SIDOGIRI&C&"Segoe UI,Regular"&8Halaman &P dari &N&R&8Tgl Cetak: &D',
-    evenFooter: '&L&"Segoe UI,Regular"&8TIBKAM 1745 - PONDOK PESANTREN SIDOGIRI&C&"Segoe UI,Regular"&8Halaman &P dari &N&R&8Tgl Cetak: &D',
-  };
-};
-
-export const applyHeaderStyle = (row: ExcelJS.Row, bgHex: string = COLOR_PRIMARY) => {
-  row.height = 22;
-  row.eachCell((cell) => {
-    cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: bgHex } };
-    cell.font = { name: "Segoe UI", size: 10, bold: true, color: { argb: "FFFFFF" } };
-    cell.alignment = { horizontal: "center", vertical: "middle" };
-    cell.border = THIN_BORDER;
-  });
-};
-
-export const autoFitColumnWidths = (
-  worksheet: ExcelJS.Worksheet,
-  minWidthMap: Record<number, number> = {},
-  maxWidthMap: Record<number, number> = {}
-) => {
-  worksheet.columns?.forEach((column, colIndex) => {
-    const colNum = colIndex + 1;
-    let maxLen = 0;
-
-    column.eachCell?.({ includeEmpty: true }, (cell, rowNum) => {
-      if (rowNum <= 3) return;
-      const val = cell.value ? cell.value.toString() : "";
-      if (val.length > maxLen) maxLen = val.length;
-    });
-
-    const minW = minWidthMap[colNum] ?? 10;
-    const maxW = maxWidthMap[colNum] ?? 35;
-    column.width = Math.min(Math.max(maxLen + 3, minW), maxW);
-  });
-};
-
-export const capitalizeText = (str?: string | null) => (str ? str.charAt(0).toUpperCase() + str.slice(1) : "-");
-export const parseIdPps = (val?: string | number | null) => (!val ? "-" : !isNaN(Number(val)) ? Number(val) : String(val));
-export const sanitizeFileName = (str: string) => str.replace(/[^a-zA-Z0-9_-]/g, "_");
-
-export const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten].map((v) => v?.toString().trim()).filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
-
-const hijriCache = new Map<string, string | null>();
-export const formatDateHijri = async (dateStr?: string | null): Promise<string> => {
-  if (!dateStr) return "-";
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) return "-";
-
-  const dateKey = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-  if (!hijriCache.has(dateKey)) {
-    const res = await fetchHijriByDate(d);
-    hijriCache.set(dateKey, res?.string_hijri || null);
-  }
-  return hijriCache.get(dateKey) || `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`;
+  // Trigger Download
+  const buffer = await workbook.xlsx.writeBuffer();
+  saveAs(new Blob([buffer]), `Laporan_Rambut_${sanitizeFileName(namaPeriode)}.xlsx`);
 };
 ```
 
-### `src/features/laporan/utils/excel/generateBarcode.ts`
-```typescript
-// src/features/laporan/utils/excel/generateBarcode.ts
-export const generateBarcodeBase64 = (text: string): string => {
-  if (typeof document === "undefined") return "";
-  try {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
-
-    const code39Patterns: Record<string, string> = {
-      '0': '101001101101', '1': '110100101011', '2': '101100101011', '3': '110110010101',
-      '4': '101001101011', '5': '110100110101', '6': '101100110101', '7': '101001011011',
-      '8': '110100101101', '9': '101100101101', 'A': '110101001011', 'B': '101101001011',
-      'C': '110110100101', 'D': '101011001011', 'E': '110101100101', 'F': '101101100101',
-      'G': '101010011011', 'H': '110101001101', 'I': '101101001101', 'J': '101011001101',
-      'K': '110101010011', 'L': '101101010011', 'M': '110110101001', 'N': '101011010011',
-      'O': '110101101001', 'P': '101101101001', 'Q': '101010110011', 'R': '110101011001',
-      'S': '101101011001', 'T': '101011011001', 'U': '110010101011', 'V': '100110101011',
-      'W': '110011010101', 'X': '100101101011', 'Y': '110010110101', 'Z': '100110110101',
-      '-': '100101011011', '.': '110010101101', ' ': '100110101101', '*': '100101101101'
-    };
-
-    const cleanText = `*${text.toUpperCase().replace(/[^0-9A-Z\-.\s]/g, '')}*`;
-    let bitString = "";
-    for (let i = 0; i < cleanText.length; i++) {
-      bitString += (code39Patterns[cleanText[i]] || code39Patterns['*']) + "0";
-    }
-
-    const barWidth = 2;
-    const height = 48;
-    const padding = 8;
-    const width = bitString.length * barWidth + padding * 2;
-
-    canvas.width = width;
-    canvas.height = height;
-
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.fillStyle = "#000000";
-    for (let i = 0; i < bitString.length; i++) {
-      if (bitString[i] === "1") {
-        ctx.fillRect(padding + i * barWidth, 4, barWidth, height - 8);
-      }
-    }
-
-    return canvas.toDataURL("image/png");
-  } catch (err) {
-    return "";
-  }
-};
-```
-
-### `src/features/laporan/utils/excel/generateChart.ts`
-```typescript
-// src/features/laporan/utils/excel/generateChart.ts
-
-/**
- * 📊 Generator Donut Chart Base64 PNG via HTML5 Canvas API (Tanpa Teks Bentrok)
- */
-export const generateChartBase64 = (
-  sudah: number,
-  belum: number,
-  dispensasi: number
-): string => {
-  if (typeof document === "undefined") return "";
-  try {
-    const canvas = document.createElement("canvas");
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return "";
-
-    const total = sudah + belum + dispensasi;
-
-    // Dimensi Canvas Wide Presisi A4
-    const width = 560;
-    const height = 180;
-    canvas.width = width;
-    canvas.height = height;
-
-    // Background & Frame Border
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fillRect(0, 0, width, height);
-
-    ctx.strokeStyle = "#CBD5E1";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(1, 1, width - 2, height - 2);
-
-    const items = [
-      { label: "Sudah Setor", value: sudah, color: "#16A34A", bg: "#DCFCE7" },
-      { label: "Belum Setor", value: belum, color: "#DC2626", bg: "#FEE2E2" },
-      { label: "Dispensasi Khusus", value: dispensasi, color: "#D97706", bg: "#FEF3C7" },
-    ];
-
-    // Geometri Donut Chart
-    const cx = 115;
-    const cy = 90;
-    const outerRadius = 62;
-    const innerRadius = 36;
-
-    let startAngle = -Math.PI / 2;
-
-    if (total === 0) {
-      ctx.beginPath();
-      ctx.arc(cx, cy, outerRadius, 0, Math.PI * 2);
-      ctx.fillStyle = "#E2E8F0";
-      ctx.fill();
-    } else {
-      items.forEach((item) => {
-        if (item.value <= 0) return;
-        const sliceAngle = (item.value / total) * (Math.PI * 2);
-        const endAngle = startAngle + sliceAngle;
-
-        ctx.beginPath();
-        ctx.arc(cx, cy, outerRadius, startAngle, endAngle);
-        ctx.arc(cx, cy, innerRadius, endAngle, startAngle, true);
-        ctx.closePath();
-        ctx.fillStyle = item.color;
-        ctx.fill();
-
-        startAngle = endAngle;
-      });
-    }
-
-    // Donut Hole
-    ctx.beginPath();
-    ctx.arc(cx, cy, innerRadius, 0, Math.PI * 2);
-    ctx.fillStyle = "#FFFFFF";
-    ctx.fill();
-
-    // Teks Tengah Donut
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    ctx.font = "bold 14px 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#0F172A";
-    ctx.fillText(total.toLocaleString("id-ID"), cx, cy - 6);
-
-    ctx.font = "8px 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#64748B";
-    ctx.fillText("TOTAL SANTRI", cx, cy + 8);
-
-    // Judul Legenda
-    const lx = 240;
-    ctx.textAlign = "left";
-    ctx.font = "bold 10.5px 'Segoe UI', sans-serif";
-    ctx.fillStyle = "#1B4D3E";
-    ctx.fillText("DISTRIBUSI STATUS SETOR RAMBUT", lx, 22);
-
-    // Garis Pemisah
-    ctx.strokeStyle = "#E2E8F0";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(lx, 28);
-    ctx.lineTo(width - 20, 28);
-    ctx.stroke();
-
-    // Stat Box 2-Baris (Mencegah Overlap Teks)
-    let ly = 38;
-    items.forEach((item) => {
-      const pct = total > 0 ? ((item.value / total) * 100).toFixed(1) + "%" : "0.0%";
-      const boxWidth = width - lx - 20;
-      const boxHeight = 40;
-
-      // Stat Box Fill & Border
-      ctx.fillStyle = item.bg;
-      ctx.fillRect(lx, ly, boxWidth, boxHeight);
-      ctx.strokeStyle = item.color + "50";
-      ctx.strokeRect(lx, ly, boxWidth, boxHeight);
-
-      // Color Badge Indicator
-      ctx.fillStyle = item.color;
-      ctx.fillRect(lx + 8, ly + 8, 10, 24);
-
-      // Baris 1: Label Nama Status
-      ctx.font = "bold 10px 'Segoe UI', sans-serif";
-      ctx.fillStyle = "#1E293B";
-      ctx.fillText(item.label, lx + 26, ly + 15);
-
-      // Baris 2: Nilai & Persentase
-      ctx.font = "bold 11px 'Segoe UI', monospace";
-      ctx.fillStyle = item.color;
-      ctx.fillText(`${item.value.toLocaleString("id-ID")} Santri (${pct})`, lx + 26, ly + 30);
-
-      ly += 45;
-    });
-
-    return canvas.toDataURL("image/png");
-  } catch (err) {
-    return "";
-  }
-};
-```
-
-### `src/features/laporan/utils/excel/sheets/pengurusSheet.ts`
+### `src/features/laporan/rambut/utils/sheets/pengurusSheet.ts`
 ```typescript
 // src/features/laporan/utils/excel/sheets/pengurusSheet.ts
 import ExcelJS from "exceljs";
@@ -1204,8 +1155,8 @@ import {
   autoFitColumnWidths,
   getAlamatStr,
   parseIdPps,
-} from "../excelHelpers";
-import { generateBarcodeBase64 } from "../generateBarcode";
+} from "../../../core/utils/excelHelpers";
+import { generateBarcodeBase64 } from "../../../core/utils/generateBarcode";
 
 export const buildPengurusSheet = async (
   workbook: ExcelJS.Workbook,
@@ -1325,7 +1276,7 @@ export const buildPengurusSheet = async (
 };
 ```
 
-### `src/features/laporan/utils/excel/sheets/queueSheet.ts`
+### `src/features/laporan/rambut/utils/sheets/queueSheet.ts`
 ```typescript
 // src/features/laporan/utils/excel/sheets/queueSheet.ts
 import ExcelJS from "exceljs";
@@ -1340,7 +1291,7 @@ import {
   formatDateHijri,
   getAlamatStr,
   parseIdPps,
-} from "../excelHelpers";
+} from "../../../core/utils/excelHelpers";
 import type { WajibSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
 export const buildQueueSheet = async (
@@ -1410,7 +1361,7 @@ export const buildQueueSheet = async (
 };
 ```
 
-### `src/features/laporan/utils/excel/sheets/riwayatSheet.ts`
+### `src/features/laporan/rambut/utils/sheets/riwayatSheet.ts`
 ```typescript
 // src/features/laporan/utils/excel/sheets/riwayatSheet.ts
 import ExcelJS from "exceljs";
@@ -1425,7 +1376,7 @@ import {
   formatDateHijri,
   getAlamatStr,
   parseIdPps,
-} from "../excelHelpers";
+} from "../../../core/utils/excelHelpers";
 import type { RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
 export const buildRiwayatSheet = async (
@@ -1488,7 +1439,7 @@ export const buildRiwayatSheet = async (
 };
 ```
 
-### `src/features/laporan/utils/excel/sheets/summarySheet.ts`
+### `src/features/laporan/rambut/utils/sheets/summarySheet.ts`
 ```typescript
 // src/features/laporan/utils/excel/sheets/summarySheet.ts
 import ExcelJS from "exceljs";
@@ -1499,8 +1450,8 @@ import {
   THIN_BORDER,
   applyA4PrintSetup,
   applyHeaderStyle,
-} from "../excelHelpers";
-import { generateChartBase64 } from "../generateChart";
+} from "../../../core/utils/excelHelpers";
+import { generateChartBase64 } from "../../../core/utils/generateChart";
 import type { WajibSetorExpanded } from "@/features/rambut/hooks/useRambut";
 
 const renderKpiCard = (
@@ -1761,54 +1712,5 @@ export const buildSummarySheet = (
     if ([3, 4, 5, 6].includes(colNum)) cell.numFmt = "#,##0";
     if (colNum === 7) cell.numFmt = "0.0%";
   });
-};
-```
-
-### `src/features/laporan/utils/exportRambutExcel.ts`
-```typescript
-// src/features/laporan/utils/exportRambutExcel.ts
-import ExcelJS from "exceljs";
-import { saveAs } from "file-saver";
-import { capitalizeText, formatDateHijri, sanitizeFileName } from "./excel/excelHelpers";
-import { buildSummarySheet } from "./excel/sheets/summarySheet";
-import { buildQueueSheet } from "./excel/sheets/queueSheet";
-import { buildRiwayatSheet } from "./excel/sheets/riwayatSheet";
-import { buildPengurusSheet } from "./excel/sheets/pengurusSheet";
-import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
-import type { WajibSetorExpanded, RiwayatSetorExpanded } from "@/features/rambut/hooks/useRambut";
-
-export interface ExportRambutParams {
-  periode: PeriodeRambutResponse | null;
-  queueData: WajibSetorExpanded[];
-  riwayatData: RiwayatSetorExpanded[];
-  pengurusData?: any[];
-  stats: { total: number; sudah: number; belum: number; dispensasi: number };
-}
-
-export const exportRambutToExcel = async ({
-  periode,
-  queueData,
-  riwayatData,
-  pengurusData,
-  stats,
-}: ExportRambutParams): Promise<void> => {
-  const workbook = new ExcelJS.Workbook();
-  workbook.creator = "Pondok Pesantren Sidogiri - TIBKAM 1745";
-  workbook.created = new Date();
-
-  const namaPeriode = capitalizeText(periode?.nama_periode || "Semua Periode");
-  const todayMasehi = new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" });
-  const todayHijri = await formatDateHijri(new Date().toISOString());
-  const tanggalExport = todayHijri !== "-" ? `${todayHijri} (${todayMasehi})` : todayMasehi;
-
-  // Render Ke-4 Sheet Modular
-  buildSummarySheet(workbook, namaPeriode, tanggalExport, stats, queueData);
-  await buildQueueSheet(workbook, namaPeriode, tanggalExport, queueData);
-  await buildRiwayatSheet(workbook, namaPeriode, tanggalExport, riwayatData);
-  await buildPengurusSheet(workbook, namaPeriode, tanggalExport, pengurusData);
-
-  // Trigger Download
-  const buffer = await workbook.xlsx.writeBuffer();
-  saveAs(new Blob([buffer]), `Laporan_Rambut_${sanitizeFileName(namaPeriode)}.xlsx`);
 };
 ```

@@ -1,0 +1,1916 @@
+# CONTEXT: FEATURE-PERSONIL
+
+## Included Files:
+- `src/features/personil/components/ImportPersonilModal.tsx`
+- `src/features/personil/components/PersonilDetailModal.tsx`
+- `src/features/personil/components/PersonilHeader.tsx`
+- `src/features/personil/components/PersonilPagination.tsx`
+- `src/features/personil/components/PersonilTable.tsx`
+- `src/features/personil/components/PersonilToolbar.tsx`
+- `src/features/personil/components/SyncReportBanner.tsx`
+- `src/features/personil/hooks/useImportPersonil.ts`
+- `src/features/personil/hooks/usePersonil.ts`
+- `src/features/personil/index.ts`
+- `src/features/personil/pages/Personil.tsx`
+- `src/features/personil/utils/importPersonilExcel.ts`
+
+---
+
+### `src/features/personil/components/ImportPersonilModal.tsx`
+```tsx
+// src/features/personil/components/ImportPersonilModal.tsx
+import React from "react";
+import { BaseModal } from "@/components/shared/BaseModal";
+import { useImportPersonil } from "../hooks/useImportPersonil";
+import type { PersonilSyncReport } from "../utils/importPersonilExcel";
+import {
+  FileSpreadsheet,
+  UploadCloud,
+  CheckCircle2,
+  AlertTriangle,
+  FileCheck,
+  Loader2,
+  Download,
+  RefreshCw,
+  User,
+  AlertCircle,
+  PlusCircle,
+  RefreshCw as UpdateIcon,
+  MinusCircle,
+} from "lucide-react";
+
+interface ImportPersonilModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSuccess: (report: PersonilSyncReport) => void;
+}
+
+export const ImportPersonilModal: React.FC<ImportPersonilModalProps> = ({
+  isOpen,
+  onClose,
+  onSuccess,
+}) => {
+  const {
+    fileInputRef,
+    selectedFile,
+    parsedRows,
+    isParsing,
+    isSubmitting,
+    errorMessage,
+    createRowsCount,
+    updateRowsCount,
+    skipRowsCount,
+    totalProcessable,
+    handleFileUpload,
+    handleExecuteImport,
+    handleReset,
+    handleDownloadTemplate,
+  } = useImportPersonil(onSuccess);
+
+  const handleCloseModal = () => {
+    handleReset();
+    onClose();
+  };
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={handleCloseModal}
+      title="Import Personil Tibkam via Excel"
+      icon={<FileSpreadsheet className="w-5 h-5 text-emerald-400" />}
+      maxWidth="max-w-3xl"
+    >
+      <div className="flex flex-col h-[370px] overflow-hidden justify-between space-y-3 pt-1 text-sm no-scrollbar">
+
+        {/* 1. TOP BAR INFO & TEMPLATE DOWNLOAD */}
+        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
+          <div className="text-xs text-gray-400">
+            Kolom WAJIB: <b className="text-indigo-400 font-mono">ID PPS</b> dan <b className="text-purple-400 font-mono">JABATAN</b>.
+          </div>
+          <button
+            type="button"
+            onClick={handleDownloadTemplate}
+            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-900 border border-gray-800 hover:border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition-all active:scale-95 shrink-0"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Template</span>
+          </button>
+        </div>
+
+        {/* 2. AREA TENGAH */}
+        <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
+          {parsedRows.length === 0 ? (
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="h-full border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-3xl flex flex-col items-center justify-center p-4 text-center bg-gray-950/40 hover:bg-indigo-500/[0.02] cursor-pointer transition-all duration-200 group"
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx, .xls"
+                onChange={handleFileUpload}
+                className="hidden"
+                disabled={isParsing}
+              />
+              {isParsing ? (
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+                  <p className="text-xs font-mono text-gray-400">
+                    Menganalisis berkas personil Tibkam...
+                  </p>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center space-y-2">
+                  <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
+                    <UploadCloud className="w-7 h-7" />
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-white">Klik untuk Unggah File Excel Personil</p>
+                    <p className="text-xs text-gray-500 mt-0.5 font-mono">Format didukung: .XLSX, .XLS</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="h-full flex flex-col space-y-2 overflow-hidden">
+              {/* SUMMARY STATS BAR */}
+              <div className="flex items-center justify-between p-2 rounded-2xl bg-gray-950/90 border border-gray-800 shrink-0 font-mono text-xs">
+                <div className="flex items-center gap-2">
+                  <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span className="font-bold text-white truncate max-w-[180px] sm:max-w-[240px]">
+                    {selectedFile?.name}
+                  </span>
+                  <span className="text-gray-600">•</span>
+                  <span className="text-gray-400">{parsedRows.length} Baris</span>
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    {createRowsCount > 0 && (
+                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                        +{createRowsCount} Baru
+                      </span>
+                    )}
+                    {updateRowsCount > 0 && (
+                      <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                        ~{updateRowsCount} Update
+                      </span>
+                    )}
+                    {skipRowsCount > 0 && (
+                      <span className="text-gray-400 bg-gray-800 px-2 py-0.5 rounded-md">
+                        ={skipRowsCount} Lewat
+                      </span>
+                    )}
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={handleReset}
+                    className="p-1 rounded-lg bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors"
+                    title="Ganti file Excel"
+                  >
+                    <RefreshCw className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* TABEL PREVIEW */}
+              <div className="flex-1 min-h-0 border border-gray-800 rounded-2xl overflow-hidden bg-gray-950/60 shadow-inner flex flex-col">
+                <div className="flex-1 overflow-y-auto no-scrollbar">
+                  <table className="w-full text-xs text-left border-collapse font-mono">
+                    <thead>
+                      <tr className="bg-gray-900 border-b border-gray-800 text-gray-400 text-[10px] uppercase sticky top-0 z-10 select-none">
+                        <th className="px-3.5 py-2 w-10 text-center">#</th>
+                        <th className="px-3.5 py-2 w-28">ID PPS</th>
+                        <th className="px-3.5 py-2 min-w-[150px]">Nama Santri</th>
+                        <th className="px-3.5 py-2 min-w-[130px]">Jabatan Excel</th>
+                        <th className="px-3.5 py-2 min-w-[150px] text-left">Aksi Sinkronisasi</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-800/50 bg-gray-900/20">
+                      {parsedRows.map((row) => (
+                        <tr key={row.rowNum} className="hover:bg-indigo-500/[0.02] transition-colors">
+                          <td className="px-3.5 py-2 text-center text-gray-500">{row.rowNum}</td>
+                          <td className="px-3.5 py-2 font-bold text-indigo-300 whitespace-nowrap">
+                            {row.idPps ? (
+                              <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+                                {row.idPps}
+                              </span>
+                            ) : (
+                              <span className="text-gray-600">-</span>
+                            )}
+                          </td>
+                          <td className="px-3.5 py-2 font-semibold">
+                            <div className="flex items-center gap-1.5">
+                              <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
+                              <span
+                                className={
+                                  row.namaSantri === "Santri Tidak Ditemukan"
+                                    ? "text-amber-400/80 italic text-[11px] flex items-center gap-1"
+                                    : "text-white"
+                                }
+                              >
+                                {row.namaSantri === "Santri Tidak Ditemukan" && (
+                                  <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />
+                                )}
+                                {row.namaSantri}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-3.5 py-2 text-amber-300 font-medium">{row.jabatan || "-"}</td>
+                          <td className="px-3.5 py-2 whitespace-nowrap">
+                            {row.status === "success" ? (
+                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                <CheckCircle2 className="w-3 h-3" /> {row.message}
+                              </span>
+                            ) : row.status === "skipped" ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-400 bg-gray-800/80 border border-gray-700">
+                                <MinusCircle className="w-3 h-3 text-gray-500" /> {row.message}
+                              </span>
+                            ) : row.syncAction === "create" ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                                <PlusCircle className="w-3 h-3" /> Tambah Baru
+                              </span>
+                            ) : row.syncAction === "update" ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20"
+                                title={row.message}
+                              >
+                                <UpdateIcon className="w-3 h-3 text-amber-400" /> Update Jabatan
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20">
+                                <AlertTriangle className="w-3 h-3 shrink-0" /> <span>{row.message || "Eror"}</span>
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 3. ERROR BANNER */}
+        {errorMessage && (
+          <div className="p-2 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center gap-2 shrink-0">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+            <span className="truncate">{errorMessage}</span>
+          </div>
+        )}
+
+        {/* 4. TOMBOL AKSI BAWAH */}
+        <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-800/80 shrink-0">
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white font-mono text-xs font-bold transition-all"
+          >
+            Batal
+          </button>
+
+          <button
+            type="button"
+            onClick={() => handleExecuteImport(onClose)}
+            disabled={totalProcessable === 0 || isSubmitting}
+            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all border border-emerald-400/30 disabled:opacity-50"
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                <span>Memproses Batch Transaction...</span>
+              </>
+            ) : (
+              <>
+                <UploadCloud className="w-4 h-4" />
+                <span>Proses Import ({totalProcessable} Data)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+};
+```
+
+### `src/features/personil/components/PersonilDetailModal.tsx`
+```tsx
+// src/features/personil/components/PersonilDetailModal.tsx
+import React, { useState, useEffect } from "react";
+import { BaseModal, StatusBadge } from "@/components/shared";
+import type { PersonilWithExpand } from "../hooks/usePersonil";
+import { pb } from "@/lib/pocketbase";
+import {
+  GraduationCap,
+  Home,
+  MapPin,
+  Users,
+  Phone,
+  CheckCircle2,
+  XCircle,
+  ShieldCheck,
+} from "lucide-react";
+
+interface PersonilDetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  personil: PersonilWithExpand | null;
+}
+
+export const PersonilDetailModal: React.FC<PersonilDetailModalProps> = ({
+  isOpen,
+  onClose,
+  personil,
+}) => {
+  const [displayPersonil, setDisplayPersonil] = useState<PersonilWithExpand | null>(personil);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    if (personil) {
+      setDisplayPersonil(personil);
+      setImageError(false);
+    }
+  }, [personil]);
+
+  if (!displayPersonil) return null;
+
+  const santri = displayPersonil.expand?.santri;
+
+  const alamatLengkap =
+    [santri?.desa, santri?.kecamatan, santri?.kabupaten, santri?.provinsi]
+      .map((v) => v?.toString().trim())
+      .filter(Boolean)
+      .join(", ") || "-";
+
+  const fotoUrl = santri?.foto ? pb.getFileUrl(santri, santri.foto) : null;
+
+  return (
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Detail Personil Tibkam"
+      icon={<ShieldCheck className="w-5 h-5 text-indigo-400" />}
+      maxWidth="max-w-3xl"
+    >
+      <div className="space-y-4 py-1 px-1 font-mono text-xs select-none no-scrollbar">
+        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-r from-gray-900/90 via-indigo-950/40 to-gray-900/90 p-5 shadow-xl backdrop-blur-xl">
+          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/40 to-transparent" />
+
+          <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5">
+            <div className="relative w-32 h-40 rounded-2xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 flex items-center justify-center text-white shadow-xl shadow-indigo-600/30 border-2 border-indigo-400/30 shrink-0 overflow-hidden group">
+              {fotoUrl && !imageError ? (
+                <img
+                  src={fotoUrl}
+                  alt={santri?.nama || "Foto Personil"}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="font-sans font-extrabold text-5xl leading-none uppercase select-none drop-shadow-md">
+                  {santri?.nama ? santri.nama.charAt(0) : "?"}
+                </span>
+              )}
+            </div>
+
+            <div className="flex-1 text-center sm:text-left space-y-2 min-w-0 font-sans pt-1">
+              <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                <span className="px-2.5 py-0.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-bold font-mono text-[11px]">
+                  ID PPS: {displayPersonil.id_pps || "-"}
+                </span>
+
+                <StatusBadge
+                  variant={displayPersonil.status_aktif ? "success" : "danger"}
+                  icon={displayPersonil.status_aktif ? <CheckCircle2 className="w-3 h-3" /> : <XCircle className="w-3 h-3" />}
+                  dot
+                >
+                  {displayPersonil.status_aktif ? "Aktif" : "Nonaktif"}
+                </StatusBadge>
+              </div>
+
+              <h2 className="text-xl font-bold text-white truncate">
+                {santri?.nama || "Tanpa Nama"}
+              </h2>
+
+              <p className="text-amber-300 font-bold font-mono text-xs truncate">
+                Jabatan: {displayPersonil.jabatan_tibkam || "Anggota"}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-indigo-400 font-bold">
+              <GraduationCap className="w-4 h-4" />
+              <span>Akademik & Domisili Pesantren</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2 text-[11px]">
+              <div>
+                <span className="text-gray-500 block text-[10px]">Tingkatan</span>
+                <span className="font-bold text-gray-200">{santri?.tingkatan || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Kelas / Ruang</span>
+                <span className="font-bold text-gray-200">
+                  {santri?.kelas || "-"} {santri?.ruang_kelas ? `(${santri.ruang_kelas})` : ""}
+                </span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Kompleks Domisili</span>
+                <span className="font-bold text-amber-300">{santri?.domisili || "-"}</span>
+              </div>
+              <div>
+                <span className="text-gray-500 block text-[10px]">Status Domisili</span>
+                <span className="font-bold text-purple-300">{santri?.status_domisili || "-"}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-purple-400 font-bold">
+              <ShieldCheck className="w-4 h-4" />
+              <span>Atribut Keanggotaan Tibkam</span>
+            </div>
+
+            <div className="space-y-2 text-[11px]">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Jabatan Operasional</span>
+                <span className="font-bold text-amber-300 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                  {displayPersonil.jabatan_tibkam || "-"}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Status Keanggotaan</span>
+                <span className="font-bold text-emerald-400 bg-gray-900 px-2 py-0.5 rounded border border-gray-800">
+                  {displayPersonil.status_aktif ? "Aktif" : "Nonaktif"}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-emerald-400 font-bold">
+              <MapPin className="w-4 h-4" />
+              <span>Alamat Daerah Asal Santri</span>
+            </div>
+
+            <div className="flex items-start gap-2 text-gray-300 font-sans text-xs">
+              <Home className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+              <p className="leading-relaxed">{alamatLengkap}</p>
+            </div>
+          </div>
+
+          <div className="p-4 rounded-2xl bg-gray-950/70 border border-gray-800 space-y-2.5 shadow-inner md:col-span-2">
+            <div className="flex items-center gap-2 border-b border-gray-800/80 pb-2 text-amber-400 font-bold">
+              <Users className="w-4 h-4" />
+              <span>Informasi Wali Santri</span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 font-sans text-xs">
+              <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800/80 space-y-1">
+                <span className="text-[10px] font-mono text-gray-500 font-bold uppercase">Nama Wali</span>
+                <p className="font-bold text-white truncate">{santri?.nama_wali || "-"}</p>
+              </div>
+
+              <div className="p-3 bg-gray-900/60 rounded-xl border border-gray-800/80 space-y-1">
+                <span className="text-[10px] font-mono text-gray-500 font-bold uppercase">Kontak Wali</span>
+                <div className="flex items-center gap-1 text-[10px] font-mono text-emerald-400 font-bold">
+                  <Phone className="w-3 h-3" />
+                  <span>{santri?.kontak_wali || "-"}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end pt-3 border-t border-gray-800">
+          <button
+            type="button"
+            onClick={onClose}
+            className="px-5 py-2.5 rounded-2xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white font-mono text-xs font-bold transition-all active:scale-95"
+          >
+            Tutup
+          </button>
+        </div>
+      </div>
+    </BaseModal>
+  );
+};
+```
+
+### `src/features/personil/components/PersonilHeader.tsx`
+```tsx
+// src/features/personil/components/PersonilHeader.tsx
+import React from "react";
+import { UploadCloud, ShieldCheck } from "lucide-react";
+import { PageHeader } from "@/components/shared";
+
+interface PersonilHeaderProps {
+  onOpenImportModal: () => void;
+  isAdmin?: boolean;
+}
+
+export default function PersonilHeader({
+  onOpenImportModal,
+  isAdmin = false,
+}: PersonilHeaderProps) {
+  return (
+    <PageHeader
+      badgeIcon={<ShieldCheck className="w-3.5 h-3.5" />}
+      badgeLabel="Keamanan & Ketertiban"
+      title={
+        <>
+          Database{" "}
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
+            Personil Tibkam
+          </span>
+        </>
+      }
+      description="Manajemen struktur keanggotaan petugas Tibkam berdomisili PPS terintegrasi langsung dengan database induk master santri."
+      actions={
+        isAdmin && (
+          <button
+            type="button"
+            onClick={onOpenImportModal}
+            className="relative group overflow-hidden inline-flex items-center gap-2.5 px-6 py-3.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:via-indigo-400 hover:to-purple-500 text-white font-semibold text-sm rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 hover:shadow-indigo-500/40 active:scale-[0.98] border border-indigo-400/30 select-none font-mono"
+          >
+            <div className="absolute inset-0 bg-white/10 translate-y-full group-hover:translate-y-0 transition-transform duration-300 ease-out" />
+            <div className="relative flex items-center gap-2">
+              <UploadCloud className="w-4 h-4 text-indigo-100 group-hover:scale-110 transition-transform duration-200" />
+              <span>Update Personil via Excel</span>
+            </div>
+          </button>
+        )
+      }
+    />
+  );
+}
+```
+
+### `src/features/personil/components/PersonilPagination.tsx`
+```tsx
+// src/features/personil/components/PersonilPagination.tsx
+import { useMemo } from "react";
+import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
+
+interface PersonilPaginationProps {
+  page: number;
+  totalPages: number;
+  totalItems: number;
+  perPage: number;
+  onPageChange: (newPage: number) => void;
+}
+
+export default function PersonilPagination({
+  page,
+  totalPages,
+  totalItems,
+  perPage,
+  onPageChange,
+}: PersonilPaginationProps) {
+  if (totalItems === 0) return null;
+
+  const startItem = Math.min((page - 1) * perPage + 1, totalItems);
+  const endItem = Math.min(page * perPage, totalItems);
+
+  const pageNumbers = useMemo(() => {
+    const pages: (number | string)[] = [];
+    const siblingCount = 1;
+
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+      return pages;
+    }
+
+    const leftSiblingIndex = Math.max(page - siblingCount, 1);
+    const rightSiblingIndex = Math.min(page + siblingCount, totalPages);
+
+    const showLeftEllipsis = leftSiblingIndex > 2;
+    const showRightEllipsis = rightSiblingIndex < totalPages - 1;
+
+    if (!showLeftEllipsis && showRightEllipsis) {
+      const itemCount = 3 + 2 * siblingCount;
+      for (let i = 1; i <= itemCount; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    } else if (showLeftEllipsis && !showRightEllipsis) {
+      const itemCount = 3 + 2 * siblingCount;
+      pages.push(1);
+      pages.push("...");
+      for (let i = totalPages - itemCount + 1; i <= totalPages; i++) pages.push(i);
+    } else if (showLeftEllipsis && showRightEllipsis) {
+      pages.push(1);
+      pages.push("...");
+      for (let i = leftSiblingIndex; i <= rightSiblingIndex; i++) pages.push(i);
+      pages.push("...");
+      pages.push(totalPages);
+    }
+
+    return pages;
+  }, [page, totalPages]);
+
+  return (
+    <div className="relative overflow-hidden mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-4 sm:px-6 shadow-2xl backdrop-blur-xl select-none">
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
+
+      <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-gray-400">
+        <Layers className="w-4 h-4 text-indigo-400 hidden sm:inline-block" />
+        <span>
+          Menampilkan{" "}
+          <span className="font-bold text-gray-200 bg-gray-800/80 px-2 py-0.5 rounded-lg border border-gray-700/50">
+            {startItem} – {endItem}
+          </span>{" "}
+          dari{" "}
+          <span className="font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
+            {totalItems}
+          </span>{" "}
+          personil
+        </span>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-center gap-1.5">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(1, page - 1))}
+          disabled={page <= 1}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+        >
+          <ChevronLeft className="w-4 h-4" />
+          <span className="hidden sm:inline">Sebelumnya</span>
+        </button>
+
+        {pageNumbers.map((num, idx) => {
+          if (num === "...") {
+            return (
+              <span
+                key={`ellipsis-${idx}`}
+                className="inline-flex h-9 w-8 items-center justify-center text-gray-500 font-mono font-bold tracking-widest text-xs"
+              >
+                ...
+              </span>
+            );
+          }
+
+          const isCurrent = num === page;
+          return (
+            <button
+              type="button"
+              key={`page-${num}`}
+              onClick={() => onPageChange(num as number)}
+              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-xs font-mono font-bold transition-all duration-200 active:scale-95 ${
+                isCurrent
+                  ? "bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-600/30 scale-105 border border-indigo-400/40 ring-2 ring-indigo-500/20"
+                  : "border border-gray-800 bg-gray-900/60 text-gray-400 hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-300"
+              }`}
+            >
+              {num}
+            </button>
+          );
+        })}
+
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(totalPages, page + 1))}
+          disabled={page >= totalPages}
+          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+        >
+          <span className="hidden sm:inline">Selanjutnya</span>
+          <ChevronRight className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+```
+
+### `src/features/personil/components/PersonilTable.tsx`
+```tsx
+// src/features/personil/components/PersonilTable.tsx
+import React, { useMemo } from "react";
+import { Loader2, ShieldCheck, UserCheck, UserX } from "lucide-react";
+import type { PersonilWithExpand } from "../hooks/usePersonil";
+import { StatusBadge, EmptyState } from "@/components/shared";
+
+interface PersonilTableProps {
+  items: PersonilWithExpand[];
+  isLoading: boolean;
+  isFetching: boolean;
+  page?: number;
+  perPage?: number;
+  onSelectPersonil?: (personil: PersonilWithExpand) => void;
+}
+
+const PersonilTable: React.FC<PersonilTableProps> = ({
+  items,
+  isLoading,
+  isFetching,
+  page = 1,
+  perPage = 15,
+  onSelectPersonil,
+}) => {
+  const rows = useMemo(() => {
+    if (isLoading || items.length === 0) return [];
+    return items.map((item, index) => {
+      const santri = item.expand?.santri;
+
+      return {
+        rawRecord: item,
+        key: item.id ?? index,
+        no: (page - 1) * perPage + index + 1,
+        id: item.id,
+        id_pps: item.id_pps ?? "-",
+        nama: santri?.nama ?? "Tanpa Nama",
+        jabatan_tibkam: item.jabatan_tibkam ?? "-",
+        domisili: santri?.domisili ?? "-",
+        kelas: santri?.kelas ?? "-",
+        tingkatan: santri?.tingkatan ?? "-",
+        status_aktif: item.status_aktif === undefined ? false : Boolean(item.status_aktif),
+      };
+    });
+  }, [items, isLoading, page, perPage]);
+
+  // 🎯 SKELETON PRESIASI: Jumlah baris disamakan persis dengan perPage (15) & tinggi h-[52px]
+  const skeletonRows = useMemo(() => {
+    return Array.from({ length: perPage }).map((_, idx) => (
+      <tr key={`skeleton-${idx}`} className="animate-pulse border-b border-gray-800/40 h-[52px]">
+        <td className="px-4 py-3 text-gray-600 text-xs">{idx + 1}</td>
+        <td className="px-4 py-3">
+          <div className="h-5 bg-gray-800/60 rounded-md w-16 mx-auto" />
+        </td>
+        <td className="px-4 py-3 text-left">
+          <div className="h-4 bg-gray-800/60 rounded-lg w-40" />
+        </td>
+        <td className="px-4 py-3">
+          <div className="h-5 bg-gray-800/60 rounded-lg w-24 mx-auto" />
+        </td>
+        <td className="px-4 py-3">
+          <div className="h-4 bg-gray-800/60 rounded-lg w-20 mx-auto" />
+        </td>
+        <td className="px-4 py-3">
+          <div className="h-4 bg-gray-800/60 rounded-lg w-12 mx-auto" />
+        </td>
+        <td className="px-4 py-3">
+          <div className="h-5 bg-gray-800/60 rounded-full w-16 mx-auto" />
+        </td>
+      </tr>
+    ));
+  }, [perPage]);
+
+  return (
+    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[580px] flex flex-col justify-between select-none">
+      {/* Garis Aksen Top Border */}
+      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />
+
+      {/* Indikator Pembaruan Data Real-time (Top Bar Overlay) */}
+      {isFetching && !isLoading && (
+        <div className="absolute top-0 inset-x-0 z-20 flex items-center justify-center gap-2 px-4 py-1.5 text-xs font-mono font-medium text-indigo-300 bg-indigo-950/90 border-b border-indigo-500/30 backdrop-blur-md transition-opacity">
+          <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-400" />
+          <span>Memperbarui data...</span>
+        </div>
+      )}
+
+      {/* Table Container */}
+      <div className="overflow-x-auto w-full custom-scrollbar flex-1">
+        <table className="w-full min-w-[850px] text-center text-sm border-collapse table-auto font-mono">
+          <thead>
+            <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none h-12">
+              <th className="px-4 py-3 w-16 whitespace-nowrap">No</th>
+              <th className="px-4 py-3 w-32 whitespace-nowrap">ID PPS</th>
+              <th className="px-4 py-3 min-w-[220px] whitespace-nowrap text-left font-sans">Nama Personil</th>
+              <th className="px-4 py-3 min-w-[160px] whitespace-nowrap font-sans">Jabatan Tibkam</th>
+              <th className="px-4 py-3 min-w-[160px] whitespace-nowrap font-sans">Kompleks Domisili</th>
+              <th className="px-4 py-3 w-28 whitespace-nowrap">Kelas</th>
+              <th className="px-4 py-3 w-32 whitespace-nowrap font-sans">Status</th>
+            </tr>
+          </thead>
+
+          {/* 🎯 SMOOTH PAGINATION: Redupkan tabel lama halus saat memuat halaman baru */}
+          <tbody
+            className={`divide-y divide-gray-800/50 bg-gray-900/30 transition-opacity duration-200 ${
+              isFetching && !isLoading ? "opacity-40 pointer-events-none" : "opacity-100"
+            }`}
+          >
+            {isLoading ? (
+              skeletonRows
+            ) : rows.length === 0 ? (
+              <tr>
+                <td colSpan={7} className="px-6 py-12">
+                  <EmptyState
+                    icon={<ShieldCheck className="w-8 h-8 text-gray-400" />}
+                    title="Tidak Ada Data Personil Ditemukan"
+                    description="Coba sesuaikan kata kunci pencarian atau kombinasi filter kriteria Anda."
+                  />
+                </td>
+              </tr>
+            ) : (
+              rows.map((row) => (
+                <tr
+                  key={row.id}
+                  onClick={() => onSelectPersonil && onSelectPersonil(row.rawRecord)}
+                  className="group cursor-pointer transition-colors duration-150 hover:bg-indigo-500/[0.06] h-[52px]"
+                >
+                  <td className="px-4 py-3 text-gray-500 text-xs whitespace-nowrap">
+                    {row.no}
+                  </td>
+                  <td className="px-4 py-3 text-xs font-bold text-indigo-400 whitespace-nowrap">
+                    <span className="px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20">
+                      {row.id_pps}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-left font-sans">
+                    <span className="font-semibold text-gray-200 text-xs group-hover:text-indigo-300 transition-colors">
+                      {row.nama}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-amber-300 font-bold whitespace-nowrap font-sans">
+                    <span className="px-2.5 py-0.5 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      {row.jabatan_tibkam}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-300 font-semibold whitespace-nowrap font-sans">
+                    {row.domisili}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-gray-400 whitespace-nowrap">
+                    {row.kelas}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap font-sans">
+                    <StatusBadge
+                      variant={row.status_aktif ? "success" : "danger"}
+                      icon={row.status_aktif ? <UserCheck className="w-3.5 h-3.5" /> : <UserX className="w-3.5 h-3.5" />}
+                      dot
+                    >
+                      {row.status_aktif ? "Aktif" : "Nonaktif"}
+                    </StatusBadge>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+};
+
+export default PersonilTable;
+```
+
+### `src/features/personil/components/PersonilToolbar.tsx`
+```tsx
+// src/features/personil/components/PersonilToolbar.tsx
+import React, { useMemo } from "react";
+import { Filter, Building, ShieldCheck } from "lucide-react";
+import { BaseToolbar, GlassDropdown, type DropdownOption } from "@/components/shared";
+
+interface PersonilToolbarProps {
+  search: string;
+  onSearchChange: (val: string) => void;
+  statusFilter: "all" | "aktif" | "nonaktif";
+  onStatusFilterChange: (val: "all" | "aktif" | "nonaktif") => void;
+  jabatanFilter: string;
+  onJabatanFilterChange: (val: string) => void;
+  domisiliFilter: string;
+  onDomisiliFilterChange: (val: string) => void;
+  jabatanOptions?: string[];
+  domisiliOptions?: string[];
+  onRefresh: () => void;
+  isListLoading: boolean;
+}
+
+export default function PersonilToolbar({
+  search,
+  onSearchChange,
+  statusFilter,
+  onStatusFilterChange,
+  jabatanFilter,
+  onJabatanFilterChange,
+  domisiliFilter,
+  onDomisiliFilterChange,
+  jabatanOptions = [],
+  domisiliOptions = [],
+  onRefresh,
+  isListLoading,
+}: PersonilToolbarProps) {
+  const statusDropdownOptions: DropdownOption[] = [
+    { value: "all", label: "Semua Status" },
+    { value: "aktif", label: "Aktif" },
+    { value: "nonaktif", label: "Nonaktif" },
+  ];
+
+  const jabatanDropdownOptions: DropdownOption[] = useMemo(
+    () => [
+      { value: "all", label: "Semua Jabatan" },
+      ...jabatanOptions.map((j) => ({ value: j, label: j })),
+    ],
+    [jabatanOptions]
+  );
+
+  const domisiliDropdownOptions: DropdownOption[] = useMemo(
+    () => [
+      { value: "all", label: "Semua Kompleks" },
+      ...domisiliOptions.map((d) => ({ value: d, label: d })),
+    ],
+    [domisiliOptions]
+  );
+
+  return (
+    <div className="mb-5 space-y-3 select-none">
+      {/* Search Input Universal */}
+      <BaseToolbar
+        search={search}
+        onSearchChange={onSearchChange}
+        placeholder="Cari nama, ID PPS, atau jabatan personil..."
+        onRefresh={onRefresh}
+        isLoading={isListLoading}
+        searchIconColorClass="text-indigo-400"
+      />
+
+      {/* Grid Filter Dropdown dengan Gaya Aktif Halus (Bebas Ring Mencolok) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full font-mono">
+        {/* 1. Status Aktif */}
+        <GlassDropdown
+          value={statusFilter}
+          onChange={(val) => onStatusFilterChange(val as "all" | "aktif" | "nonaktif")}
+          options={statusDropdownOptions}
+          defaultLabel="Semua Status"
+          icon={<Filter className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
+          activeColorClass="border-indigo-500/40 text-indigo-200 bg-indigo-500/10"
+          minWidthClass="w-full"
+          searchable={false}
+        />
+
+        {/* 2. Jabatan Tibkam */}
+        <GlassDropdown
+          value={jabatanFilter}
+          onChange={onJabatanFilterChange}
+          options={jabatanDropdownOptions}
+          defaultLabel="Semua Jabatan"
+          icon={<ShieldCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
+          activeColorClass="border-sky-500/40 text-sky-200 bg-sky-500/10"
+          minWidthClass="w-full"
+          searchPlaceholder="Cari jabatan..."
+        />
+
+        {/* 3. Kompleks Domisili */}
+        <GlassDropdown
+          value={domisiliFilter}
+          onChange={onDomisiliFilterChange}
+          options={domisiliDropdownOptions}
+          defaultLabel="Semua Kompleks"
+          icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
+          activeColorClass="border-amber-500/40 text-amber-200 bg-amber-500/10"
+          minWidthClass="w-full"
+          searchPlaceholder="Cari kompleks..."
+        />
+      </div>
+    </div>
+  );
+}
+```
+
+### `src/features/personil/components/SyncReportBanner.tsx`
+```tsx
+// src/features/personil/components/SyncReportBanner.tsx
+import { useEffect, useState } from "react";
+import { CheckCircle2, X } from "lucide-react";
+import type { PersonilSyncReport } from "../utils/importPersonilExcel";
+
+interface SyncReportBannerProps {
+  report: PersonilSyncReport | null;
+  onClose: () => void;
+}
+
+export default function SyncReportBanner({ report, onClose }: SyncReportBannerProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [localReport, setLocalReport] = useState<PersonilSyncReport | null>(null);
+
+  useEffect(() => {
+    if (report) {
+      setLocalReport(report);
+      const openTimeout = setTimeout(() => setIsVisible(true), 50);
+      const closeTimeout = setTimeout(() => {
+        handleClose();
+      }, 6000);
+
+      return () => {
+        clearTimeout(openTimeout);
+        clearTimeout(closeTimeout);
+      };
+    }
+  }, [report]);
+
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+      setLocalReport(null);
+    }, 300);
+  };
+
+  if (!localReport && !isVisible) return null;
+
+  return (
+    <div className="fixed top-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none select-none">
+      <div
+        className={`pointer-events-auto max-w-md w-full rounded-2xl border border-emerald-500/30 bg-gray-900/95 p-4 text-emerald-300 shadow-2xl shadow-emerald-950/50 backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
+          isVisible
+            ? "translate-y-0 opacity-100 scale-100"
+            : "-translate-y-8 opacity-0 scale-95"
+        }`}
+      >
+        <div className="flex-shrink-0 mt-0.5">
+          <CheckCircle2 size={20} className="text-emerald-400" />
+        </div>
+        <div className="flex-1 space-y-2">
+          <div>
+            <h4 className="font-semibold text-white text-sm font-sans">Sinkronisasi Personil Selesai</h4>
+            <p className="text-xs text-gray-400 mt-0.5 font-mono">
+              Database Personil Tibkam berhasil diperbarui via Excel.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-gray-800 pt-2 text-xs font-mono font-medium">
+            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
+              <span className="text-gray-400">Baru:</span>
+              <span className="font-bold text-emerald-400">{localReport?.inserted}</span>
+            </div>
+            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
+              <span className="text-gray-400">Update:</span>
+              <span className="font-bold text-amber-400">{localReport?.updated}</span>
+            </div>
+            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
+              <span className="text-gray-400">Nonaktif:</span>
+              <span className="font-bold text-rose-400">{localReport?.softDeleted}</span>
+            </div>
+            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
+              <span className="text-gray-400">Lewat:</span>
+              <span className="font-bold text-gray-400">{localReport?.skipped}</span>
+            </div>
+          </div>
+        </div>
+        <div className="flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleClose}
+            className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-800 hover:text-gray-300 focus:outline-none"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+```
+
+### `src/features/personil/hooks/useImportPersonil.ts`
+```typescript
+// src/features/personil/hooks/useImportPersonil.ts
+import { useState, useRef, useMemo } from "react";
+import * as XLSX from "xlsx";
+import { pb } from "@/lib/pocketbase";
+import type { MasterResponse, PersonilTibkamResponse } from "@/types/pocketbase-types";
+import type { PersonilSyncReport } from "../utils/importPersonilExcel";
+
+export interface PersonilParsedRow {
+  rowNum: number;
+  idPps: string;
+  namaSantri: string;
+  jabatan: string;
+  santriRecordId: string | null;
+  syncAction: "create" | "update" | "skip" | "error";
+  status: "pending" | "success" | "skipped" | "error";
+  message: string;
+}
+
+export function useImportPersonil(onSuccess: (report: PersonilSyncReport) => void) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [parsedRows, setParsedRows] = useState<PersonilParsedRow[]>([]);
+  const [isParsing, setIsParsing] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleDownloadTemplate = () => {
+    const templateData = [
+      { "ID PPS": "40019", JABATAN: "DALAM 01" },
+      { "ID PPS": "14380484", JABATAN: "HUMAS 11" },
+      { "ID PPS": "14360453", JABATAN: "DALAM 07" },
+    ];
+
+    const worksheet = XLSX.utils.json_to_sheet(templateData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "TEMPLATE_PERSONIL");
+    worksheet["!cols"] = [{ wch: 15 }, { wch: 20 }];
+    XLSX.writeFile(workbook, "Template_Import_Personil_Tibkam.xlsx");
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setSelectedFile(file);
+    setIsParsing(true);
+    setErrorMessage(null);
+
+    try {
+      const buffer = await file.arrayBuffer();
+      const workbook = XLSX.read(buffer, { type: "array" });
+      const sheetName =
+        workbook.SheetNames.find((name) => name.toLowerCase().includes("tibkam")) ||
+        workbook.SheetNames[0];
+
+      const worksheet = workbook.Sheets[sheetName];
+      const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+
+      if (rawRows.length === 0) {
+        throw new Error("File Excel kosong atau tidak memiliki data.");
+      }
+
+      let idPpsIndex = -1;
+      let jabatanIndex = -1;
+
+      for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+        const row = rawRows[i];
+        if (!row) continue;
+
+        row.forEach((cell, idx) => {
+          const cellStr = String(cell || "").toLowerCase().trim();
+          if (cellStr.includes("id pps") || cellStr === "id_pps" || cellStr === "idpps") {
+            idPpsIndex = idx;
+          }
+          if (cellStr.includes("jabatan") || cellStr.includes("tugas")) {
+            jabatanIndex = idx;
+          }
+        });
+
+        if (idPpsIndex !== -1 && jabatanIndex !== -1) break;
+      }
+
+      if (idPpsIndex === -1) idPpsIndex = 1;
+      if (jabatanIndex === -1) jabatanIndex = 6;
+
+      const [masterList, personilList] = await Promise.all([
+        pb.collection("master").getFullList<MasterResponse>({
+          filter: 'status_domisili = "PPS"',
+          fields: "id,id_pps,nama,status_domisili",
+        }),
+        pb.collection("personil_tibkam").getFullList<PersonilTibkamResponse>(),
+      ]);
+
+      const masterMap = new Map<string, MasterResponse>();
+      masterList.forEach((m) => {
+        if (m.id_pps) masterMap.set(m.id_pps.trim(), m);
+      });
+
+      const personilMap = new Map<string, PersonilTibkamResponse>();
+      personilList.forEach((p) => {
+        if (p.id_pps) personilMap.set(p.id_pps.trim(), p);
+      });
+
+      const processedRows: PersonilParsedRow[] = [];
+      let validRowCounter = 0;
+
+      for (let i = 0; i < rawRows.length; i++) {
+        const row = rawRows[i];
+        if (!row || row.length === 0) continue;
+
+        const idPpsRaw = String(row[idPpsIndex] || "").trim();
+        const jabatanRaw = String(row[jabatanIndex] || "").trim();
+
+        if (!/^\d+$/.test(idPpsRaw) || idPpsRaw === "0") continue;
+
+        validRowCounter++;
+        const matchMaster = masterMap.get(idPpsRaw);
+        const matchPersonil = personilMap.get(idPpsRaw);
+
+        let syncAction: "create" | "update" | "skip" | "error" = "create";
+        let message = "";
+        let santriRecordId: string | null = null;
+
+        if (!matchMaster) {
+          syncAction = "error";
+          message = "Santri Tidak Ditemukan / Bukan PPS";
+        } else {
+          santriRecordId = matchMaster.id;
+          if (!matchPersonil) {
+            syncAction = "create";
+            message = "Tambah Baru";
+          } else {
+            const isDifferent =
+              !matchPersonil.status_aktif ||
+              matchPersonil.jabatan_tibkam !== (jabatanRaw || "Anggota");
+
+            if (isDifferent) {
+              syncAction = "update";
+              message = "Update Jabatan";
+            } else {
+              syncAction = "skip";
+              message = "Sudah Sesuai";
+            }
+          }
+        }
+
+        processedRows.push({
+          rowNum: validRowCounter,
+          idPps: idPpsRaw,
+          namaSantri: matchMaster?.nama || "Santri Tidak Ditemukan",
+          jabatan: jabatanRaw || "Anggota",
+          santriRecordId,
+          syncAction,
+          status: syncAction === "skip" ? "skipped" : "pending",
+          message,
+        });
+      }
+
+      setParsedRows(processedRows);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Gagal membaca berkas Excel.");
+      setParsedRows([]);
+      setSelectedFile(null);
+    } finally {
+      setIsParsing(false);
+    }
+  };
+
+  const createRowsCount = useMemo(
+    () => parsedRows.filter((r) => r.syncAction === "create").length,
+    [parsedRows]
+  );
+  const updateRowsCount = useMemo(
+    () => parsedRows.filter((r) => r.syncAction === "update").length,
+    [parsedRows]
+  );
+  const skipRowsCount = useMemo(
+    () => parsedRows.filter((r) => r.syncAction === "skip" || r.syncAction === "error").length,
+    [parsedRows]
+  );
+  const totalProcessable = createRowsCount + updateRowsCount;
+
+  const handleExecuteImport = async (onDone?: () => void) => {
+    if (totalProcessable === 0 || isSubmitting) return;
+
+    setIsSubmitting(true);
+    setErrorMessage(null);
+
+    try {
+      const processableRows = parsedRows.filter(
+        (r) => r.syncAction === "create" || r.syncAction === "update"
+      );
+
+      const BATCH_LIMIT = 150;
+      let batch = pb.createBatch();
+      let batchCount = 0;
+
+      for (const row of processableRows) {
+        if (!row.santriRecordId) continue;
+
+        const payload = {
+          id_pps: row.idPps,
+          santri: row.santriRecordId,
+          jabatan_tibkam: row.jabatan,
+          status_aktif: true,
+        };
+
+        if (row.syncAction === "create") {
+          batch.collection("personil_tibkam").create(payload);
+        } else {
+          const existing = await pb
+            .collection("personil_tibkam")
+            .getFirstListItem(`id_pps = "${row.idPps}"`);
+          batch.collection("personil_tibkam").update(existing.id, payload);
+        }
+
+        batchCount++;
+        if (batchCount >= BATCH_LIMIT) {
+          await batch.send();
+          batch = pb.createBatch();
+          batchCount = 0;
+        }
+      }
+
+      if (batchCount > 0) {
+        await batch.send();
+      }
+
+      setParsedRows((prev) =>
+        prev.map((r) =>
+          r.syncAction === "create" || r.syncAction === "update"
+            ? { ...r, status: "success", message: "Berhasil Disimpan" }
+            : r
+        )
+      );
+
+      onSuccess({
+        inserted: createRowsCount,
+        updated: updateRowsCount,
+        softDeleted: 0,
+        skipped: skipRowsCount,
+      });
+
+      if (onDone) onDone();
+    } catch (err: any) {
+      setErrorMessage(err.message || "Gagal memproses impor transaksi database.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleReset = () => {
+    setSelectedFile(null);
+    setParsedRows([]);
+    setErrorMessage(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  return {
+    fileInputRef,
+    selectedFile,
+    parsedRows,
+    isParsing,
+    isSubmitting,
+    errorMessage,
+    createRowsCount,
+    updateRowsCount,
+    skipRowsCount,
+    totalProcessable,
+    handleFileUpload,
+    handleExecuteImport,
+    handleReset,
+    handleDownloadTemplate,
+  };
+}
+```
+
+### `src/features/personil/hooks/usePersonil.ts`
+```typescript
+// src/features/personil/hooks/usePersonil.ts
+import { useQuery, keepPreviousData } from "@tanstack/react-query";
+import { pb } from "@/lib/pocketbase";
+import type { PersonilTibkamResponse, MasterResponse } from "@/types/pocketbase-types";
+
+export type PersonilWithExpand = PersonilTibkamResponse<{
+  santri?: MasterResponse;
+}>;
+
+export interface UsePersonilParams {
+  page: number;
+  perPage: number;
+  search: string;
+  statusFilter: "all" | "aktif" | "nonaktif";
+  jabatanFilter?: string;
+  domisiliFilter?: string;
+}
+
+export interface UsePersonilFilterOptionsParams {
+  statusFilter?: "all" | "aktif" | "nonaktif";
+  jabatanFilter?: string;
+  domisiliFilter?: string;
+}
+
+/**
+ * 🎯 Helper Pengurutan ID PPS pada Keseluruhan Data:
+ * 1. 5-digit terlebih dahulu (39058, 39566, dst)
+ * 2. 8-digit setelahnya (14340232, 14380484, dst)
+ * 3. Nilai angka dari terkecil ke terbesar
+ */
+export const sortPersonilByIdPps = <T extends PersonilWithExpand>(items: T[]): T[] => {
+  return [...items].sort((a, b) => {
+    const strA = (a.id_pps || "").trim();
+    const strB = (b.id_pps || "").trim();
+
+    // Bandingkan panjang digit (5 digit < 8 digit)
+    if (strA.length !== strB.length) {
+      return strA.length - strB.length;
+    }
+
+    // Jika panjang digit sama, bandingkan nilai angkanya
+    const numA = parseInt(strA, 10) || 0;
+    const numB = parseInt(strB, 10) || 0;
+
+    return numA - numB;
+  });
+};
+
+export function usePersonilFilterOptions(params?: UsePersonilFilterOptionsParams) {
+  const statusFilter = params?.statusFilter || "all";
+  const jabatanFilter = params?.jabatanFilter || "all";
+  const domisiliFilter = params?.domisiliFilter || "all";
+
+  return useQuery({
+    queryKey: [
+      "personil-filter-options",
+      statusFilter,
+      jabatanFilter,
+      domisiliFilter,
+    ],
+    queryFn: async () => {
+      const records = await pb
+        .collection("personil_tibkam")
+        .getFullList<PersonilWithExpand>({
+          fields: "status_aktif,jabatan_tibkam,expand.santri.domisili",
+          expand: "santri",
+        });
+
+      const matchesFilter = (
+        r: PersonilWithExpand,
+        skipField: "status" | "jabatan" | "domisili"
+      ) => {
+        if (skipField !== "status") {
+          if (statusFilter === "aktif" && !r.status_aktif) return false;
+          if (statusFilter === "nonaktif" && r.status_aktif) return false;
+        }
+        if (skipField !== "jabatan" && jabatanFilter !== "all") {
+          if (!r.jabatan_tibkam?.toLowerCase().includes(jabatanFilter.toLowerCase())) return false;
+        }
+        if (skipField !== "domisili" && domisiliFilter !== "all") {
+          const dom = r.expand?.santri?.domisili || "";
+          if (!dom.toLowerCase().includes(domisiliFilter.toLowerCase())) return false;
+        }
+        return true;
+      };
+
+      const jabatanSet = new Set<string>();
+      const domisiliSet = new Set<string>();
+
+      records.forEach((r) => {
+        if (matchesFilter(r, "jabatan") && r.jabatan_tibkam?.trim()) {
+          jabatanSet.add(r.jabatan_tibkam.trim());
+        }
+        if (matchesFilter(r, "domisili") && r.expand?.santri?.domisili?.trim()) {
+          domisiliSet.add(r.expand.santri.domisili.trim());
+        }
+      });
+
+      return {
+        jabatanOptions: Array.from(jabatanSet).sort((a, b) =>
+          a.localeCompare(b, undefined, { numeric: true, sensitivity: "base" })
+        ),
+        domisiliOptions: Array.from(domisiliSet).sort(),
+      };
+    },
+    staleTime: 1000 * 60 * 2,
+  });
+}
+
+export function usePersonil() {
+  const usePersonilList = (params: UsePersonilParams) => {
+    const {
+      page,
+      perPage,
+      search,
+      statusFilter,
+      jabatanFilter,
+      domisiliFilter,
+    } = params;
+
+    return useQuery({
+      queryKey: [
+        "personil_tibkam",
+        page,
+        perPage,
+        search,
+        statusFilter,
+        jabatanFilter,
+        domisiliFilter,
+      ],
+      queryFn: async () => {
+        const filters: string[] = [];
+
+        if (search) {
+          const escapedSearch = search.replace(/"/g, '\\"');
+          filters.push(
+            `(id_pps ~ "${escapedSearch}" || jabatan_tibkam ~ "${escapedSearch}" || santri.nama ~ "${escapedSearch}")`
+          );
+        }
+
+        if (statusFilter === "aktif") {
+          filters.push("status_aktif = true");
+        } else if (statusFilter === "nonaktif") {
+          filters.push("status_aktif = false");
+        }
+
+        if (jabatanFilter && jabatanFilter !== "all") {
+          filters.push(`jabatan_tibkam ~ "${jabatanFilter}"`);
+        }
+
+        if (domisiliFilter && domisiliFilter !== "all") {
+          filters.push(`santri.domisili ~ "${domisiliFilter}"`);
+        }
+
+        const filter = filters.length > 0 ? filters.join(" && ") : "";
+
+        // 1. Ambil KESELURUHAN data personil sesuai filter
+        const allRecords = await pb
+          .collection("personil_tibkam")
+          .getFullList<PersonilWithExpand>({
+            filter,
+            expand: "santri",
+          });
+
+        // 2. Urutkan KESELURUHAN data berdasarkan ID PPS
+        const sortedAllRecords = sortPersonilByIdPps(allRecords);
+
+        // 3. Kalkulasi Paginasi Manual di Frontend
+        const totalItems = sortedAllRecords.length;
+        const totalPages = Math.ceil(totalItems / perPage) || 1;
+        const startIndex = (page - 1) * perPage;
+        const pageItems = sortedAllRecords.slice(startIndex, startIndex + perPage);
+
+        return {
+          page,
+          perPage,
+          totalItems,
+          totalPages,
+          items: pageItems,
+        };
+      },
+      placeholderData: keepPreviousData,
+    });
+  };
+
+  return {
+    usePersonilList,
+  };
+}
+```
+
+### `src/features/personil/index.ts`
+```typescript
+// 🚪 Public API Gerbang Modul Personil Tibkam
+export { default as PersonilPage } from "./pages/Personil";
+export { default as PersonilPagination } from "./components/PersonilPagination";
+```
+
+### `src/features/personil/pages/Personil.tsx`
+```tsx
+// src/features/personil/pages/Personil.tsx
+import { useState, useEffect } from "react";
+import { usePersonil, usePersonilFilterOptions, type PersonilWithExpand } from "../hooks/usePersonil";
+import { useAuth } from "@/features/auth";
+import PersonilHeader from "../components/PersonilHeader";
+import SyncReportBanner from "../components/SyncReportBanner";
+import PersonilToolbar from "../components/PersonilToolbar";
+import PersonilTable from "../components/PersonilTable";
+import PersonilPagination from "../components/PersonilPagination";
+import { ImportPersonilModal } from "../components/ImportPersonilModal";
+import { PersonilDetailModal } from "../components/PersonilDetailModal";
+import type { UsersResponse } from "@/types/pocketbase-types";
+import type { PersonilSyncReport } from "../utils/importPersonilExcel";
+
+const PER_PAGE = 15;
+
+export default function PersonilPage() {
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+  const isAdmin = Boolean(currentUser?.role?.startsWith("admin"));
+
+  // State Filters (Default statusFilter = "all" agar tampilan dropdown seragam)
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | "aktif" | "nonaktif">("all");
+  const [jabatanFilter, setJabatanFilter] = useState("all");
+  const [domisiliFilter, setDomisiliFilter] = useState("all");
+
+  // Modals
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+  const [selectedPersonilDetail, setSelectedPersonilDetail] = useState<PersonilWithExpand | null>(null);
+  const [syncReport, setSyncReport] = useState<PersonilSyncReport | null>(null);
+
+  const { usePersonilList } = usePersonil();
+
+  const { data: dynamicFilterOptions } = usePersonilFilterOptions({
+    statusFilter,
+    jabatanFilter,
+    domisiliFilter,
+  });
+
+  useEffect(() => {
+    if (
+      domisiliFilter !== "all" &&
+      dynamicFilterOptions?.domisiliOptions &&
+      !dynamicFilterOptions.domisiliOptions.includes(domisiliFilter)
+    ) {
+      setDomisiliFilter("all");
+    }
+  }, [dynamicFilterOptions?.domisiliOptions, domisiliFilter]);
+
+  useEffect(() => {
+    if (
+      jabatanFilter !== "all" &&
+      dynamicFilterOptions?.jabatanOptions &&
+      !dynamicFilterOptions.jabatanOptions.includes(jabatanFilter)
+    ) {
+      setJabatanFilter("all");
+    }
+  }, [dynamicFilterOptions?.jabatanOptions, jabatanFilter]);
+
+  const {
+    data: personilData,
+    isLoading,
+    isFetching,
+    refetch,
+  } = usePersonilList({
+    page,
+    perPage: PER_PAGE,
+    search,
+    statusFilter,
+    jabatanFilter,
+    domisiliFilter,
+  });
+
+  const items = personilData?.items ?? [];
+  const totalItems = personilData?.totalItems ?? 0;
+  const totalPages = personilData?.totalPages ?? 0;
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    setPage(1);
+  };
+
+  const handleStatusFilterChange = (val: "all" | "aktif" | "nonaktif") => {
+    setStatusFilter(val);
+    setPage(1);
+  };
+
+  const handleJabatanFilterChange = (val: string) => {
+    setJabatanFilter(val);
+    setPage(1);
+  };
+
+  const handleDomisiliFilterChange = (val: string) => {
+    setDomisiliFilter(val);
+    setPage(1);
+  };
+
+  const handleImportSuccess = (report: PersonilSyncReport) => {
+    setSyncReport(report);
+    refetch();
+  };
+
+  return (
+    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+      {/* 1. Header Hero Banner */}
+      <PersonilHeader
+        onOpenImportModal={() => setIsImportModalOpen(true)}
+        isAdmin={isAdmin}
+      />
+
+      {/* 2. Banner Hasil Laporan Sinkronisasi */}
+      <SyncReportBanner
+        report={syncReport}
+        onClose={() => setSyncReport(null)}
+      />
+
+      {/* 3. Search & Multi-Dropdown Filter Toolbar */}
+      <PersonilToolbar
+        search={search}
+        onSearchChange={handleSearchChange}
+        statusFilter={statusFilter}
+        onStatusFilterChange={handleStatusFilterChange}
+        jabatanFilter={jabatanFilter}
+        onJabatanFilterChange={handleJabatanFilterChange}
+        domisiliFilter={domisiliFilter}
+        onDomisiliFilterChange={handleDomisiliFilterChange}
+        jabatanOptions={dynamicFilterOptions?.jabatanOptions}
+        domisiliOptions={dynamicFilterOptions?.domisiliOptions}
+        onRefresh={refetch}
+        isListLoading={isLoading || isFetching}
+      />
+
+      {/* 4. Tabel Data Personil */}
+      <PersonilTable
+        items={items}
+        isLoading={isLoading}
+        isFetching={isFetching}
+        page={page}
+        perPage={PER_PAGE}
+        onSelectPersonil={(personil) => setSelectedPersonilDetail(personil)}
+      />
+
+      {/* 5. Pagination Navigasi Data */}
+      <PersonilPagination
+        page={page}
+        totalPages={totalPages}
+        totalItems={totalItems}
+        perPage={PER_PAGE}
+        onPageChange={setPage}
+      />
+
+      {/* 6. Modals */}
+      <ImportPersonilModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onSuccess={handleImportSuccess}
+      />
+
+      <PersonilDetailModal
+        isOpen={!!selectedPersonilDetail}
+        onClose={() => setSelectedPersonilDetail(null)}
+        personil={selectedPersonilDetail}
+      />
+    </div>
+  );
+}
+```
+
+### `src/features/personil/utils/importPersonilExcel.ts`
+```typescript
+// src/features/personil/utils/importPersonilExcel.ts
+import * as XLSX from "xlsx";
+import { pb } from "@/lib/pocketbase";
+import type { MasterResponse, PersonilTibkamResponse } from "@/types/pocketbase-types";
+
+export interface PersonilExcelRow {
+  id_pps: string;
+  jabatan_tibkam: string;
+}
+
+export interface PersonilSyncReport {
+  inserted: number;
+  updated: number;
+  softDeleted: number;
+  skipped: number;
+}
+
+/**
+ * 🔍 Parser Berkas Excel Personil
+ */
+export const parsePersonilExcel = async (file: File): Promise<PersonilExcelRow[]> => {
+  const buffer = await file.arrayBuffer();
+  const workbook = XLSX.read(buffer, { type: "array" });
+
+  const sheetName =
+    workbook.SheetNames.find((name) => name.toLowerCase().includes("tibkam")) ||
+    workbook.SheetNames[0];
+
+  const worksheet = workbook.Sheets[sheetName];
+  const rawRows = XLSX.utils.sheet_to_json<any[]>(worksheet, { header: 1 });
+  if (rawRows.length === 0) return [];
+
+  let idPpsIndex = -1;
+  let jabatanIndex = -1;
+
+  for (let i = 0; i < Math.min(rawRows.length, 10); i++) {
+    const row = rawRows[i];
+    if (!row) continue;
+
+    row.forEach((cell, idx) => {
+      const cellStr = String(cell || "").toLowerCase().trim();
+      if (cellStr.includes("id pps") || cellStr === "id_pps" || cellStr === "idpps") {
+        idPpsIndex = idx;
+      }
+      if (cellStr.includes("jabatan") || cellStr.includes("tugas")) {
+        jabatanIndex = idx;
+      }
+    });
+
+    if (idPpsIndex !== -1 && jabatanIndex !== -1) break;
+  }
+
+  if (idPpsIndex === -1) idPpsIndex = 1;
+  if (jabatanIndex === -1) jabatanIndex = 6;
+
+  const resultRows: PersonilExcelRow[] = [];
+
+  for (let i = 0; i < rawRows.length; i++) {
+    const row = rawRows[i];
+    if (!row || row.length === 0) continue;
+
+    const idPpsRaw = String(row[idPpsIndex] || "").trim();
+    const jabatanRaw = String(row[jabatanIndex] || "").trim();
+
+    if (/^\d+$/.test(idPpsRaw) && idPpsRaw !== "0") {
+      resultRows.push({
+        id_pps: idPpsRaw,
+        jabatan_tibkam: jabatanRaw || "Anggota",
+      });
+    }
+  }
+
+  return resultRows;
+};
+
+/**
+ * ⚡ Sync Batch Import Personil ke PocketBase
+ */
+export const syncPersonilExcelToPocketBase = async (
+  excelData: PersonilExcelRow[],
+  onProgress?: (processed: number, total: number) => void
+): Promise<PersonilSyncReport> => {
+  const report: PersonilSyncReport = { inserted: 0, updated: 0, softDeleted: 0, skipped: 0 };
+  if (!excelData || excelData.length === 0) return report;
+
+  // 1. Ambil seluruh data master santri PPS
+  const masterSantriPps = await pb
+    .collection("master")
+    .getFullList<MasterResponse>({
+      filter: 'status_domisili = "PPS"',
+      fields: "id,id_pps,status_domisili",
+    });
+
+  const masterMap = new Map<string, MasterResponse>();
+  masterSantriPps.forEach((m) => {
+    if (m.id_pps) masterMap.set(m.id_pps.trim(), m);
+  });
+
+  // 2. Ambil seluruh personil Tibkam terdaftar
+  const existingPersonil = await pb
+    .collection("personil_tibkam")
+    .getFullList<PersonilTibkamResponse>();
+
+  const dbMap = new Map<string, PersonilTibkamResponse>();
+  existingPersonil.forEach((p) => {
+    if (p.id_pps) dbMap.set(p.id_pps.trim(), p);
+  });
+
+  const totalItemsToProcess = excelData.length + dbMap.size;
+  let processedCounter = 0;
+
+  const BATCH_LIMIT = 150;
+  let batch = pb.createBatch();
+  let batchCount = 0;
+
+  const commitBatchIfFull = async () => {
+    if (batchCount >= BATCH_LIMIT) {
+      await batch.send();
+      batch = pb.createBatch();
+      batchCount = 0;
+    }
+  };
+
+  const processedExcelIds = new Set<string>();
+
+  // 3. Iterasi Data Excel
+  for (const excelRow of excelData) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
+    const idPpsKey = excelRow.id_pps.trim();
+    const matchMaster = masterMap.get(idPpsKey);
+
+    if (!matchMaster) {
+      report.skipped++;
+      continue;
+    }
+
+    processedExcelIds.add(idPpsKey);
+    const matchPersonilDb = dbMap.get(idPpsKey);
+
+    const payload = {
+      id_pps: idPpsKey,
+      santri: matchMaster.id,
+      jabatan_tibkam: excelRow.jabatan_tibkam,
+      status_aktif: true,
+    };
+
+    if (!matchPersonilDb) {
+      batch.collection("personil_tibkam").create(payload);
+      report.inserted++;
+      batchCount++;
+      await commitBatchIfFull();
+    } else {
+      const isChanged =
+        !matchPersonilDb.status_aktif ||
+        matchPersonilDb.jabatan_tibkam !== excelRow.jabatan_tibkam ||
+        matchPersonilDb.santri !== matchMaster.id;
+
+      if (isChanged) {
+        batch.collection("personil_tibkam").update(matchPersonilDb.id, payload);
+        report.updated++;
+        batchCount++;
+        await commitBatchIfFull();
+      } else {
+        report.skipped++;
+      }
+    }
+  }
+
+  // 4. Soft-Delete Personil yang tidak terdaftar di Excel terbaru
+  for (const [idPps, personilDb] of dbMap.entries()) {
+    processedCounter++;
+    if (onProgress) onProgress(processedCounter, totalItemsToProcess);
+
+    if (!processedExcelIds.has(idPps) && personilDb.status_aktif) {
+      batch.collection("personil_tibkam").update(personilDb.id, {
+        status_aktif: false,
+      });
+      report.softDeleted++;
+      batchCount++;
+      await commitBatchIfFull();
+    }
+  }
+
+  if (batchCount > 0) {
+    await batch.send();
+  }
+
+  if (onProgress) onProgress(totalItemsToProcess, totalItemsToProcess);
+
+  return report;
+};
+```

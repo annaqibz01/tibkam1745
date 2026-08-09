@@ -15,6 +15,7 @@ export const Collections = {
 	Master: "master",
 	PengurusSantri: "pengurus_santri",
 	PeriodeRambut: "periode_rambut",
+	PersonilTibkam: "personil_tibkam",
 	RiwayatSetorRambut: "riwayat_setor_rambut",
 	Users: "users",
 	WajibSetorRambut: "wajib_setor_rambut",
@@ -190,6 +191,17 @@ export type PeriodeRambutRecord = {
 	updated: IsoAutoDateString
 }
 
+export type PersonilTibkamRecord = {
+	created: IsoAutoDateString
+	id: string
+	id_pps: string
+	jabatan_tibkam?: string
+	periode_hijri?: string
+	santri?: RecordIdString
+	status_aktif?: boolean
+	updated: IsoAutoDateString
+}
+
 export type RiwayatSetorRambutRecord = {
 	catatan?: string
 	created: IsoAutoDateString
@@ -262,6 +274,7 @@ export type KalenderHijriyahResponse<Texpand = unknown> = Required<KalenderHijri
 export type MasterResponse<Texpand = unknown> = Required<MasterRecord> & BaseSystemFields<Texpand>
 export type PengurusSantriResponse<Texpand = unknown> = Required<PengurusSantriRecord> & BaseSystemFields<Texpand>
 export type PeriodeRambutResponse<Texpand = unknown> = Required<PeriodeRambutRecord> & BaseSystemFields<Texpand>
+export type PersonilTibkamResponse<Texpand = unknown> = Required<PersonilTibkamRecord> & BaseSystemFields<Texpand>
 export type RiwayatSetorRambutResponse<Texpand = unknown> = Required<RiwayatSetorRambutRecord> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
 export type WajibSetorRambutResponse<Texpand = unknown> = Required<WajibSetorRambutRecord> & BaseSystemFields<Texpand>
@@ -278,6 +291,7 @@ export type CollectionRecords = {
 	master: MasterRecord
 	pengurus_santri: PengurusSantriRecord
 	periode_rambut: PeriodeRambutRecord
+	personil_tibkam: PersonilTibkamRecord
 	riwayat_setor_rambut: RiwayatSetorRambutRecord
 	users: UsersRecord
 	wajib_setor_rambut: WajibSetorRambutRecord
@@ -293,6 +307,7 @@ export type CollectionResponses = {
 	master: MasterResponse
 	pengurus_santri: PengurusSantriResponse
 	periode_rambut: PeriodeRambutResponse
+	personil_tibkam: PersonilTibkamResponse
 	riwayat_setor_rambut: RiwayatSetorRambutResponse
 	users: UsersResponse
 	wajib_setor_rambut: WajibSetorRambutResponse

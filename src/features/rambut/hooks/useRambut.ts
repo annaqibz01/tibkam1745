@@ -9,6 +9,10 @@ import { pb } from "@/lib/pocketbase";
 import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
 import { parsePocketBaseError } from "@/utils/errorHandler";
 import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
+
+// 🎯 IMPORT PEMBANTU KALENDER HIJRIYAH INTERNAL SANGAT PRESISI
+import { fetchHijriByDate } from "@/features/kalender";
+
 import type {
   PeriodeRambutResponse,
   WajibSetorRambutResponse,
@@ -19,10 +23,17 @@ import type {
   WajibSetorRambutKategoriWajibOptions,
 } from "@/types/pocketbase-types";
 
-export const formatHijriDate = (dateInput?: string | Date | null): string => {
+/**
+ * 🎯 Format Tanggal Hijriyah Menggunakan Kalender Internal Pesantren
+ * Mengeliminasi ketergantungan pada `islamic-umalqura` bawaan browser.
+ */
+export const formatHijriDate = async (
+  dateInput?: string | Date | null,
+): Promise<string> => {
   if (!dateInput) return "-";
   const str = dateInput.toString().trim();
 
+  // 1. Jika input sudah berupa string format Hijriyah
   if (/H$/i.test(str) || /^[\d]{1,2}[\/\s]/.test(str)) {
     const cleanStr = str.replace(/\s*H+/gi, "").trim();
     return `${cleanStr} H`;
@@ -32,9 +43,22 @@ export const formatHijriDate = (dateInput?: string | Date | null): string => {
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return "-";
 
-    const raw = new Intl.DateTimeFormat("id-ID-u-ca-islamic-umalqura", {
+    // 2. Query ke Database Kalender Hijriyah Internal
+    const hijriRecord = await fetchHijriByDate(d);
+    if (hijriRecord?.string_hijri) {
+      return hijriRecord.string_hijri;
+    }
+
+    // 3. Fallback 1: Gunakan penetapan Waktu Istiwa (WIS)
+    const detailWis = dapatkanDetailWis(d);
+    if (detailWis?.stringLengkap) {
+      return detailWis.stringLengkap;
+    }
+
+    // 4. Fallback 2: Tabular Islamic Standard (Non-Umm Al Qura)
+    const raw = new Intl.DateTimeFormat("id-ID-u-ca-islamic-tbla", {
       day: "2-digit",
-      month: "2-digit",
+      month: "long",
       year: "numeric",
     }).format(d);
 
@@ -54,7 +78,6 @@ export const parseNumericIdPps = (val?: string | number): number => {
   const digits = String(val).replace(/\D/g, "");
   return digits ? parseInt(digits, 10) : 0;
 };
-
 export interface CreatePeriodePayload {
   nama_periode: string;
   bulan_hijriyah_angka: number;
@@ -210,7 +233,7 @@ export function useRambut() {
             .getOne<PeriodeRambutResponse>(periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🎯 FILTER DIPERBARUI: Hanya ambil santri aktif dengan status_domisili PPS (Bukan LPPS)
+          // 1. Ambil Santri Aliyah & Kuliah Syariah Aktif (Domisili PPS)
           const masterSantri = await pb
             .collection("master")
             .getFullList<MasterResponse>({
@@ -219,7 +242,7 @@ export function useRambut() {
               batch: 500,
             });
 
-          // 🎯 PENGURUS: Expand relasi santri untuk verifikasi status domisili PPS
+          // 2. Ambil Pengurus/Petugas Aktif
           const pengurusList = await pb
             .collection("pengurus_santri")
             .getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
@@ -228,14 +251,35 @@ export function useRambut() {
               batch: 500,
             });
 
+          // 3. 🎯 PENGECUALIAN: Ambil Seluruh Personil Tibkam Aktif
+          const personilTibkamList = await pb
+            .collection("personil_tibkam")
+            .getFullList<{ id_pps?: string; status_aktif?: boolean }>({
+              filter: "status_aktif = true",
+              fields: "id_pps,status_aktif",
+              batch: 500,
+            });
+
+          // Buat Set ID PPS Personil Tibkam untuk pencocokan instan (O(1))
+          const excludedPersonilSet = new Set<string>();
+          personilTibkamList.forEach((p) => {
+            if (p.id_pps) {
+              excludedPersonilSet.add(p.id_pps.trim());
+            }
+          });
+
           const targetEligibleMap = new Map<
             string,
             { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }
           >();
 
+          // 4. Proses Santri Master
           for (const s of masterSantri) {
             const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
             if (!cleanIdPps) continue;
+
+            // 🛡️ PENGECUALIAN: Jika santri terdaftar sebagai Personil Tibkam, LEWATI!
+            if (excludedPersonilSet.has(cleanIdPps)) continue;
 
             // 🛡️ Double Check Status Domisili PPS
             const statusDomisili = (s.status_domisili || "")
@@ -255,10 +299,13 @@ export function useRambut() {
             targetEligibleMap.set(cleanIdPps, { santriId: s.id, kategori });
           }
 
+          // 5. Proses Pengurus Santri
           for (const p of pengurusList) {
             const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
-            // 🛡️ Filter data orphan (pengurus tanpa relasi santri)
             if (!cleanIdPps || !p.expand?.santri) continue;
+
+            // 🛡️ PENGECUALIAN: Jika Pengurus terdaftar sebagai Personil Tibkam, LEWATI!
+            if (excludedPersonilSet.has(cleanIdPps)) continue;
 
             // 🛡️ Pengurus yang berstatus domisili LPPS dilewati
             const santriDomisili = (p.expand.santri.status_domisili || "")
@@ -275,6 +322,7 @@ export function useRambut() {
             }
           }
 
+          // 6. Ambil Antrean Existing pada Periode Ini
           const existingQueue = await pb
             .collection("wajib_setor_rambut")
             .getFullList<WajibSetorRambutResponse>({
@@ -294,6 +342,7 @@ export function useRambut() {
           let unchangedCount = 0;
           let retainedHistoryCount = 0;
 
+          // 7. Tambahkan Data Baru ke Antrean
           for (const [idPps, info] of targetEligibleMap.entries()) {
             if (!existingMap.has(idPps)) {
               batch.collection("wajib_setor_rambut").create({
@@ -316,8 +365,10 @@ export function useRambut() {
             }
           }
 
+          // 8. Hapus Data dari Antrean jika tidak lagi eligibel (misal diangkat jadi Personil Tibkam)
           for (const [idPps, record] of existingMap.entries()) {
             if (!targetEligibleMap.has(idPps)) {
+              // Hanya hapus jika statusnya masih 'belum'
               if (record.status_setor === "belum") {
                 batch.collection("wajib_setor_rambut").delete(record.id);
                 removedCount++;
@@ -471,7 +522,8 @@ export function useRambut() {
           const currentUser = pb.authStore.record || pb.authStore.model;
           // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
           const isAdmin =
-            currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+            currentUser?.role === "admin" ||
+            currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")

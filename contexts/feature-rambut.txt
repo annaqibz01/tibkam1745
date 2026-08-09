@@ -367,8 +367,8 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
 
 ### `src/features/rambut/components/DispensasiModal.tsx`
 ```tsx
-// src/components/rambut/DispensasiModal.tsx
-import React, { useState, useEffect } from "react";
+// src/features/rambut/components/DispensasiModal.tsx
+import React, { useState, useEffect, useRef } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import type { WajibSetorExpanded } from "../hooks/useRambut";
 import { ShieldAlert, Loader2, Save, User } from "lucide-react";
@@ -389,9 +389,17 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
   isPending,
 }) => {
   const [alasan, setAlasan] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
 
+  // 🎯 Auto Focus ke input alasan saat modal dibuka
   useEffect(() => {
-    if (!isOpen) setAlasan("");
+    if (isOpen) {
+      setAlasan("");
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
   }, [isOpen]);
 
   if (!item) return null;
@@ -399,7 +407,7 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!alasan.trim()) return;
+    if (!alasan.trim() || isPending) return;
     onConfirm(alasan.trim());
   };
 
@@ -432,23 +440,24 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
                 {santriData?.nama || "Santri"}
               </p>
               <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.kelas || "-"}  {santriData?.tingkatan || "-"}
+                {santriData?.kelas || "-"} {santriData?.tingkatan || "-"}
               </p>
             </div>
           </div>
         </div>
 
-        {/* Input Alasan Dispensasi */}
+        {/* Input Alasan Dispensasi (Auto-focused) */}
         <div className="space-y-1.5">
           <label className="block text-xs font-mono font-medium text-gray-300">
             Alasan / Keterangan Dispensasi <span className="text-rose-400">*</span>
           </label>
           <input
+            ref={inputRef}
             type="text"
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
-            placeholder="Contoh: Sakit Atau Pulang"
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
+            placeholder=""
+            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
             required
           />
         </div>
@@ -483,8 +492,8 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
 
 ### `src/features/rambut/components/ExecuteSetorModal.tsx`
 ```tsx
-// src/components/rambut/ExecuteSetorModal.tsx
-import React, { useState } from "react";
+// src/features/rambut/components/ExecuteSetorModal.tsx
+import React, { useState, useEffect, useRef } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import type { WajibSetorExpanded } from "../hooks/useRambut";
 import { useWaktuIstiwa } from "@/hooks/useWaktuIstiwa";
@@ -508,11 +517,26 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
   const waktuWis = useWaktuIstiwa();
   const [catatan, setCatatan] = useState("");
 
+  // Ref untuk Auto-Focus ke input saat modal terbuka
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setCatatan("");
+      // Focus otomatis ke input catatan saat modal aktif
+      const timer = setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen]);
+
   if (!item) return null;
   const santriData = item.expand?.santri;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (isPending) return;
     onConfirm(catatan);
   };
 
@@ -562,17 +586,18 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
           </span>
         </div>
 
-        {/* Catatan Tambahan */}
+        {/* Catatan Tambahan (Auto-Focused & Placeholder Kosong) */}
         <div className="space-y-1.5">
           <label className="block text-xs font-mono font-medium text-gray-300">
             Catatan Tambahan (Opsional)
           </label>
           <input
+            ref={inputRef}
             type="text"
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
             placeholder=""
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
+            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
           />
         </div>
 
@@ -593,9 +618,11 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
             {isPending ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Save className="w-4 h-4" />
+              <>
+                <Save className="w-4 h-4" />
+                <span>Verifikasi Setor</span>
+              </>
             )}
-            <span>Verifikasi Setor</span>
           </button>
         </div>
       </form>
@@ -1471,7 +1498,7 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
           MODE SCAN
         </span>
         <span className="text-[11px] font-mono text-gray-400 hidden sm:inline">
-          Arahkan scanner / ketik ID PPS lalu tekan Enter
+          Scan barcode / ketik ID PPS + Enter
         </span>
       </div>
 
@@ -1489,21 +1516,24 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
             e.stopPropagation();
             onToggleSound();
           }}
-          className={`p-1.5 rounded-xl border transition-all ${
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition-all font-mono text-xs font-bold ${
             enableSound
               ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
               : "bg-gray-900 border-gray-800 text-gray-500"
           }`}
-          title={enableSound ? "Suara Beep Aktif" : "Suara Beep Bisu"}
+          title="Toggle Suara Beep (Shortcut: F1)"
         >
-          {enableSound ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+          {enableSound ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
+          <span className="text-[10px] text-gray-400">F1</span>
         </button>
 
-        {/* 🖨️ Segmented Toggle 3-Mode Printing */}
+        {/* Segmented Toggle 3-Mode Printing */}
         <div
           className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-xl text-xs font-mono select-none"
           onClick={(e) => e.stopPropagation()}
+          title="Ganti Mode Cetak (Shortcut: F2)"
         >
+          <span className="px-1.5 text-[10px] font-bold text-gray-500">F2</span>
           {modes.map((m) => {
             const isActive = printMode === m.id;
             const Icon = m.icon;
@@ -1545,18 +1575,41 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
 ### `src/features/rambut/components/pos/PosResultCard.tsx`
 ```tsx
 // src/features/rambut/components/pos/PosResultCard.tsx
-import React from "react";
-import { CheckCircle2, AlertTriangle, Scissors, GraduationCap, MapPin, Home, Clock, UserCheck } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import {
+  CheckCircle2,
+  AlertTriangle,
+  Scissors,
+  GraduationCap,
+  MapPin,
+  Home,
+  Clock,
+  UserCheck,
+  XCircle,
+} from "lucide-react";
 import type { LastResultState } from "../../hooks/useRapidScanPos";
+import { pb } from "@/lib/pocketbase";
 
 interface PosResultCardProps {
   lastResult: LastResultState;
 }
 
 export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [lastResult]);
+
+  const fotoUrl = lastResult.fotoUrl
+    ? lastResult.fotoUrl
+    : lastResult.foto && lastResult.record
+    ? pb.getFileUrl(lastResult.record, lastResult.foto)
+    : null;
+
   return (
     <div
-      className={`p-3.5 rounded-2xl border-2 transition-all duration-200 flex flex-col items-center justify-center text-center min-h-[250px] ${
+      className={`p-3 rounded-2xl border-2 transition-all duration-200 flex flex-col justify-between text-center h-[335px] ${
         lastResult.status === "success"
           ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 shadow-emerald-500/10 shadow-xl"
           : lastResult.status === "error"
@@ -1565,29 +1618,55 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
       }`}
     >
       {lastResult.status === "success" ? (
-        <div className="w-full space-y-2.5 animate-in zoom-in-95 duration-150">
-          <div className="flex items-center justify-center gap-1.5 bg-emerald-500/20 py-0.5 px-3 rounded-full border border-emerald-500/30 w-fit mx-auto text-emerald-300 font-mono text-[11px] font-bold">
+        <div className="w-full space-y-2.5 animate-in zoom-in-95 duration-150 my-auto">
+          {/* BADGE VERIFIKASI */}
+          <div className="flex items-center justify-center gap-1.5 bg-emerald-500/20 py-0.5 px-3 rounded-full border border-emerald-500/30 w-fit mx-auto text-emerald-300 font-mono text-[10px] font-bold">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>VERIFIKASI SETOR RAMBUT</span>
           </div>
 
-          <div className="space-y-0.5">
-            <div className="flex items-center justify-center gap-1.5">
-              <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-extrabold border border-emerald-500/30">
-                ID PPS: {lastResult.idPps}
-              </span>
+          {/* HERO PROFILE: FOTO SANTRI (PROPORSI PASFOTO 3:4) */}
+          <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3.5 px-1 text-center sm:text-left">
+            <div className="relative w-24 h-32 rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-indigo-800 flex items-center justify-center text-white shadow-xl shadow-emerald-600/25 border-2 border-emerald-400/40 shrink-0 overflow-hidden group mx-auto sm:mx-0">
+              {fotoUrl && !imageError ? (
+                <img
+                  src={fotoUrl}
+                  alt={lastResult.santriName || "Foto Santri"}
+                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <span className="font-sans font-extrabold text-4xl leading-none tracking-wider uppercase select-none drop-shadow-md">
+                  {lastResult.santriName ? lastResult.santriName.charAt(0) : "?"}
+                </span>
+              )}
             </div>
-            <h2 className="text-lg font-black text-white tracking-wide truncate">
-              {lastResult.santriName}
-            </h2>
+
+            {/* DETAIL NAMA & ID PPS */}
+            <div className="space-y-1 min-w-0 flex-1 pt-0.5">
+              <div className="flex items-center justify-center sm:justify-start gap-1.5">
+                <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-extrabold border border-emerald-500/30">
+                  ID PPS: {lastResult.idPps}
+                </span>
+              </div>
+
+              <h2 className="text-lg font-black text-white tracking-wide truncate">
+                {lastResult.santriName}
+              </h2>
+
+              <p className="text-[11px] font-mono text-emerald-400 font-bold">
+                ✓ Setoran Berhasil Diverifikasi
+              </p>
+            </div>
           </div>
 
+          {/* GRID INFORMASI AKADEMIK & ALAMAT */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-left pt-2 border-t border-emerald-500/20 font-mono text-xs">
             <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20">
               <GraduationCap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[9px] text-gray-400 uppercase font-semibold">Kelas</p>
-                <p className="font-bold text-gray-200 text-[11px] truncate uppercase">
+                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Kelas</p>
+                <p className="font-bold text-gray-200 text-[10.5px] truncate uppercase">
                   {lastResult.kelasTingkatan || "-"}
                 </p>
               </div>
@@ -1596,8 +1675,8 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
             <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20">
               <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[9px] text-gray-400 uppercase font-semibold">Domisili</p>
-                <p className="font-bold text-emerald-300 text-[11px] truncate">
+                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Domisili</p>
+                <p className="font-bold text-emerald-300 text-[10.5px] truncate">
                   {lastResult.domisili || "-"}
                 </p>
               </div>
@@ -1606,15 +1685,16 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
             <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20 sm:col-span-2">
               <Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-[9px] text-gray-400 uppercase font-semibold">Alamat</p>
-                <p className="font-semibold text-gray-300 text-[11px] truncate" title={lastResult.alamat}>
+                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Alamat</p>
+                <p className="font-semibold text-gray-300 text-[10.5px] truncate" title={lastResult.alamat}>
                   {lastResult.alamat || "-"}
                 </p>
               </div>
             </div>
           </div>
 
-          <div className="text-[10px] font-mono text-emerald-400/80 pt-0.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
+          {/* FOOTER TIMESTAMPS & PENERIMA */}
+          <div className="text-[9.5px] font-mono text-emerald-400/80 pt-0.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-emerald-400" />
               <span>
@@ -1630,21 +1710,26 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
           </div>
         </div>
       ) : lastResult.status === "error" ? (
-        <div className="space-y-2 animate-in zoom-in-95 duration-150">
+        <div className="w-full my-auto py-4 space-y-3 animate-in zoom-in-95 duration-150 flex flex-col items-center justify-center">
           <div className="p-2.5 bg-rose-500/20 rounded-full w-fit mx-auto border border-rose-500/30">
-            <AlertTriangle className="w-8 h-8 text-rose-400 animate-bounce" />
+            <AlertTriangle className="w-9 h-9 text-rose-400 animate-bounce" />
           </div>
-          <div>
-            <h3 className="text-sm font-extrabold text-rose-300 tracking-wider">TIDAK DAPAT MEMPROSES</h3>
-            <p className="text-xs font-mono font-bold text-white mt-1 max-w-sm mx-auto bg-rose-950/50 p-2.5 rounded-xl border border-rose-500/30">
+
+          <div className="space-y-2 w-full max-w-md mx-auto">
+            <div className="flex items-center justify-center gap-1.5 bg-rose-500/20 py-1 px-3.5 rounded-full border border-rose-500/30 w-fit mx-auto text-rose-300 font-mono text-xs font-bold">
+              <XCircle className="w-4 h-4 text-rose-400" />
+              <span>TIDAK DAPAT MEMPROSES SETORAN</span>
+            </div>
+
+            <p className="text-xs font-mono font-bold text-white bg-rose-950/60 p-3.5 rounded-2xl border border-rose-500/40 shadow-lg leading-relaxed">
               {lastResult.message}
             </p>
           </div>
         </div>
       ) : (
-        <div className="space-y-1.5 text-gray-500">
-          <Scissors className="w-8 h-8 mx-auto stroke-1" />
-          <p className="text-xs font-mono">
+        <div className="my-auto py-10 space-y-2 text-gray-500 flex flex-col items-center justify-center">
+          <Scissors className="w-9 h-9 mx-auto stroke-1" />
+          <p className="text-xs font-mono font-bold">
             Arahkan Kartu santri ke barcode scanner
           </p>
         </div>
@@ -1658,7 +1743,7 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
 ```tsx
 // src/features/rambut/components/pos/PosSessionLogs.tsx
 import React, { useState } from "react";
-import { User, Printer, Loader2 } from "lucide-react";
+import { User, Printer, Loader2, History } from "lucide-react";
 import { triggerAutoPrintReceipt } from "../../utils/posPrinter";
 import { pb } from "@/lib/pocketbase";
 import { fetchHijriByDate } from "@/features/kalender";
@@ -1695,16 +1780,13 @@ export const PosSessionLogs: React.FC<PosSessionLogsProps> = ({ logs }) => {
         const santri = logRecord.expand?.santri;
         const petugas = logRecord.expand?.petugas_eksekutor;
 
-        // Fetch Tanggal Hijriyah
         const hijriData = await fetchHijriByDate(logRecord.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
 
-        // Format Kelas dulu baru Tingkatan
         const kelasVal = santri?.kelas || logItem.kelas;
         const tingkatanVal = santri?.tingkatan || logItem.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
 
-        // Helper Alamat
         const addressParts = [santri?.desa, santri?.kecamatan, santri?.kabupaten]
           .map((v) => v?.toString().trim())
           .filter(Boolean);
@@ -1729,34 +1811,38 @@ export const PosSessionLogs: React.FC<PosSessionLogsProps> = ({ logs }) => {
   };
 
   return (
-    <div className="lg:col-span-5 flex flex-col bg-gray-950/50 border border-gray-800 rounded-2xl p-3 space-y-2">
-      <div className="flex items-center justify-between border-b border-gray-800/80 pb-1.5">
-        <span className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider">
-          Sesi Scan Terbaru ({logs.length})
+    <div className="flex flex-col bg-gray-950/50 border border-gray-800 rounded-2xl p-3 space-y-2 h-[380px]">
+      {/* HEADER SESI SCAN */}
+      <div className="flex items-center justify-between border-b border-gray-800/80 pb-1.5 shrink-0">
+        <span className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+          <History className="w-3.5 h-3.5 text-indigo-400" />
+          <span>Sesi Scan Terbaru ({logs.length})</span>
         </span>
       </div>
 
-      <div className="space-y-1.5 overflow-y-auto custom-scrollbar flex-1 max-h-[250px] lg:max-h-[260px] pr-1">
+      {/* DYNAMIC SCROLL CONTAINER INTERNAL */}
+      <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
         {logs.length === 0 ? (
-          <div className="text-center py-10 text-xs font-mono text-gray-600">
-            Belum ada setoran di sesi ini.
+          <div className="h-full flex flex-col items-center justify-center text-center py-10 text-xs font-mono text-gray-600 space-y-1">
+            <History className="w-8 h-8 opacity-30 stroke-1" />
+            <p>Belum ada setoran di sesi ini.</p>
           </div>
         ) : (
           logs.map((log) => (
             <div
               key={log.id}
-              className="p-2 rounded-xl bg-gray-900/80 border border-gray-800 flex items-center justify-between gap-2.5 text-xs font-mono animate-in fade-in slide-in-from-top-1 duration-150"
+              className="p-2 rounded-xl bg-gray-900/80 border border-gray-800 flex items-center justify-between gap-2.5 text-xs font-mono hover:border-gray-700 transition-all animate-in fade-in slide-in-from-top-1 duration-150"
             >
               <div className="flex items-center gap-2 truncate min-w-0">
-                <div className="p-1 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div className="truncate">
                   <p className="font-bold text-white truncate text-xs">
                     {log.namaSantri}
                   </p>
-                  <p className="text-[10px] text-gray-400">
-                    ID: <span className="text-indigo-300">{log.idPps}</span> •{" "}
+                  <p className="text-[10px] text-gray-400 mt-0.5">
+                    ID: <span className="text-indigo-300 font-bold">{log.idPps}</span> •{" "}
                     {log.tingkatan}/{log.kelas}
                   </p>
                 </div>
@@ -2631,7 +2717,7 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
 // src/features/rambut/components/RapidScanPosModal.tsx
 import React from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
-import { QrCode, ScanBarcode } from "lucide-react";
+import { QrCode, ScanBarcode, Loader2 } from "lucide-react";
 
 import { useRapidScanPos } from "../hooks/useRapidScanPos";
 import { PosHeader } from "./pos/PosHeader";
@@ -2672,6 +2758,13 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
     }
   };
 
+  const getInputBorderClass = () => {
+    if (isProcessing) return "border-amber-500 ring-2 ring-amber-500/20";
+    if (lastResult.status === "success") return "border-emerald-500/80 focus:border-emerald-400";
+    if (lastResult.status === "error") return "border-rose-500/80 focus:border-rose-400";
+    return "border-indigo-500/60 focus:border-indigo-400";
+  };
+
   return (
     <BaseModal
       isOpen={isOpen}
@@ -2680,7 +2773,11 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
       icon={<ScanBarcode className="w-5 h-5 text-indigo-400" />}
       maxWidth="max-w-5xl"
     >
-      <div className="space-y-2.5 pt-0.5 select-none" onClick={focusInput}>
+      {/* 🛑 TERKUNCI DENGAN OVERFLOW-HIDDEN AGAR KARTU MODAL TIDAK BISA DI-SCROLL */}
+      <div
+        className="space-y-2.5 pt-0.5 select-none overflow-hidden px-0.5"
+        onClick={focusInput}
+      >
         {/* Sub-Header Bar */}
         <PosHeader
           wisTimeStr={wisTimeStr}
@@ -2691,11 +2788,16 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
         />
 
         {/* Main Scanner Layout Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5">
-          <div className="lg:col-span-7 space-y-2.5">
-            <div className="relative group">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
+          {/* SISI KIRI: INPUT BARCODE + KARTU HASIL VERIFIKASI */}
+          <div className="lg:col-span-7 flex flex-col space-y-2.5 min-w-0">
+            <div className="relative group shrink-0">
               <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-indigo-400">
-                <QrCode className="w-4 h-4 animate-pulse" />
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+                ) : (
+                  <QrCode className="w-4 h-4 animate-pulse" />
+                )}
               </div>
 
               <input
@@ -2704,18 +2806,22 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                onFocus={(e) => e.target.select()} // 🎯 Otomatis seleksi isi input saat mendapat fokus
-                onBlur={focusInput}
-                placeholder="READY SCAN BARCODE / KETIK ID PPS..."
+                onFocus={(e) => e.target.select()}
+                placeholder="SIAP SCAN KARTU SANTRI / KETIK ID PPS..."
                 disabled={isProcessing}
-                className="w-full pl-10 pr-3.5 py-2.5 bg-gray-950/80 border-2 border-indigo-500/60 rounded-2xl text-white text-sm font-mono font-bold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 shadow-xl transition-all"
+                className={`w-full pl-10 pr-3.5 py-2 bg-gray-950/80 border-2 rounded-2xl text-white text-xs font-mono font-bold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xl transition-all ${getInputBorderClass()}`}
               />
             </div>
 
-            <PosResultCard lastResult={lastResult} />
+            <div className="flex-1 min-h-0">
+              <PosResultCard lastResult={lastResult} />
+            </div>
           </div>
 
-          <PosSessionLogs logs={sessionLogs} />
+          {/* SISI KANAN: LOG RIWAYAT SESI SCAN */}
+          <div className="lg:col-span-5 min-w-0 flex flex-col">
+            <PosSessionLogs logs={sessionLogs} />
+          </div>
         </div>
       </div>
     </BaseModal>
@@ -3685,6 +3791,10 @@ import { pb } from "@/lib/pocketbase";
 import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
 import { parsePocketBaseError } from "@/utils/errorHandler";
 import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
+
+// 🎯 IMPORT PEMBANTU KALENDER HIJRIYAH INTERNAL SANGAT PRESISI
+import { fetchHijriByDate } from "@/features/kalender";
+
 import type {
   PeriodeRambutResponse,
   WajibSetorRambutResponse,
@@ -3695,10 +3805,17 @@ import type {
   WajibSetorRambutKategoriWajibOptions,
 } from "@/types/pocketbase-types";
 
-export const formatHijriDate = (dateInput?: string | Date | null): string => {
+/**
+ * 🎯 Format Tanggal Hijriyah Menggunakan Kalender Internal Pesantren
+ * Mengeliminasi ketergantungan pada `islamic-umalqura` bawaan browser.
+ */
+export const formatHijriDate = async (
+  dateInput?: string | Date | null,
+): Promise<string> => {
   if (!dateInput) return "-";
   const str = dateInput.toString().trim();
 
+  // 1. Jika input sudah berupa string format Hijriyah
   if (/H$/i.test(str) || /^[\d]{1,2}[\/\s]/.test(str)) {
     const cleanStr = str.replace(/\s*H+/gi, "").trim();
     return `${cleanStr} H`;
@@ -3708,9 +3825,22 @@ export const formatHijriDate = (dateInput?: string | Date | null): string => {
     const d = new Date(dateInput);
     if (isNaN(d.getTime())) return "-";
 
-    const raw = new Intl.DateTimeFormat("id-ID-u-ca-islamic-umalqura", {
+    // 2. Query ke Database Kalender Hijriyah Internal
+    const hijriRecord = await fetchHijriByDate(d);
+    if (hijriRecord?.string_hijri) {
+      return hijriRecord.string_hijri;
+    }
+
+    // 3. Fallback 1: Gunakan penetapan Waktu Istiwa (WIS)
+    const detailWis = dapatkanDetailWis(d);
+    if (detailWis?.stringLengkap) {
+      return detailWis.stringLengkap;
+    }
+
+    // 4. Fallback 2: Tabular Islamic Standard (Non-Umm Al Qura)
+    const raw = new Intl.DateTimeFormat("id-ID-u-ca-islamic-tbla", {
       day: "2-digit",
-      month: "2-digit",
+      month: "long",
       year: "numeric",
     }).format(d);
 
@@ -3730,7 +3860,6 @@ export const parseNumericIdPps = (val?: string | number): number => {
   const digits = String(val).replace(/\D/g, "");
   return digits ? parseInt(digits, 10) : 0;
 };
-
 export interface CreatePeriodePayload {
   nama_periode: string;
   bulan_hijriyah_angka: number;
@@ -3886,7 +4015,7 @@ export function useRambut() {
             .getOne<PeriodeRambutResponse>(periodeId);
           if (!periode) throw new Error("Periode tidak ditemukan.");
 
-          // 🎯 FILTER DIPERBARUI: Hanya ambil santri aktif dengan status_domisili PPS (Bukan LPPS)
+          // 1. Ambil Santri Aliyah & Kuliah Syariah Aktif (Domisili PPS)
           const masterSantri = await pb
             .collection("master")
             .getFullList<MasterResponse>({
@@ -3895,7 +4024,7 @@ export function useRambut() {
               batch: 500,
             });
 
-          // 🎯 PENGURUS: Expand relasi santri untuk verifikasi status domisili PPS
+          // 2. Ambil Pengurus/Petugas Aktif
           const pengurusList = await pb
             .collection("pengurus_santri")
             .getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
@@ -3904,14 +4033,35 @@ export function useRambut() {
               batch: 500,
             });
 
+          // 3. 🎯 PENGECUALIAN: Ambil Seluruh Personil Tibkam Aktif
+          const personilTibkamList = await pb
+            .collection("personil_tibkam")
+            .getFullList<{ id_pps?: string; status_aktif?: boolean }>({
+              filter: "status_aktif = true",
+              fields: "id_pps,status_aktif",
+              batch: 500,
+            });
+
+          // Buat Set ID PPS Personil Tibkam untuk pencocokan instan (O(1))
+          const excludedPersonilSet = new Set<string>();
+          personilTibkamList.forEach((p) => {
+            if (p.id_pps) {
+              excludedPersonilSet.add(p.id_pps.trim());
+            }
+          });
+
           const targetEligibleMap = new Map<
             string,
             { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }
           >();
 
+          // 4. Proses Santri Master
           for (const s of masterSantri) {
             const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
             if (!cleanIdPps) continue;
+
+            // 🛡️ PENGECUALIAN: Jika santri terdaftar sebagai Personil Tibkam, LEWATI!
+            if (excludedPersonilSet.has(cleanIdPps)) continue;
 
             // 🛡️ Double Check Status Domisili PPS
             const statusDomisili = (s.status_domisili || "")
@@ -3931,10 +4081,13 @@ export function useRambut() {
             targetEligibleMap.set(cleanIdPps, { santriId: s.id, kategori });
           }
 
+          // 5. Proses Pengurus Santri
           for (const p of pengurusList) {
             const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
-            // 🛡️ Filter data orphan (pengurus tanpa relasi santri)
             if (!cleanIdPps || !p.expand?.santri) continue;
+
+            // 🛡️ PENGECUALIAN: Jika Pengurus terdaftar sebagai Personil Tibkam, LEWATI!
+            if (excludedPersonilSet.has(cleanIdPps)) continue;
 
             // 🛡️ Pengurus yang berstatus domisili LPPS dilewati
             const santriDomisili = (p.expand.santri.status_domisili || "")
@@ -3951,6 +4104,7 @@ export function useRambut() {
             }
           }
 
+          // 6. Ambil Antrean Existing pada Periode Ini
           const existingQueue = await pb
             .collection("wajib_setor_rambut")
             .getFullList<WajibSetorRambutResponse>({
@@ -3970,6 +4124,7 @@ export function useRambut() {
           let unchangedCount = 0;
           let retainedHistoryCount = 0;
 
+          // 7. Tambahkan Data Baru ke Antrean
           for (const [idPps, info] of targetEligibleMap.entries()) {
             if (!existingMap.has(idPps)) {
               batch.collection("wajib_setor_rambut").create({
@@ -3992,8 +4147,10 @@ export function useRambut() {
             }
           }
 
+          // 8. Hapus Data dari Antrean jika tidak lagi eligibel (misal diangkat jadi Personil Tibkam)
           for (const [idPps, record] of existingMap.entries()) {
             if (!targetEligibleMap.has(idPps)) {
+              // Hanya hapus jika statusnya masih 'belum'
               if (record.status_setor === "belum") {
                 batch.collection("wajib_setor_rambut").delete(record.id);
                 removedCount++;
@@ -4147,7 +4304,8 @@ export function useRambut() {
           const currentUser = pb.authStore.record || pb.authStore.model;
           // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
           const isAdmin =
-            currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+            currentUser?.role === "admin" ||
+            currentUser?.role === "admin_rambut";
 
           const periode = await pb
             .collection("periode_rambut")
@@ -4346,7 +4504,7 @@ export function useRambutPage() {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
 
-  // 🛡️ Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
+  // Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
   const isAdmin =
     currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
@@ -4443,7 +4601,7 @@ export function useRambutPage() {
     isAdmin ||
     (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
 
-  // 1. Pengurus Data
+  // 1. Pengurus Data (Filtered -> Sorted secara Global -> Paginated)
   const {
     data: rawPengurusData = [],
     isLoading: isPengurusLoading,
@@ -4473,7 +4631,7 @@ export function useRambutPage() {
   }, [rawPengurusData]);
 
   const filteredPengurusData = useMemo(() => {
-    return rawPengurusData.filter((p) => {
+    let list = rawPengurusData.filter((p) => {
       const santriNama = p.expand?.santri?.nama || "";
       const matchSearch =
         !pengurusSearch ||
@@ -4489,6 +4647,11 @@ export function useRambutPage() {
 
       return matchSearch && matchDaerah;
     });
+
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
 
   const totalPengurusItems = filteredPengurusData.length;
@@ -4499,7 +4662,7 @@ export function useRambutPage() {
     return filteredPengurusData.slice(start, start + PER_PAGE);
   }, [filteredPengurusData, pengurusPage]);
 
-  // 2. Queue Data
+  // 2. Queue Data (Filtered -> Sorted secara Global -> Paginated)
   const {
     data: fullQueueData = [],
     isLoading: isQueueLoading,
@@ -4520,19 +4683,21 @@ export function useRambutPage() {
       return matchSearch && matchStatus;
     });
 
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
     return list.sort(
-      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps),
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
     );
   }, [fullQueueData, search, statusFilter]);
 
   const totalItems = filteredSortedQueue.length;
   const totalPages = Math.ceil(totalItems / PER_PAGE);
+
   const paginatedQueueItems = useMemo(() => {
     const start = (page - 1) * PER_PAGE;
     return filteredSortedQueue.slice(start, start + PER_PAGE);
   }, [filteredSortedQueue, page]);
 
-  // 3. Audit Data
+  // 3. Audit Data (Filtered -> Sorted secara Global -> Paginated)
   const { data: historyData = [], isLoading: isHistoryLoading } =
     useRiwayatSetorList(currentPeriodeId);
 
@@ -4553,7 +4718,7 @@ export function useRambutPage() {
 
   const filteredAuditItems = useMemo(() => {
     if (!historyData) return [];
-    return historyData.filter((item: any) => {
+    let list = historyData.filter((item: any) => {
       const santriNama = item.expand?.santri?.nama || "";
       const petugasNama =
         item.expand?.petugas_eksekutor?.name ||
@@ -4574,6 +4739,11 @@ export function useRambutPage() {
 
       return matchSearch && matchDate;
     });
+
+    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
+    return list.sort(
+      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
   }, [historyData, auditSearch, auditDateFilter]);
 
   const totalAuditItems = filteredAuditItems.length;
@@ -4610,11 +4780,12 @@ export function useRambutPage() {
     updateStatusPeriodeMutation.mutate(
       { periodeId, status },
       {
-        onSuccess: () =>
+        onSuccess: () => {
           showSuccess(
             `Status periode diubah ke ${status.toUpperCase()}`,
             "Status Diperbarui",
-          ),
+          );
+        },
         onError: (err) => showError(err.message, "Gagal Ubah Status"),
       },
     );
@@ -4861,13 +5032,16 @@ export interface LastResultState {
   tanggalHijri?: string;
   waktu?: string;
   penerima?: string;
+  fotoUrl?: string;
+  foto?: string;
+  record?: any;
 }
 
 export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   const queryClient = useQueryClient();
 
   const [enableSound, setEnableSound] = useState(true);
-  const [printMode, setPrintMode] = useState<PrintMode>("auto"); // Default Mode: AUTO
+  const [printMode, setPrintMode] = useState<PrintMode>("auto");
   const [barcodeInput, setBarcodeInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [wisTimeStr, setWisTimeStr] = useState("");
@@ -4880,6 +5054,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
   const [sessionLogs, setSessionLogs] = useState<ScanSessionLog[]>([]);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // Update Clock Waktu Istiwa'
   useEffect(() => {
     const updateWisClock = () => {
       const detailWis = dapatkanDetailWis();
@@ -4891,39 +5066,58 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
     return () => clearInterval(interval);
   }, []);
 
-  // 🎯 Focus & Select otomatis agar scan berikutnya langsung menimpa isi teks
+  // Smart Focus Management (Bebas dari focus-trap)
   const focusInput = useCallback(() => {
     setTimeout(() => {
-      if (inputRef.current) {
+      if (inputRef.current && !isProcessing) {
         inputRef.current.focus();
         inputRef.current.select();
       }
-    }, 50);
-  }, []);
+    }, 60);
+  }, [isProcessing]);
 
+  // Focus otomatis saat modal dibuka & setelah proses selesai
   useEffect(() => {
     if (isOpen && !isProcessing) {
       focusInput();
     }
   }, [isOpen, isProcessing, focusInput]);
 
+  // Shortcut Keyboard: F1 (Toggle Sound) & F2 (Cycle Print Mode)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleGlobalShortcuts = (e: KeyboardEvent) => {
+      if (e.key === "F1") {
+        e.preventDefault();
+        setEnableSound((prev) => !prev);
+      } else if (e.key === "F2") {
+        e.preventDefault();
+        setPrintMode((prev) => {
+          if (prev === "off") return "auto";
+          if (prev === "auto") return "silent";
+          return "off";
+        });
+      }
+    };
+
+    window.addEventListener("keydown", handleGlobalShortcuts);
+    return () => window.removeEventListener("keydown", handleGlobalShortcuts);
+  }, [isOpen]);
+
   const handleProcessScan = async (codeToProcess: string) => {
     const queryCode = codeToProcess.trim();
     if (!queryCode || isProcessing) return;
 
     setIsProcessing(true);
-    setBarcodeInput("");
 
     try {
       const currentUser = pb.authStore.record || pb.authStore.model;
-      // 🛡️ Buka proteksi POS jika role adalah admin ATAU admin_rambut
       const isAdmin =
         currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
 
       if (!periodeId) {
-        throw new Error(
-          "Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.",
-        );
+        throw new Error("Gagal! Tidak ada periode setor yang sedang aktif/ditinjau.");
       }
 
       const periode = await pb
@@ -4937,7 +5131,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (!isAdmin) {
         if (periode.status_periode !== "aktif") {
           throw new Error(
-            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
+            `POS Ditutup! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`
           );
         }
 
@@ -4945,16 +5139,15 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
           !isDateWithinRange(
             new Date(),
             periode.tanggal_mulai,
-            periode.tanggal_selesai,
+            periode.tanggal_selesai
           )
         ) {
           throw new Error(
-            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
+            `POS Ditutup! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`
           );
         }
       }
 
-      // 🎯 PENGAMAN 2: KUERI KHUSUS EXACT MATCH ID PPS (TIDAK BISA PAKE NAMA)
       const filterQuery = `periode = "${periodeId}" && id_pps = "${queryCode}"`;
 
       const matchRecord = await pb
@@ -4964,9 +5157,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         });
 
       if (!matchRecord) {
-        throw new Error(
-          `ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`,
-        );
+        throw new Error(`ID PPS "${queryCode}" tidak terdaftar di antrean periode ini.`);
       }
 
       const santriData = matchRecord.expand?.santri;
@@ -4975,13 +5166,13 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       if (matchRecord.status_setor === "sudah") {
         throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`,
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) SUDAH SETOR SEBELUMNYA!`
         );
       }
 
       if (matchRecord.status_setor === "dispensasi") {
         throw new Error(
-          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`,
+          `SANTRI ${santriNama.toUpperCase()} (${idPps}) MEMILIKI STATUS DISPENSASI!`
         );
       }
 
@@ -4992,13 +5183,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         currentUser?.username || "PETUGAS TIBKAM"
       ).toUpperCase();
 
-      // Update status wajib_setor_rambut
       await pb.collection("wajib_setor_rambut").update(matchRecord.id, {
         status_setor: "sudah",
         tanggal_setor: nowIso,
       });
 
-      // Catat ke riwayat_setor_rambut
       const riwayatRecord = await pb.collection("riwayat_setor_rambut").create({
         wajib_setor: matchRecord.id,
         santri: matchRecord.santri || matchRecord.expand?.santri?.id || "",
@@ -5012,15 +5201,17 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
       const kelasVal = santriData?.kelas ? `${santriData.kelas}` : "";
       const tingkatanVal = santriData?.tingkatan || "";
-      const kelasTingkatanStr = [kelasVal, tingkatanVal]
-        .filter(Boolean)
-        .join(" ");
-      const domisiliStr =
-        santriData?.domisili || santriData?.status_domisili || "-";
+      const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
+      const domisiliStr = santriData?.domisili || santriData?.status_domisili || "-";
       const alamatStr = getAlamatStr(santriData);
 
       const hijriData = await fetchHijriByDate(nowIso);
       const stringHijri = hijriData?.string_hijri || "-";
+
+      // Ambil URL Foto Santri jika berkas foto tersedia
+      const fotoUrl = santriData?.foto
+        ? pb.getFileUrl(santriData, santriData.foto)
+        : undefined;
 
       const receiptDetails = {
         idPps: matchRecord.id_pps,
@@ -5037,18 +5228,19 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         status: "success",
         message: "SETORAN PERAPIAN RAMBUT TERVERIFIKASI LUNAS!",
         santriName: santriNama,
+        fotoUrl,
+        foto: santriData?.foto,
+        record: santriData,
         ...receiptDetails,
       });
 
       if (enableSound) playAudioFeedback("success");
 
-      // ⚡ PROSES CETAK ASINKRONUS (Non-blocking)
       const htmlReceipt = buildReceiptHtml(receiptDetails);
       executePrint(htmlReceipt, { mode: printMode }).catch((err) => {
         console.error("❌ Background Print Error:", err);
       });
 
-      // Update log UI POS
       setSessionLogs((prev) => [
         {
           id: riwayatRecord.id,
@@ -5063,14 +5255,11 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
         ...prev.slice(0, 9),
       ]);
 
-      queryClient.invalidateQueries({
-        queryKey: ["rambut-wajib-setor-list-full"],
-      });
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
       queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
     } catch (err: any) {
-      const errMsg =
-        parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
+      const errMsg = parsePocketBaseError(err) || err.message || "Gagal memproses setoran.";
 
       setLastResult({
         status: "error",
@@ -5080,6 +5269,7 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
       if (enableSound) playAudioFeedback("error");
     } finally {
       setIsProcessing(false);
+      setBarcodeInput(""); // Bersihkan input otomatis untuk scan selanjutnya
       focusInput();
     }
   };

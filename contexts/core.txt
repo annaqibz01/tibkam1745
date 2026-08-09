@@ -132,7 +132,7 @@ execSync(cmd, { stdio: 'inherit' });
 {
   "name": "tibkam1745",
   "private": true,
-  "version": "1.3.0",
+  "version": "1.4.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -144,6 +144,7 @@ execSync(cmd, { stdio: 'inherit' });
   "dependencies": {
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
+    "@tauri-apps/plugin-dialog": "^2.7.2",
     "exceljs": "^4.4.0",
     "file-saver": "^2.0.5",
     "framer-motion": "^12.42.2",
@@ -208,7 +209,8 @@ import { UsersPage as Users } from '@/features/users';
 import { MasterPage as Master } from '@/features/master';
 import { KalenderPage as Kalender } from '@/features/kalender';
 import { RambutPage as Rambut } from '@/features/rambut';
-import { LaporanRambutPage as LaporanRambut } from '@/features/laporan';
+import { LaporanRambutPage as LaporanRambut, LaporanRedirect } from "@/features/laporan";
+import { PersonilPage as Personil } from '@/features/personil'; // 👈 1. Impor Fitur Personil
 import { CustomTitleBar } from '@/components/shared';
 
 export default function App() {
@@ -217,7 +219,6 @@ export default function App() {
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-950 text-gray-100 select-none">
         <CustomTitleBar />
 
-        {/* 🔮 KUNCI: Tambahkan min-h-0 agar flex child tidak meluap keluar layar */}
         <div className="flex-1 min-h-0 w-full overflow-hidden relative">
           <HashRouter>
             <Routes>
@@ -243,6 +244,16 @@ export default function App() {
                   }
                 />
 
+                {/* 👈 2. Tambahkan Rute Personil Tibkam */}
+                <Route
+                  path="/personil"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut"]}>
+                      <Personil />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/rambut"
                   element={
@@ -251,6 +262,16 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                <Route
+                  path="/laporan"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                      <LaporanRedirect />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route
                   path="/laporan/rambut"
                   element={
@@ -259,6 +280,7 @@ export default function App() {
                     </ProtectedRoute>
                   }
                 />
+
                 <Route
                   path="/kalender"
                   element={
@@ -1801,54 +1823,49 @@ import { motion, type Variants, useReducedMotion } from 'framer-motion';
 
 interface PageTransitionProps {
   children: React.ReactNode;
-  /** Class CSS opsional jika ingin menambahkan styling kustom pada wrapper */
   className?: string;
 }
 
-// ✨ Premium Fluid Curve (Emphasized Decelerate - Gabungan Vercel & Apple iOS)
-const EASING_CURVE = [0.16, 1, 0.3, 1] as const;
+// ⚡ Fast Decelerate Curve (Native Desktop & App Feel)
+const FAST_EASE = [0.25, 1, 0.5, 1] as const;
 
 /**
- * Varian Animasi Premium (Ultra-Smooth & Fluid)
+ * Varian Transisi Ringan (Pure Opacity + Light Y-Shift)
+ * Menghapus properti `scale` & memotong durasi ke 180ms agar GPU tidak melakukan
+ * re-rasterization pada elemen glassmorphism/tabel besar saat navigasi.
  */
 const pageVariants: Variants = {
   initial: {
     opacity: 0,
-    y: 10,       // Pergeseran sedikit dinaikkan (10px) agar pergerakan kinetiknya terlihat anggun
-    scale: 0.99, // 🔮 KUNCI: Efek mikro-skala menciptakan ilusi transisi lapis kedalaman yang halus
+    y: 6, // Pergeseran mikro 6px
   },
   animate: {
     opacity: 1,
     y: 0,
-    scale: 1,
     transition: {
-      duration: 0.35, // ⏱️ Sweet-spot baru (350ms) agar kurva akselerasi terlihat mengalir sempurna
-      ease: EASING_CURVE,
+      duration: 0.18, // ⏱️ Entry responsif (180ms)
+      ease: FAST_EASE,
     },
   },
   exit: {
     opacity: 0,
-    y: -8,
-    scale: 0.99,   // Mikro-skala mengecil halus saat halaman memudar keluar
+    y: -4,
     transition: {
-      duration: 0.25,
-      ease: EASING_CURVE,
+      duration: 0.12, // ⏱️ Exit instan (120ms) agar halaman lama langsung lepas
+      ease: FAST_EASE,
     },
   },
 };
 
-/**
- * Varian Khusus Aksesibilitas (Fade Murni tanpa Pergeseran Fisik)
- */
 const reducedMotionVariants: Variants = {
   initial: { opacity: 0 },
   animate: {
     opacity: 1,
-    transition: { duration: 0.25 },
+    transition: { duration: 0.15 },
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.15 },
+    transition: { duration: 0.1 },
   },
 };
 
@@ -1856,7 +1873,6 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
   children,
   className = '',
 }) => {
-  // Detector Preferensi Sistem OS (Aksesibilitas "Reduce Motion")
   const shouldReduceMotion = useReducedMotion();
   const activeVariants = shouldReduceMotion ? reducedMotionVariants : pageVariants;
 
@@ -1866,8 +1882,7 @@ export const PageTransition: React.FC<PageTransitionProps> = ({
       animate="animate"
       exit="exit"
       variants={activeVariants}
-      style={{ willChange: 'transform, opacity' }} // Memaksa browser menyiapkan layer komposisi GPU
-      className={`w-full transform-gpu ${className}`.trim()}
+      className={`w-full min-h-full ${className}`.trim()}
     >
       {children}
     </motion.div>
@@ -2339,6 +2354,7 @@ import {
   Database,
   Sparkles,
   CalendarDays,
+  ShieldCheck,
   FileText,
   type LucideIcon,
 } from "lucide-react";
@@ -2389,6 +2405,12 @@ const Sidebar = () => {
       allowedRoles: ["admin", "admin_rambut"],
     },
     {
+      title: "Personil Tibkam",
+      path: "/personil",
+      icon: ShieldCheck,
+      allowedRoles: ["admin", "admin_rambut"],
+    },
+    {
       title: "Data Master",
       path: "/master",
       icon: Database,
@@ -2401,10 +2423,10 @@ const Sidebar = () => {
       allowedRoles: ["admin", "admin_rambut", "rambut"],
     },
     {
-      title: "Laporan Rambut",
-      path: "/laporan/rambut",
+      title: "Laporan",
+      path: "/laporan",
       icon: FileText,
-      allowedRoles: ["admin", "admin_rambut", "rambut"],
+      allowedRoles: ["admin", "admin_rambut", "rambut"], // Tambahkan role penyidik di sini jika sudah dibuat kelak
     },
     {
       title: "Kalender",
@@ -2479,7 +2501,7 @@ const Sidebar = () => {
         className={`
     fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full overflow-hidden
     bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
-    border-r border-gray-800/80 shadow-2xl
+    border-r border-transparent shadow-2xl
     flex flex-col transform-gpu
     transition-[width,transform] duration-300 ease-in-out
     lg:translate-x-0 lg:static lg:z-auto
@@ -2805,6 +2827,7 @@ export const Collections = {
 	Master: "master",
 	PengurusSantri: "pengurus_santri",
 	PeriodeRambut: "periode_rambut",
+	PersonilTibkam: "personil_tibkam",
 	RiwayatSetorRambut: "riwayat_setor_rambut",
 	Users: "users",
 	WajibSetorRambut: "wajib_setor_rambut",
@@ -2921,6 +2944,8 @@ export type MasterRecord = {
 	created: IsoAutoDateString
 	desa?: string
 	domisili?: string
+	foto?: FileNameString
+	foto_subfolder?: string
 	id: string
 	id_pps: string
 	kabupaten?: string
@@ -2975,6 +3000,17 @@ export type PeriodeRambutRecord = {
 	tahun_hijriyah?: number
 	tanggal_mulai: IsoDateString
 	tanggal_selesai: IsoDateString
+	updated: IsoAutoDateString
+}
+
+export type PersonilTibkamRecord = {
+	created: IsoAutoDateString
+	id: string
+	id_pps: string
+	jabatan_tibkam?: string
+	periode_hijri?: string
+	santri?: RecordIdString
+	status_aktif?: boolean
 	updated: IsoAutoDateString
 }
 
@@ -3050,6 +3086,7 @@ export type KalenderHijriyahResponse<Texpand = unknown> = Required<KalenderHijri
 export type MasterResponse<Texpand = unknown> = Required<MasterRecord> & BaseSystemFields<Texpand>
 export type PengurusSantriResponse<Texpand = unknown> = Required<PengurusSantriRecord> & BaseSystemFields<Texpand>
 export type PeriodeRambutResponse<Texpand = unknown> = Required<PeriodeRambutRecord> & BaseSystemFields<Texpand>
+export type PersonilTibkamResponse<Texpand = unknown> = Required<PersonilTibkamRecord> & BaseSystemFields<Texpand>
 export type RiwayatSetorRambutResponse<Texpand = unknown> = Required<RiwayatSetorRambutRecord> & BaseSystemFields<Texpand>
 export type UsersResponse<Texpand = unknown> = Required<UsersRecord> & AuthSystemFields<Texpand>
 export type WajibSetorRambutResponse<Texpand = unknown> = Required<WajibSetorRambutRecord> & BaseSystemFields<Texpand>
@@ -3066,6 +3103,7 @@ export type CollectionRecords = {
 	master: MasterRecord
 	pengurus_santri: PengurusSantriRecord
 	periode_rambut: PeriodeRambutRecord
+	personil_tibkam: PersonilTibkamRecord
 	riwayat_setor_rambut: RiwayatSetorRambutRecord
 	users: UsersRecord
 	wajib_setor_rambut: WajibSetorRambutRecord
@@ -3081,6 +3119,7 @@ export type CollectionResponses = {
 	master: MasterResponse
 	pengurus_santri: PengurusSantriResponse
 	periode_rambut: PeriodeRambutResponse
+	personil_tibkam: PersonilTibkamResponse
 	riwayat_setor_rambut: RiwayatSetorRambutResponse
 	users: UsersResponse
 	wajib_setor_rambut: WajibSetorRambutResponse

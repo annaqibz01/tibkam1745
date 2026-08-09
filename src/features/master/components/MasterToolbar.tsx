@@ -52,7 +52,7 @@ export default function MasterToolbar({
 
   const tingkatanDropdownOptions: DropdownOption[] = useMemo(
     () => [
-      { value: "all", label: "Semua Jenjang" },
+      { value: "all", label: "Semua Tingkatan" },
       ...tingkatanOptions.map((t) => ({ value: t, label: t })),
     ],
     [tingkatanOptions]
@@ -76,7 +76,7 @@ export default function MasterToolbar({
 
   const domisiliDropdownOptions: DropdownOption[] = useMemo(
     () => [
-      { value: "all", label: "Semua Kompleks" },
+      { value: "all", label: "Semua Domisili" },
       ...domisiliOptions.map((d) => ({ value: d, label: d })),
     ],
     [domisiliOptions]
@@ -113,11 +113,11 @@ export default function MasterToolbar({
           value={tingkatanFilter}
           onChange={onTingkatanFilterChange}
           options={tingkatanDropdownOptions}
-          defaultLabel="Semua Jenjang"
+          defaultLabel="Semua Tingkatan"
           icon={<GraduationCap className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
           activeColorClass="border-purple-500/50 text-purple-300 ring-purple-500/20"
           minWidthClass="w-full"
-          searchPlaceholder="Cari jenjang..."
+          searchPlaceholder="Cari Tingkatan..."
         />
 
         {/* 3. Kelas */}
@@ -149,11 +149,11 @@ export default function MasterToolbar({
           value={domisiliFilter}
           onChange={onDomisiliFilterChange}
           options={domisiliDropdownOptions}
-          defaultLabel="Semua Kompleks"
+          defaultLabel="Semua Domisili"
           icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
           activeColorClass="border-amber-500/50 text-amber-300 ring-amber-500/20"
           minWidthClass="w-full"
-          searchPlaceholder="Cari kompleks..."
+          searchPlaceholder="Cari domisili..."
         />
       </div>
     </div>
