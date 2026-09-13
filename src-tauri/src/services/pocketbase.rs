@@ -54,6 +54,7 @@ pub fn spawn_service(app: &App) -> Result<Child, String> {
 
     let mut cmd = Command::new(pocketbase_exe);
     cmd.arg("serve")
+        .arg("--http=127.0.0.1:8090")
         .arg("--dir")
         .arg(pb_data_dir.to_string_lossy().as_ref())
         .arg("--migrationsDir")

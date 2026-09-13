@@ -55,7 +55,7 @@ fn main() {
 ```toml
 [package]
 name = "tibkam1745"
-version = "1.4.0"
+version = "1.5.0"
 description = "layanan terpadu tibkam1745"
 authors = ["annaqibz01"]
 license = ""
@@ -629,7 +629,7 @@ pub struct PocketbaseChild(pub Mutex<Option<Child>>);
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "tibkam1745",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "identifier": "com.tibkam1745",
   "build": {
     "frontendDist": "../dist",

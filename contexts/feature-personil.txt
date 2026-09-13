@@ -281,7 +281,7 @@ export const ImportPersonilModal: React.FC<ImportPersonilModalProps> = ({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Memproses Batch Transaction...</span>
+                <span>Memproses Batch Import...</span>
               </>
             ) : (
               <>

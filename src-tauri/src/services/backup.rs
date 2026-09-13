@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
 pub fn execute_backup(app_handle: &AppHandle, date_str: &str) -> Result<String, String> {
@@ -8,7 +8,9 @@ pub fn execute_backup(app_handle: &AppHandle, date_str: &str) -> Result<String, 
         .app_local_data_dir()
         .map_err(|e| format!("Gagal AppData dir: {}", e))?;
 
-    let source_db = app_local_data.join("pb_data").join("data.db");
+    let pb_data_dir = app_local_data.join("pb_data");
+    let source_db = pb_data_dir.join("data.db");
+    
     if !source_db.exists() {
         return Err("File database (data.db) tidak ditemukan!".into());
     }
@@ -26,12 +28,25 @@ pub fn execute_backup(app_handle: &AppHandle, date_str: &str) -> Result<String, 
     let target_db = backup_folder.join(format!("backup_tibkam_{}.db", date_str));
     fs::copy(&source_db, &target_db).map_err(|e| e.to_string())?;
 
+    // 🛡️ Salin juga file WAL dan SHM jika sedang aktif agar data transaksi tidak terpotong
+    let wal_source = pb_data_dir.join("data.db-wal");
+    if wal_source.exists() {
+        let wal_target = backup_folder.join(format!("backup_tibkam_{}.db-wal", date_str));
+        let _ = fs::copy(&wal_source, &wal_target);
+    }
+
+    let shm_source = pb_data_dir.join("data.db-shm");
+    if shm_source.exists() {
+        let shm_target = backup_folder.join(format!("backup_tibkam_{}.db-shm", date_str));
+        let _ = fs::copy(&shm_source, &shm_target);
+    }
+
     rotate_old_backups(&backup_folder, 7);
 
     Ok(target_db.to_string_lossy().to_string())
 }
 
-fn rotate_old_backups(backup_folder: &PathBuf, max_keep: usize) {
+fn rotate_old_backups(backup_folder: &Path, max_keep: usize) {
     if let Ok(entries) = fs::read_dir(backup_folder) {
         let mut backup_files: Vec<PathBuf> = entries
             .filter_map(|e| e.ok())
@@ -49,6 +64,11 @@ fn rotate_old_backups(backup_folder: &PathBuf, max_keep: usize) {
         if backup_files.len() > max_keep {
             for old_file in backup_files.iter().skip(max_keep) {
                 let _ = fs::remove_file(old_file);
+                // Hapus juga file jurnal pendukungnya jika ada
+                let old_wal = old_file.with_extension("db-wal");
+                if old_wal.exists() { let _ = fs::remove_file(old_wal); }
+                let old_shm = old_file.with_extension("db-shm");
+                if old_shm.exists() { let _ = fs::remove_file(old_shm); }
             }
         }
     }
