@@ -1,4 +1,4 @@
-// src/components/profile/EditProfileModal.tsx
+// src/features/profile/components/EditProfileModal.tsx
 import React, { useState, useRef, useEffect, ChangeEvent } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -117,16 +117,15 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Edit Informasi Profil"
-      icon={<User className="w-5 h-5 text-indigo-400" />}
+      icon={<User className="w-4 h-4 text-indigo-400" />}
       maxWidth="max-w-lg"
     >
-      {/* ✨ Ditambahkan px-6 pb-6 pt-2 agar jarak kanan-kiri dan bawah tidak mepet */}
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-6 px-6 pb-6 pt-2">
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
         {/* 📸 1. AVATAR EDIT SECTION */}
-        <div className="flex flex-col items-center justify-center pt-2 pb-3 border-b border-gray-800/80">
+        <div className="flex flex-col items-center justify-center pt-1 pb-3 border-b border-zinc-800">
           <div className="group relative inline-flex items-center justify-center">
             {/* Circle Avatar Frame */}
-            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden ring-4 ring-indigo-500/20 border-2 border-indigo-500/30 bg-gradient-to-br from-indigo-950 to-gray-800 flex items-center justify-center shadow-xl transition-all duration-300 group-hover:ring-indigo-500/40">
+            <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-full overflow-hidden ring-4 ring-indigo-500/20 border-2 border-indigo-500/30 bg-zinc-800 flex items-center justify-center shadow-lg transition-all duration-200 group-hover:ring-indigo-500/40">
               {avatarPreview ? (
                 <img
                   src={avatarPreview}
@@ -141,7 +140,7 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             </div>
 
             {/* Hover Action Overlay */}
-            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-gray-950/75 backdrop-blur-xs rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
+            <div className="absolute inset-0 flex items-center justify-center gap-2 bg-zinc-950/75 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-200 z-10">
               <button
                 type="button"
                 disabled={isPending}
@@ -173,18 +172,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
             onChange={handleAvatarChange}
             className="hidden"
           />
-          <span className="mt-2.5 text-[11px] font-mono text-gray-400">
+          <span className="mt-2.5 text-[11px] font-mono text-zinc-400">
             Arahkan kursor pada foto untuk mengganti atau menghapus
           </span>
         </div>
 
         {/* 📝 2. FORM INPUTS */}
-        <div className="space-y-4">
+        <div className="space-y-3">
           {/* Input Nama Lengkap */}
           <div>
             <label
               htmlFor="edit-name"
-              className="block text-xs font-mono font-medium text-gray-300 mb-1.5"
+              className="block text-[11px] font-medium text-zinc-300 mb-1"
             >
               Nama Lengkap
             </label>
@@ -194,14 +193,14 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
               disabled={isPending}
               {...register("name")}
               placeholder="Masukkan nama lengkap"
-              className={`w-full px-4 py-2.5 bg-gray-950/60 border rounded-2xl text-white text-sm placeholder-gray-500 focus:outline-none transition-all duration-200 shadow-inner disabled:opacity-50 disabled:cursor-not-allowed ${
+              className={`w-full h-9 px-3 bg-zinc-950 border rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                 errors.name
-                  ? "border-red-500 focus:ring-2 focus:ring-red-500/50"
-                  : "border-gray-800 focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50"
+                  ? "border-rose-500/50 focus:border-rose-500 focus:ring-rose-500"
+                  : "border-zinc-800 focus:border-indigo-500 focus:ring-indigo-500"
               }`}
             />
             {errors.name && (
-              <p className="mt-1 text-xs text-red-400">{errors.name.message}</p>
+              <p className="mt-1 text-xs text-rose-400">{errors.name.message}</p>
             )}
           </div>
 
@@ -209,18 +208,18 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <div>
             <label
               htmlFor="edit-username"
-              className="block text-xs font-mono font-medium text-gray-500 mb-1.5"
+              className="block text-[11px] font-medium text-zinc-500 mb-1"
             >
-              Username Sistem <span className="text-gray-600">(Tidak dapat diubah)</span>
+              Username Sistem <span className="text-zinc-600">(Tidak dapat diubah)</span>
             </label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-gray-600 absolute left-3.5 top-3.5 pointer-events-none" />
+              <Lock className="w-3.5 h-3.5 text-zinc-600 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               <input
                 id="edit-username"
                 type="text"
                 value={user?.username || ""}
                 disabled
-                className="w-full pl-10 pr-4 py-2.5 bg-gray-900/40 border border-gray-800/60 rounded-2xl text-gray-500 font-mono text-sm cursor-not-allowed select-none"
+                className="w-full h-9 pl-9 pr-3 bg-zinc-900/40 border border-zinc-800/60 rounded-lg text-zinc-500 font-mono text-xs cursor-not-allowed select-none"
               />
             </div>
           </div>
@@ -228,19 +227,19 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
 
         {/* Server Error Alert */}
         {serverError && (
-          <div className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs">
+          <div className="flex items-center gap-2 p-2.5 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{serverError}</span>
           </div>
         )}
 
         {/* 🚪 3. MODAL FOOTER ACTIONS */}
-        <div className="flex items-center justify-end gap-3 pt-4 border-t border-gray-800/80">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
           <button
             type="button"
             onClick={onClose}
             disabled={isPending}
-            className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold transition-all duration-200 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-9 px-4 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-300 hover:bg-zinc-800 hover:text-white text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Batal
           </button>
@@ -248,16 +247,16 @@ export const EditProfileModal: React.FC<EditProfileModalProps> = ({
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-2xl text-xs font-mono font-semibold shadow-lg shadow-indigo-600/20 active:scale-95 transition-all duration-200"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition-colors active:scale-[0.98]"
           >
             {isPending ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 <span>Menyimpan...</span>
               </>
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" />
                 <span>Simpan Perubahan</span>
               </>
             )}

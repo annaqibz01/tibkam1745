@@ -1,18 +1,21 @@
 // src/App.tsx
-import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { ToastProvider } from './context/ToastContext';
-import { ProtectedRoute } from '@/features/auth';
-import DashboardLayout from '@/layouts/DashboardLayout/DashboardLayout';
-import { LoginPage as Login } from '@/features/auth';
-import { DashboardPage as Dashboard } from '@/features/dashboard';
-import { ProfilePage as Profile } from '@/features/profile';
-import { UsersPage as Users } from '@/features/users';
-import { MasterPage as Master } from '@/features/master';
-import { KalenderPage as Kalender } from '@/features/kalender';
-import { RambutPage as Rambut } from '@/features/rambut';
-import { LaporanRambutPage as LaporanRambut, LaporanRedirect } from "@/features/laporan";
-import { PersonilPage as Personil } from '@/features/personil'; // 👈 1. Impor Fitur Personil
-import { CustomTitleBar } from '@/components/shared';
+import { HashRouter, Routes, Route, Navigate } from "react-router-dom";
+import { ToastProvider } from "./context/ToastContext";
+import { ProtectedRoute } from "@/features/auth";
+import DashboardLayout from "@/layouts/DashboardLayout/DashboardLayout";
+import { LoginPage as Login } from "@/features/auth";
+import { DashboardPage as Dashboard } from "@/features/dashboard";
+import { ProfilePage as Profile } from "@/features/profile";
+import { UsersPage as Users } from "@/features/users";
+import { MasterPage as Master } from "@/features/master";
+import { KalenderPage as Kalender } from "@/features/kalender";
+import { RambutPage as Rambut } from "@/features/rambut";
+import {
+  LaporanRambutPage as LaporanRambut,
+  LaporanCenter,
+} from "@/features/laporan";
+import { PersonilPage as Personil } from "@/features/personil";
+import { CustomTitleBar } from "@/components/shared";
 
 export default function App() {
   return (
@@ -45,7 +48,6 @@ export default function App() {
                   }
                 />
 
-                {/* 👈 2. Tambahkan Rute Personil Tibkam */}
                 <Route
                   path="/personil"
                   element={
@@ -58,7 +60,9 @@ export default function App() {
                 <Route
                   path="/rambut"
                   element={
-                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                    <ProtectedRoute
+                      allowedRoles={["admin", "admin_rambut", "rambut"]}
+                    >
                       <Rambut />
                     </ProtectedRoute>
                   }
@@ -67,8 +71,10 @@ export default function App() {
                 <Route
                   path="/laporan"
                   element={
-                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
-                      <LaporanRedirect />
+                    <ProtectedRoute
+                      allowedRoles={["admin", "admin_rambut", "rambut"]}
+                    >
+                      <LaporanCenter />
                     </ProtectedRoute>
                   }
                 />
@@ -76,7 +82,9 @@ export default function App() {
                 <Route
                   path="/laporan/rambut"
                   element={
-                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                    <ProtectedRoute
+                      allowedRoles={["admin", "admin_rambut", "rambut"]}
+                    >
                       <LaporanRambut />
                     </ProtectedRoute>
                   }
@@ -85,7 +93,9 @@ export default function App() {
                 <Route
                   path="/kalender"
                   element={
-                    <ProtectedRoute allowedRoles={["admin", "admin_rambut", "rambut"]}>
+                    <ProtectedRoute
+                      allowedRoles={["admin", "admin_rambut", "rambut"]}
+                    >
                       <Kalender />
                     </ProtectedRoute>
                   }

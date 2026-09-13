@@ -18,7 +18,7 @@ export const BaseToolbar: React.FC<BaseToolbarProps> = ({
   placeholder,
   onRefresh,
   isLoading,
-  searchIconColorClass = "text-indigo-400",
+  searchIconColorClass = "text-zinc-500",
   children,
 }) => {
   const [localSearch, setLocalSearch] = useState(search);
@@ -43,11 +43,11 @@ export const BaseToolbar: React.FC<BaseToolbarProps> = ({
   };
 
   return (
-    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 md:gap-4 w-full select-none">
-      {/* Search Input Universal (Height h-12) */}
+    <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full select-none font-sans">
+      {/* Search Input Universal (Tinggi Standar h-9 / 36px, Radius rounded-lg) */}
       <div className="relative flex-1 group min-w-[200px]">
-        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-500 transition-colors">
-          <Search className={`w-4 h-4 sm:w-5 sm:h-5 ${searchIconColorClass}`} />
+        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none transition-colors">
+          <Search className={`w-4 h-4 ${searchIconColorClass}`} />
         </div>
         <input
           ref={inputRef}
@@ -56,31 +56,33 @@ export const BaseToolbar: React.FC<BaseToolbarProps> = ({
           onChange={(e) => setLocalSearch(e.target.value)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
-          className="w-full h-12 pl-11 pr-10 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 rounded-2xl text-white text-xs sm:text-sm placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/40 shadow-lg font-mono transition-all duration-200"
+          className="w-full h-9 pl-9 pr-8 bg-zinc-900 border border-zinc-800 rounded-lg text-zinc-100 text-xs placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-colors"
         />
         {localSearch && (
           <button
             type="button"
+            tabIndex={-1}
             onClick={handleClear}
-            className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-500 hover:text-gray-300 transition-colors"
+            className="absolute inset-y-0 right-0 pr-2.5 flex items-center text-zinc-500 hover:text-zinc-300 transition-colors focus:outline-none"
           >
-            <X className="w-4 h-4" />
+            <X className="w-3.5 h-3.5" />
           </button>
         )}
       </div>
 
-      {/* Slot Filter Dinamis (GlassDropdown / SegmentedControl) */}
+      {/* Slot Filter Dinamis (Dropdown / Segmented Control) */}
       {children}
 
-      {/* Refresh Button Universal (Height h-12) */}
+      {/* Refresh Button Universal (Kotak Presisi w-9 h-9, Radius rounded-lg) */}
       <button
         type="button"
+        tabIndex={-1}
         onClick={onRefresh}
         disabled={isLoading}
-        className="w-12 h-12 flex items-center justify-center flex-shrink-0 rounded-2xl bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 text-gray-300 hover:text-white transition-all shadow-lg active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus:outline-none"
         title="Perbarui Data"
       >
-        <RefreshCw className={`w-4 h-4 ${isLoading ? "animate-spin" : ""}`} />
+        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? "animate-spin text-indigo-400" : ""}`} />
       </button>
     </div>
   );

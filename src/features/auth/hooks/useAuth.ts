@@ -1,54 +1,36 @@
 // src/features/auth/hooks/useAuth.ts
 import { useEffect, useState, useCallback } from 'react';
 import { pb } from '@/lib/pocketbase';
-import { ClientResponseError } from 'pocketbase';// Atau 'pocketbase' sesuai import project Anda
-import type { UsersResponse } from '@/types/pocketbase-types'; 
+import { ClientResponseError } from 'pocketbase';
+import type { UsersResponse } from '@/types/pocketbase-types';
 
 type AuthResult = { success: boolean; error?: string };
 
-// Fungsi penanganan error asinkron khusus untuk alur login
-async function extractLoginErrorMessage(error: unknown, username: string): Promise<string> {
+// Penanganan pesan error yang realistis untuk sistem desktop offline
+function extractLoginErrorMessage(error: unknown): string {
   if (error instanceof ClientResponseError) {
+    // Status 0: Engine PocketBase lokal belum menyala atau port 8090 terblokir
     if (error.status === 0) {
-      return 'Gagal terhubung ke server. Periksa koneksi internet Anda.';
+      return 'Layanan database lokal belum siap. Tunggu beberapa detik lalu coba lagi.';
     }
 
     if (error.status === 400) {
-      try {
-        const userCheck = await pb.collection('users').getFirstListItem(
-          `username = "${username}" || email = "${username}"`,
-          { fields: 'role' }
-        );
-
-        if (userCheck.role === 'super_admin' || userCheck.role === 'superadmin') {
-          return 'Password salah. Jika Anda lupa password Utama, silakan hubungi Tim Pengembang Sistem.';
-        }
-
-        // 🛡️ Tambahkan 'admin_rambut' di sini
-        if (userCheck.role === 'admin' || userCheck.role === 'admin_rambut') {
-          return 'Password salah. Jika Anda lupa password Admin, silakan hubungi Super Admin.';
-        }
-
-        return 'Username atau password salah. Jika Anda lupa, silakan hubungi Admin.';
-      } catch {
-        return 'Username atau password salah. Jika Anda lupa kredensial, silakan hubungi Admin.';
-      }
+      return 'Username atau kata sandi salah. Silakan periksa kembali.';
     }
 
     return error.response?.message || error.message || 'Gagal masuk ke sistem.';
   }
 
   if (error instanceof Error) return error.message;
-  return 'Terjadi kesalahan pada sistem.';
+  return 'Terjadi kesalahan sistem internal.';
 }
 
-// Fungsi penanganan error umum (untuk sync & refresh session)
 function extractGeneralErrorMessage(error: unknown): string {
   if (error instanceof ClientResponseError) {
-    if (error.status === 0) return 'Koneksi ke server terputus.';
+    if (error.status === 0) return 'Koneksi database lokal terputus.';
     return error.message;
   }
-  return 'Sesi tidak valid.';
+  return 'Sesi kredensial tidak valid.';
 }
 
 export function useAuth() {
@@ -60,6 +42,8 @@ export function useAuth() {
     const model = pb.authStore.model as UsersResponse | null;
     if (model && model.status === false) {
       pb.authStore.clear();
+      setUser(null);
+      setIsValid(false);
     } else {
       setUser(model);
       setIsValid(pb.authStore.isValid);
@@ -76,11 +60,11 @@ export function useAuth() {
     try {
       const refreshData = await pb.collection('users').authRefresh();
       if (refreshData.record && (refreshData.record as unknown as UsersResponse).status === false) {
-        console.warn('Sesi dibatalkan otomatis karena akun dinonaktifkan.');
+        console.warn('Sesi dibatalkan otomatis karena status akun dinonaktifkan.');
         pb.authStore.clear();
       }
     } catch (error) {
-      console.warn('Session refresh failed:', extractGeneralErrorMessage(error));
+      console.warn('Verifikasi sesi gagal:', extractGeneralErrorMessage(error));
       pb.authStore.clear();
     } finally {
       setIsLoading(false);
@@ -110,21 +94,20 @@ export function useAuth() {
   const login = useCallback(async (username: string, password: string): Promise<AuthResult> => {
     setIsLoading(true);
     try {
-      const authData = await pb.collection('users').authWithPassword(username, password);
+      const authData = await pb.collection('users').authWithPassword(username.trim(), password);
       const userModel = authData.record as unknown as UsersResponse;
-      
+
       if (userModel && userModel.status === false) {
         pb.authStore.clear();
-        return { 
-          success: false, 
-          error: 'Akun Anda telah dinonaktifkan. Silakan hubungi administrator sistem.' 
+        return {
+          success: false,
+          error: 'Akun Anda dinonaktifkan. Silakan hubungi petugas Administrator.'
         };
       }
 
       return { success: true };
     } catch (error) {
-      // Menggunakan penanganan error kustom yang dinamis berdasarkan input username
-      const dynamicError = await extractLoginErrorMessage(error, username);
+      const dynamicError = extractLoginErrorMessage(error);
       return { success: false, error: dynamicError };
     } finally {
       setIsLoading(false);
@@ -133,6 +116,8 @@ export function useAuth() {
 
   const logout = useCallback((): void => {
     pb.authStore.clear();
+    setUser(null);
+    setIsValid(false);
   }, []);
 
   return {

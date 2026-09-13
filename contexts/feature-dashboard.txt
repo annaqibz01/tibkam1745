@@ -13,7 +13,7 @@
 
 ### `src/features/dashboard/components/AdminStatsGrid.tsx`
 ```tsx
-// src/components/dashboard/admin/AdminStatsGrid.tsx
+// src/features/dashboard/components/AdminStatsGrid.tsx
 import React from 'react';
 import { Users, UserCheck, ShieldCheck, UserX } from 'lucide-react';
 import type { UsersResponse } from '../../../types/pocketbase-types';
@@ -23,10 +23,9 @@ interface AdminStatsGridProps {
 }
 
 export const AdminStatsGrid: React.FC<AdminStatsGridProps> = ({ users }) => {
-  // Hitung data real menggunakan fungsi javascript array
   const totalUsers = users.length;
   const activeUsers = users.filter((u) => u.status).length;
-  const adminUsers = users.filter((u) => u.role === 'admin').length;
+  const adminUsers = users.filter((u) => u.role === 'admin' || u.role === 'admin_rambut').length;
   const nonActiveUsers = totalUsers - activeUsers;
 
   const activePercentage = ((activeUsers / (totalUsers || 1)) * 100).toFixed(0);
@@ -35,96 +34,63 @@ export const AdminStatsGrid: React.FC<AdminStatsGridProps> = ({ users }) => {
     {
       title: 'Total Pengguna',
       value: totalUsers.toString(),
-      sub: 'Terdaftar di sistem',
+      sub: 'Akun terdaftar di sistem',
       icon: Users,
-      gradientText: 'from-indigo-200 via-indigo-300 to-purple-300',
-      glowBg: 'bg-indigo-600/15',
-      topBorder: 'via-indigo-500/50',
-      iconBox: 'bg-indigo-500/10 border-indigo-500/20 text-indigo-400',
+      iconColor: 'text-indigo-400',
       dotColor: 'bg-indigo-400',
     },
     {
       title: 'Pengguna Aktif',
       value: activeUsers.toString(),
-      sub: `${activePercentage}% dari total akun`,
+      sub: `${activePercentage}% akun berstatus aktif`,
       icon: UserCheck,
-      gradientText: 'from-emerald-200 via-emerald-300 to-teal-300',
-      glowBg: 'bg-emerald-600/15',
-      topBorder: 'via-emerald-500/50',
-      iconBox: 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400',
+      iconColor: 'text-emerald-400',
       dotColor: 'bg-emerald-400',
     },
     {
       title: 'Administrator',
       value: adminUsers.toString(),
-      sub: 'Akses kontrol penuh',
+      sub: 'Hak akses kontrol dan setting',
       icon: ShieldCheck,
-      gradientText: 'from-purple-200 via-purple-300 to-pink-300',
-      glowBg: 'bg-purple-600/15',
-      topBorder: 'via-purple-500/50',
-      iconBox: 'bg-purple-500/10 border-purple-500/20 text-purple-400',
+      iconColor: 'text-purple-400',
       dotColor: 'bg-purple-400',
     },
     {
       title: 'Akun Nonaktif',
       value: nonActiveUsers.toString(),
-      sub: 'Akses diblokir/ditangguhkan',
+      sub: 'Akses ditangguhkan / diblokir',
       icon: UserX,
-      gradientText: 'from-red-200 via-red-300 to-rose-300',
-      glowBg: 'bg-red-600/15',
-      topBorder: 'via-red-500/50',
-      iconBox: 'bg-red-500/10 border-red-500/20 text-red-400',
-      dotColor: 'bg-red-400',
+      iconColor: 'text-rose-400',
+      dotColor: 'bg-rose-400',
     },
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4 font-sans select-none">
       {cards.map((card, index) => {
         const Icon = card.icon;
         return (
           <div
             key={index}
-            className="relative group overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:border-gray-700/80 hover:-translate-y-1 hover:shadow-2xl"
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm flex flex-col justify-between"
           >
-            {/* 🔮 Ambient Glow Mesh Per Kartu */}
-            <div
-              className={`absolute -top-20 -right-20 w-44 h-44 rounded-full ${card.glowBg} blur-[75px] pointer-events-none transition-all duration-500 group-hover:scale-125`}
-            />
-
-            {/* Garis Kilau Top-Border */}
-            <div
-              className={`absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent ${card.topBorder} to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300`}
-            />
-
-            <div className="relative z-10 flex items-start justify-between gap-3">
-              {/* Judul & Angka Statistik */}
+            <div className="flex items-start justify-between gap-2">
               <div className="space-y-1">
-                <p className="text-[11px] font-mono font-medium text-gray-400 uppercase tracking-wider">
+                <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                   {card.title}
                 </p>
-                <p
-                  className={`text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${card.gradientText} tracking-tight`}
-                >
+                <p className="text-2xl sm:text-3xl font-bold font-mono text-zinc-100 tracking-tight">
                   {card.value}
                 </p>
               </div>
 
-              {/* Icon Container dengan Glossy Effect */}
-              <div
-                className={`p-3 rounded-2xl border ${card.iconBox} shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}
-              >
-                <Icon className="w-5 h-5" />
+              <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 shrink-0">
+                <Icon className={`w-4 h-4 ${card.iconColor}`} />
               </div>
             </div>
 
-            {/* Sub-Info Footer dengan Titik Pulsing */}
-            <div className="relative z-10 mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2 text-[11px] font-mono text-gray-400">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${card.dotColor} ${
-                  card.title === 'Akun Nonaktif' && Number(card.value) > 0 ? 'animate-ping' : 'animate-pulse'
-                }`}
-              />
+            <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center gap-1.5 text-[11px] text-zinc-400">
+              <span className={`w-1.5 h-1.5 rounded-full ${card.dotColor}`} />
               <span className="truncate">{card.sub}</span>
             </div>
           </div>
@@ -137,7 +103,7 @@ export const AdminStatsGrid: React.FC<AdminStatsGridProps> = ({ users }) => {
 
 ### `src/features/dashboard/components/RecentActivityLog.tsx`
 ```tsx
-// src/components/dashboard/admin/RecentActivityLog.tsx
+// src/features/dashboard/components/RecentActivityLog.tsx
 import React from 'react';
 import { UserPlus, Clock, Activity, UserX } from 'lucide-react';
 import type { UsersResponse } from '../../../types/pocketbase-types';
@@ -147,96 +113,86 @@ interface RecentActivityLogProps {
 }
 
 export const RecentActivityLog: React.FC<RecentActivityLogProps> = ({ users }) => {
-  // Urutkan data berdasarkan tanggal dibuat (paling baru di atas) dan ambil maksimal 5 item
   const recentRegistrations = [...users]
     .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
     .slice(0, 5);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-2xl backdrop-blur-xl h-full flex flex-col justify-between">
-      {/* 🔮 Garis Kilau Top-Border */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-      <div>
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-5 pb-3.5 border-b border-gray-800/80">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <Activity className="w-4 h-4" />
-            </div>
-            <h3 className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
-              Pendaftaran Terbaru
-            </h3>
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5 shadow-sm font-sans select-none">
+      {/* Header Panel */}
+      <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-zinc-800">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+            <Activity className="w-4 h-4 text-indigo-400" />
           </div>
-
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-medium text-emerald-400 shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live Feed
-          </span>
+          <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+            Pendaftaran Pengguna Terbaru
+          </h3>
         </div>
 
-        {/* Timeline Log List */}
-        <div className="relative pl-1">
-          {/* Garis alur waktu vertikal dengan efek gradient */}
-          {recentRegistrations.length > 0 && (
-            <div className="absolute left-[17px] top-3 bottom-3 w-px bg-gradient-to-b from-indigo-500/50 via-purple-500/20 to-transparent" />
-          )}
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Live Update
+        </span>
+      </div>
 
-          {recentRegistrations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center space-y-3">
-              <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-500 shadow-inner">
-                <UserX className="w-6 h-6" />
-              </div>
-              <p className="text-xs font-mono text-gray-500">
-                Belum ada aktivitas pendaftaran pengguna.
-              </p>
+      {/* Timeline List */}
+      <div className="relative">
+        {recentRegistrations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
+            <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-500">
+              <UserX className="w-5 h-5" />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentRegistrations.map((targetUser, index) => {
-                // Format waktu pendaftaran agar rapi
-                const registerDate = new Date(targetUser.created).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+            <p className="text-xs text-zinc-500">
+              Belum ada riwayat aktivitas pendaftaran.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-800/60">
+            {recentRegistrations.map((targetUser, index) => {
+              const registerDate = new Date(targetUser.created).toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
 
-                return (
-                  <div
-                    key={targetUser.id || index}
-                    className="group relative flex items-start gap-3.5 p-2.5 rounded-2xl transition-colors duration-200 hover:bg-indigo-500/[0.03]"
-                  >
-                    {/* Node Icon Timeline Glossy */}
-                    <div className="relative z-10 flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-950 to-gray-900 border border-indigo-500/30 ring-2 ring-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-md group-hover:scale-110 group-hover:ring-indigo-500/30 transition-all">
-                      <UserPlus className="w-3.5 h-3.5" />
+              return (
+                <div
+                  key={targetUser.id || index}
+                  className="flex items-center justify-between py-2.5 first:pt-1 last:pb-1 hover:bg-zinc-800/30 px-2 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center shrink-0">
+                      <UserPlus className="w-3.5 h-3.5 text-indigo-400" />
                     </div>
 
-                    {/* Detail Konten Aktivitas */}
-                    <div className="min-w-0 flex-1 pt-0.5">
-                      <p className="text-xs leading-relaxed text-gray-300">
-                        Pengguna baru{' '}
-                        <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors">
-                          {targetUser.name || targetUser.username}
-                        </span>{' '}
-                        <span className="text-gray-500 font-mono">(@{targetUser.username})</span> terdaftar sebagai{' '}
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono text-[10px] font-semibold capitalize">
-                          {targetUser.role}
+                    <div className="min-w-0 truncate">
+                      <p className="text-xs text-zinc-200 font-medium truncate">
+                        {targetUser.name || targetUser.username}
+                        <span className="text-zinc-500 font-mono text-[11px] ml-1.5">
+                          (@{targetUser.username})
                         </span>
                       </p>
-
-                      <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[10px] text-gray-500">
-                        <Clock className="w-3 h-3 text-gray-500" />
-                        <span>{registerDate}</span>
-                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium capitalize bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      {targetUser.role}
+                    </span>
+
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-500">
+                      <Clock className="w-3 h-3" />
+                      <span>{registerDate}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -245,7 +201,7 @@ export const RecentActivityLog: React.FC<RecentActivityLogProps> = ({ users }) =
 
 ### `src/features/dashboard/components/SantriStatsSummary.tsx`
 ```tsx
-// src/components/shared/SantriStatsSummary.tsx
+// src/features/dashboard/components/SantriStatsSummary.tsx
 import React, { useMemo } from "react";
 import {
   UserCheck,
@@ -272,7 +228,6 @@ export default function SantriStatsSummary({
   data,
   isLoading = false,
 }: SantriStatsSummaryProps) {
-  // 🎓 Urutan Baku Tingkatan Pendidikan
   const TINGKATAN_ORDER = [
     "idadiyah",
     "ibtidaiyah",
@@ -281,7 +236,6 @@ export default function SantriStatsSummary({
     "kuliah syariah",
   ];
 
-  // Sort sebaran tingkatan berdasarkan hirarki pendidikan baku
   const tingkatanList = useMemo(() => {
     if (!data?.tingkatanCounts) return [];
 
@@ -296,15 +250,11 @@ export default function SantriStatsSummary({
       .sort((a, b) => {
         const indexA = getOrderIndex(a.nama);
         const indexB = getOrderIndex(b.nama);
-
-        if (indexA !== indexB) {
-          return indexA - indexB;
-        }
+        if (indexA !== indexB) return indexA - indexB;
         return b.jumlah - a.jumlah;
       });
   }, [data?.tingkatanCounts]);
 
-  // Sort sebaran domisili secara alfabetis (A -> Z)
   const domisiliList = useMemo(() => {
     if (!data?.domisiliCounts) return [];
     return Object.entries(data.domisiliCounts)
@@ -312,22 +262,22 @@ export default function SantriStatsSummary({
       .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [data?.domisiliCounts]);
 
-  // SKELETON LOADING STATE MODERN
+  // Loading Skeleton Kompak
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-5">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
           {Array.from({ length: 3 }).map((_, idx) => (
             <div
               key={`stat-skeleton-${idx}`}
-              className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gray-900/60 p-5 md:p-6 shadow-xl backdrop-blur-xl animate-pulse"
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 animate-pulse space-y-3"
             >
               <div className="flex items-center justify-between">
-                <div className="h-3 w-28 rounded-lg bg-gray-800" />
-                <div className="h-10 w-10 rounded-2xl bg-gray-800" />
+                <div className="h-3 w-28 rounded bg-zinc-800" />
+                <div className="h-8 w-8 rounded-lg bg-zinc-800" />
               </div>
-              <div className="mt-4 h-9 w-24 rounded-xl bg-gray-800" />
-              <div className="mt-2 h-3 w-36 rounded bg-gray-800/60" />
+              <div className="h-8 w-20 rounded bg-zinc-800" />
+              <div className="h-2.5 w-36 rounded bg-zinc-800/60" />
             </div>
           ))}
         </div>
@@ -347,91 +297,65 @@ export default function SantriStatsSummary({
     {
       title: "Total Santri Aktif",
       value: stats.totalSantriAktif,
-      sub: "Seluruh santri berstatus aktif saat ini",
+      sub: "Seluruh santri terdata aktif",
       icon: UserCheck,
       unit: "Santri",
-      gradientText: "from-emerald-200 via-emerald-300 to-teal-300",
-      glowBg: "bg-emerald-600/15",
-      topBorder: "via-emerald-500/50",
-      iconBox: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+      iconColor: "text-emerald-400",
       dotColor: "bg-emerald-400",
     },
     {
       title: "Domisili PPS (Mukim)",
       value: stats.totalPps,
-      sub: "Domisili A–T dan Z (Non DKS-K)",
+      sub: "Kompleks A–T & Z (Non DKS-K)",
       icon: Building2,
       unit: "Santri",
-      gradientText: "from-indigo-200 via-indigo-300 to-purple-300",
-      glowBg: "bg-indigo-600/15",
-      topBorder: "via-indigo-500/50",
-      iconBox: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+      iconColor: "text-indigo-400",
       dotColor: "bg-indigo-400",
     },
     {
       title: "Domisili LPPS (Luar PPS)",
       value: stats.totalLpps,
-      sub: "Santri aktif berstatus domisili LPPS",
+      sub: "Santri non-mukim di luar asrama",
       icon: Home,
       unit: "Santri",
-      gradientText: "from-purple-200 via-purple-300 to-pink-300",
-      glowBg: "bg-purple-600/15",
-      topBorder: "via-purple-500/50",
-      iconBox: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+      iconColor: "text-purple-400",
       dotColor: "bg-purple-400",
     },
   ];
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      {/* 🚀 PANEL UTAMA: 3 Stat Cards Ringkasan */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-5">
+    <div className="space-y-4 font-sans select-none">
+      {/* 1. Panel 3 Kartu Ringkasan Utama */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
         {topCards.map((card, idx) => {
           const Icon = card.icon;
           return (
             <div
               key={idx}
-              className="relative group overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:border-gray-700/80 hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between"
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm flex flex-col justify-between"
             >
-              {/* 🔮 Ambient Glow Mesh Per Kartu */}
-              <div
-                className={`absolute -top-20 -right-20 w-48 h-48 rounded-full ${card.glowBg} blur-[80px] pointer-events-none transition-all duration-500 group-hover:scale-125`}
-              />
-
-              {/* Garis Kilau Top-Border */}
-              <div
-                className={`absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent ${card.topBorder} to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300`}
-              />
-
-              <div className="relative z-10 flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-mono font-medium text-gray-400 uppercase tracking-wider">
+                  <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                     {card.title}
                   </p>
-                  <div className="flex items-baseline gap-2">
-                    <p
-                      className={`text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${card.gradientText} tracking-tight font-mono`}
-                    >
+                  <div className="flex items-baseline gap-1.5">
+                    <p className="text-2xl sm:text-3xl font-bold text-zinc-100 font-mono tracking-tight">
                       {card.value.toLocaleString("id-ID")}
                     </p>
-                    <span className="text-xs font-mono text-gray-400">
+                    <span className="text-xs text-zinc-500 font-sans">
                       {card.unit}
                     </span>
                   </div>
                 </div>
 
-                <div
-                  className={`p-3 rounded-2xl border ${card.iconBox} shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}
-                >
-                  <Icon className="w-5 h-5" />
+                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 shrink-0">
+                  <Icon className={`w-4 h-4 ${card.iconColor}`} />
                 </div>
               </div>
 
-              {/* Footer Sub-Info */}
-              <div className="relative z-10 mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2 text-[11px] font-mono text-gray-400">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${card.dotColor} animate-pulse`}
-                />
+              <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center gap-1.5 text-[11px] text-zinc-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${card.dotColor}`} />
                 <span className="truncate">{card.sub}</span>
               </div>
             </div>
@@ -439,29 +363,24 @@ export default function SantriStatsSummary({
         })}
       </div>
 
-      {/* 🎓 PANEL KEDUA: Sebaran Per Tingkatan Pendidikan */}
+      {/* 2. Panel Sebaran Jenjang Pendidikan */}
       {tingkatanList.length > 0 && (
-        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-          {/* Garis Kilau Top-Border */}
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-          {/* Header Panel */}
-          <div className="mb-5 flex items-center justify-between border-b border-gray-800/80 pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                <GraduationCap className="h-4 w-4" />
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
+          <div className="mb-3.5 flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                <GraduationCap className="h-4 w-4 text-indigo-400" />
               </div>
-              <h3 className="text-xs font-mono font-semibold text-gray-200 uppercase tracking-wider">
-                Sebaran Tingkatan
+              <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                Sebaran Tingkatan Pendidikan
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-mono font-medium text-indigo-300">
-              {tingkatanList.length} Jenjang Terdaftar
+            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+              {tingkatanList.length} Jenjang
             </span>
           </div>
 
-          {/* Grid Items */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {tingkatanList.map((item) => {
               const persentase =
                 stats.totalSantriAktif > 0
@@ -471,28 +390,28 @@ export default function SantriStatsSummary({
               return (
                 <div
                   key={item.nama}
-                  className="group relative rounded-2xl border border-gray-800/80 bg-gray-950/60 p-3.5 transition-all duration-200 hover:border-indigo-500/30 hover:bg-gray-900/80 hover:-translate-y-0.5 shadow-md"
+                  className="rounded-lg border border-zinc-800/80 bg-zinc-950/70 p-3 hover:border-zinc-700 transition-colors"
                 >
                   <span
-                    className="block truncate text-xs font-medium text-gray-400 group-hover:text-gray-200 transition-colors capitalize"
+                    className="block truncate text-xs font-medium text-zinc-400 capitalize"
                     title={item.nama}
                   >
                     {item.nama}
                   </span>
 
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="font-mono text-xl font-bold text-white">
+                  <div className="mt-1.5 flex items-baseline justify-between">
+                    <span className="font-mono text-lg font-bold text-zinc-100">
                       {item.jumlah.toLocaleString("id-ID")}
                     </span>
-                    <span className="font-mono text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-500/20">
+                    <span className="font-mono text-[10px] font-medium text-indigo-300 bg-indigo-500/10 px-1 py-0.2 rounded border border-indigo-500/20">
                       {persentase}%
                     </span>
                   </div>
 
-                  {/* Progress Bar Glowing */}
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-800/80">
+                  {/* Progress Bar Netral & Padat */}
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-300"
                       style={{ width: `${persentase}%` }}
                     />
                   </div>
@@ -503,29 +422,24 @@ export default function SantriStatsSummary({
         </div>
       )}
 
-      {/* 📍 PANEL KETIGA: Sebaran Per Kompleks (PPS) */}
+      {/* 3. Panel Sebaran Domisili Kompleks Asrama (PPS) */}
       {domisiliList.length > 0 && (
-        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-          {/* Garis Kilau Top-Border */}
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-
-          {/* Header Panel */}
-          <div className="mb-5 flex items-center justify-between border-b border-gray-800/80 pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <MapPin className="h-4 w-4" />
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
+          <div className="mb-3.5 flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                <MapPin className="h-4 w-4 text-emerald-400" />
               </div>
-              <h3 className="text-xs font-mono font-semibold text-gray-200 uppercase tracking-wider">
-                Sebaran Domisili (PPS)
+              <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                Sebaran Domisili Asrama (PPS)
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-medium text-emerald-300">
-              {domisiliList.length} Domisili Terdaftar
+            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+              {domisiliList.length} Daerah
             </span>
           </div>
 
-          {/* Grid Items */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             {domisiliList.map((item) => {
               const persentase =
                 stats.totalPps > 0
@@ -535,20 +449,20 @@ export default function SantriStatsSummary({
               return (
                 <div
                   key={item.nama}
-                  className="group relative rounded-2xl border border-gray-800/80 bg-gray-950/60 p-3 transition-all duration-200 hover:border-emerald-500/30 hover:bg-gray-900/80 hover:-translate-y-0.5 shadow-md"
+                  className="rounded-lg border border-zinc-800/80 bg-zinc-950/70 p-2.5 hover:border-zinc-700 transition-colors"
                 >
                   <span
-                    className="block truncate text-xs font-semibold text-emerald-400/90 group-hover:text-emerald-300 transition-colors"
+                    className="block truncate text-xs font-medium text-emerald-400"
                     title={item.nama}
                   >
                     {item.nama}
                   </span>
 
-                  <div className="mt-1.5 flex items-baseline justify-between">
-                    <span className="font-mono text-lg font-bold text-white">
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-mono text-base font-bold text-zinc-100">
                       {item.jumlah.toLocaleString("id-ID")}
                     </span>
-                    <span className="font-mono text-[10px] text-gray-400">
+                    <span className="font-mono text-[10px] text-zinc-500">
                       {persentase}%
                     </span>
                   </div>
@@ -587,7 +501,6 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
     return () => clearInterval(timer);
   }, []);
 
-  // Sapaan Dinamis Berdasarkan Waktu Lokal
   const dynamicGreeting = useMemo(() => {
     const hour = time.getHours();
     if (hour >= 3 && hour < 11) return "Selamat pagi";
@@ -596,7 +509,6 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
     return "Selamat malam";
   }, [time]);
 
-  // Format Penanggalan Masehi
   const formattedGregorian = useMemo(() => {
     return time.toLocaleDateString("id-ID", {
       weekday: "long",
@@ -608,14 +520,14 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
 
   const motivationalText =
     user.role === "admin"
-      ? "Kelola sistem, pantau performa, dan kendalikan seluruh layanan."
-      : "Dashboard Layanan terpadu Tibkam1745";
+      ? "Kelola sistem, pantau sebaran santri, dan kendalikan seluruh layanan terpadu."
+      : "Portal terpadu operasional dan pemantauan santri Tibkam1745.";
 
-  // Deretan Badge Meta (Role, Tanggal Masehi, Tanggal Hijriah)
+  // Deretan status badge netral & ringkas
   const statusBadges = (
-    <div className="flex flex-wrap items-center gap-2.5 text-xs">
-      {/* Badge User Role */}
-      <span className="inline-flex items-center gap-1.5 rounded-full bg-indigo-500/10 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-400 border border-indigo-500/20 shadow-sm uppercase tracking-wider">
+    <div className="flex flex-wrap items-center gap-2 text-xs font-sans">
+      {/* Badge Role */}
+      <span className="inline-flex items-center gap-1.5 rounded-md bg-zinc-800 px-2.5 py-1 font-mono text-[10px] font-semibold text-zinc-300 border border-zinc-700 uppercase tracking-wider">
         {user.role === "admin" ? (
           <ShieldCheck className="w-3.5 h-3.5 text-indigo-400" />
         ) : (
@@ -624,52 +536,44 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
         {user.role}
       </span>
 
-      <span className="text-gray-700 select-none">•</span>
+      <span className="text-zinc-700 select-none">•</span>
 
-      {/* Masehi */}
-      <div className="flex items-center gap-1.5 text-gray-300 font-medium bg-gray-950/50 px-3 py-1 rounded-full border border-gray-800/80 shadow-inner font-mono">
-        <CalendarDays className="w-3.5 h-3.5 text-indigo-400" />
+      {/* Tanggal Masehi */}
+      <div className="flex items-center gap-1.5 text-zinc-300 bg-zinc-950/80 px-2.5 py-1 rounded-md border border-zinc-800 font-mono text-xs">
+        <CalendarDays className="w-3.5 h-3.5 text-zinc-400" />
         <span>{formattedGregorian}</span>
       </div>
 
-      {/* Hijriah */}
-      <div className="flex items-center gap-1.5 text-indigo-300 font-medium bg-indigo-950/50 px-3 py-1 rounded-full border border-indigo-800/40 shadow-inner font-mono">
-        <Moon className="w-3.5 h-3.5 text-amber-300" />
-        <span>{todayHijri?.string_hijri || "Memuat Tanggal..."}</span>
+      {/* Tanggal Hijriah */}
+      <div className="flex items-center gap-1.5 text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded-md border border-amber-500/20 font-mono text-xs">
+        <Moon className="w-3.5 h-3.5 text-amber-400" />
+        <span>{todayHijri?.string_hijri || "Memuat..."}</span>
       </div>
     </div>
   );
 
-  // Executive Live Clock Widget (Waktu Istiwa')
+  // Widget Live Jam Istiwa' (Rapi, Tegas, Tanpa Animasi Ping Berlebih)
   const clockWidget = (
-    <div className="relative group overflow-hidden rounded-2xl border border-indigo-500/30 bg-gray-950/70 p-4 sm:px-6 sm:py-4 shadow-2xl backdrop-blur-md transition-all duration-300 hover:border-indigo-500/60 select-none">
-      <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/10 to-emerald-500/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+    <div className="rounded-lg border border-zinc-800 bg-zinc-950/90 px-4 py-2.5 shadow-sm select-none flex items-center gap-3">
+      <div className="flex h-9 w-9 items-center justify-center rounded-md bg-zinc-900 border border-zinc-800 text-indigo-400 shrink-0">
+        <Clock className="w-4 h-4" />
+      </div>
 
-      <div className="relative flex items-center gap-4">
-        <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-400 border border-indigo-500/30 shadow-inner">
-          <Clock className="w-5 h-5" />
-          <span className="absolute -top-1 -right-1 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500 border-2 border-gray-950" />
+      <div className="space-y-0.5">
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] font-mono font-semibold uppercase tracking-wider text-zinc-400">
+            Waktu Istiwa'
+          </span>
+          <span className="text-[9px] font-mono font-bold text-emerald-400 bg-emerald-500/10 px-1 rounded border border-emerald-500/20">
+            SIDOGIRI
           </span>
         </div>
-
-        <div className="space-y-0.5">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-indigo-300">
-              Waktu Istiwa'
-            </span>
-            <span className="text-[9px] font-mono font-extrabold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20 shadow-sm">
-              SIDOGIRI
-            </span>
-          </div>
-          <p className="font-mono text-2xl sm:text-3xl font-black tracking-wider text-white drop-shadow-md flex items-baseline gap-1.5">
-            <span>
-              {waktuWis.jam}:{waktuWis.menit}:{waktuWis.detik}
-            </span>
-            <span className="text-xs font-bold text-indigo-400">WIS</span>
-          </p>
-        </div>
+        <p className="font-mono text-xl sm:text-2xl font-bold tracking-tight text-white flex items-baseline gap-1">
+          <span>
+            {waktuWis.jam}:{waktuWis.menit}:{waktuWis.detik}
+          </span>
+          <span className="text-[11px] font-semibold text-zinc-500">WIS</span>
+        </p>
       </div>
     </div>
   );
@@ -678,11 +582,9 @@ export const WelcomeBanner: React.FC<WelcomeBannerProps> = ({ user }) => {
     <PageHeader
       statusBadge={statusBadges}
       title={
-        <span className="flex flex-wrap items-center gap-2">
+        <span className="flex flex-wrap items-center gap-1.5 font-sans font-bold text-white tracking-tight">
           <span>{dynamicGreeting},</span>
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-            {user.name || user.username}
-          </span>
+          <span className="text-zinc-100">{user.name || user.username}</span>
         </span>
       }
       description={motivationalText}
@@ -795,12 +697,12 @@ import { Loader2, Scissors } from "lucide-react";
 interface User {
   name: string;
   username: string;
-  role: "admin" | "rambut" | "umum";
+  role: "admin" | "admin_rambut" | "rambut" | "umum";
 }
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth() as { user: User | null };
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "admin_rambut";
 
   const { getUsers } = useUsers();
   const { data: users, isLoading: isUsersLoading } = getUsers;
@@ -812,12 +714,11 @@ const Dashboard: React.FC = () => {
 
   if (isInitialLoading) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gray-950 text-indigo-400 p-4">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-600/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="relative z-10 flex flex-col items-center gap-3.5 p-6 rounded-3xl bg-gray-900/60 border border-gray-800/80 backdrop-blur-xl shadow-2xl">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-          <p className="text-xs font-mono text-gray-400 animate-pulse">
-            Sinkronisasi data real-time...
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 font-sans select-none">
+        <div className="flex flex-col items-center gap-2.5 p-5 rounded-xl bg-zinc-900 border border-zinc-800 shadow-lg">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <p className="text-xs text-zinc-400 font-sans">
+            Memuat ringkasan dashboard...
           </p>
         </div>
       </div>
@@ -826,30 +727,28 @@ const Dashboard: React.FC = () => {
 
   const renderRoleSpecificContent = () => {
     switch (user.role) {
-      case "admin": {
+      case "admin":
+      case "admin_rambut": {
         const safeUsers = users || [];
         return (
-          <div className="space-y-6 pt-2">
+          <div className="space-y-4">
             <AdminStatsGrid users={safeUsers} />
-            <div className="w-full">
-              <RecentActivityLog users={safeUsers} />
-            </div>
+            <RecentActivityLog users={safeUsers} />
           </div>
         );
       }
 
       case "rambut":
         return (
-          <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-8 shadow-2xl backdrop-blur-xl text-center space-y-3">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-            <div className="inline-flex p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
-              <Scissors className="w-6 h-6" />
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center space-y-2 font-sans">
+            <div className="inline-flex p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-indigo-400 mb-1">
+              <Scissors className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-mono font-bold text-white">
+            <h3 className="text-sm font-semibold text-zinc-100">
               Modul Layanan Rambut
             </h3>
-            <p className="text-xs font-mono text-gray-400 max-w-md mx-auto leading-relaxed">
-              Manajemen antrean perapian rambut santri aktif. Gunakan menu sidebar untuk membuka ruang kerja penuh.
+            <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Manajemen antrean perapian rambut santri aktif. Gunakan menu sidebar untuk membuka ruang kerja antrean dan kasir pemindaian barcode.
             </p>
           </div>
         );
@@ -860,14 +759,14 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 md:space-y-8">
-      {/* 1. Welcome Banner (Menggunakan PageHeader shared) */}
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
+      {/* 1. Header Banner */}
       <WelcomeBanner user={user} />
 
-      {/* 2. Ringkasan Statistik Santri */}
+      {/* 2. Ringkasan Statistik Santri Master */}
       <SantriStatsSummary data={santriStats} isLoading={isSantriLoading} />
 
-      {/* 3. Konten Tambahan Khusus Role */}
+      {/* 3. Konten Tambahan Berdasarkan Role */}
       {renderRoleSpecificContent()}
     </div>
   );

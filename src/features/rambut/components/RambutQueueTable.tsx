@@ -1,10 +1,11 @@
-// src/components/rambut/RambutQueueTable.tsx
+// src/features/rambut/components/RambutQueueTable.tsx
 import React from "react";
 import type { WajibSetorExpanded, RiwayatSetorExpanded } from "../hooks/useRambut";
 import type { RambutTabType } from "./RambutScanToolbar";
 import { RambutQueueSubTable } from "./subtables/RambutQueueSubTable";
 import { RambutPengurusSubTable } from "./subtables/RambutPengurusSubTable";
 import { RambutAuditSubTable } from "./subtables/RambutAuditSubTable";
+
 export interface PengurusItem {
   id: string;
   id_pps: string;
@@ -57,9 +58,8 @@ export const RambutQueueTable: React.FC<RambutQueueTableProps> = ({
   isAuditLoading = false,
 }) => {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-      <div className="overflow-x-auto">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm min-h-[480px]">
+      <div className="overflow-x-auto custom-scrollbar">
         {activeTab === "queue" && (
           <RambutQueueSubTable
             items={items}

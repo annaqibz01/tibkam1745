@@ -1,8 +1,8 @@
-// src/components/master/MasterPagination.tsx
-import { useMemo } from "react";
-import { ChevronLeft, ChevronRight, Layers } from "lucide-react";
+// src/features/master/components/MasterPagination.tsx
+import React, { useMemo } from "react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-interface MasterPaginationProps {
+export interface MasterPaginationProps {
   page: number;
   totalPages: number;
   totalItems: number;
@@ -10,19 +10,19 @@ interface MasterPaginationProps {
   onPageChange: (newPage: number) => void;
 }
 
-export default function MasterPagination({
+export const MasterPagination: React.FC<MasterPaginationProps> = ({
   page,
   totalPages,
   totalItems,
   perPage,
   onPageChange,
-}: MasterPaginationProps) {
+}) => {
   if (totalItems === 0) return null;
 
   const startItem = Math.min((page - 1) * perPage + 1, totalItems);
   const endItem = Math.min(page * perPage, totalItems);
 
-  // Algoritma Pintar Pembagi Halaman (Termasuk Elipsis '...')
+  // Algoritma penomoran halaman dengan elipsis (...)
   const pageNumbers = useMemo(() => {
     const pages: (number | string)[] = [];
     const siblingCount = 1;
@@ -60,80 +60,72 @@ export default function MasterPagination({
   }, [page, totalPages]);
 
   return (
-    <div className="relative overflow-hidden mt-5 flex flex-col sm:flex-row items-center justify-between gap-4 rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-4 sm:px-6 shadow-2xl backdrop-blur-xl">
-      {/* 🔮 Garis Kilau Top-Border */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-      {/* Keterangan Status Data */}
-      <div className="flex items-center gap-2 text-xs sm:text-sm font-mono text-gray-400">
-        <Layers className="w-4 h-4 text-indigo-400 hidden sm:inline-block" />
-        <span>
-          Menampilkan{" "}
-          <span className="font-bold text-gray-200 bg-gray-800/80 px-2 py-0.5 rounded-lg border border-gray-700/50">
-            {startItem} – {endItem}
-          </span>{" "}
-          dari{" "}
-          <span className="font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded-lg border border-indigo-500/20">
-            {totalItems}
-          </span>{" "}
-          data
-        </span>
+    <div className="flex flex-col sm:flex-row items-center justify-between gap-2.5 rounded-xl border border-zinc-800 bg-zinc-900 p-2 px-3.5 shadow-sm font-sans select-none">
+      {/* Keterangan Data */}
+      <div className="text-xs text-zinc-400">
+        Menampilkan{" "}
+        <span className="font-mono font-bold text-zinc-200">
+          {startItem}–{endItem}
+        </span>{" "}
+        dari{" "}
+        <span className="font-mono font-bold text-zinc-200">
+          {totalItems.toLocaleString("id-ID")}
+        </span>{" "}
+        data
       </div>
 
-      {/* Kontrol Angka Navigasi */}
-      <div className="flex flex-wrap items-center justify-center gap-1.5">
-        {/* Tombol Sebelumnya */}
+      {/* Kontrol Angka Halaman (Tinggi Standar h-7 / 28px) */}
+      <div className="flex items-center gap-1">
         <button
           type="button"
           onClick={() => onPageChange(Math.max(1, page - 1))}
           disabled={page <= 1}
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          <ChevronLeft className="w-4 h-4" />
-          <span className="hidden sm:inline">Sebelumnya</span>
+          <ChevronLeft className="w-3.5 h-3.5" />
+          <span className="hidden sm:inline text-[11px]">Sebelumnya</span>
         </button>
 
-        {/* List Angka Halaman */}
-        {pageNumbers.map((num, idx) => {
-          if (num === "...") {
+        <div className="flex items-center gap-1 mx-0.5">
+          {pageNumbers.map((num, idx) => {
+            if (num === "...") {
+              return (
+                <span key={`ellipsis-${idx}`} className="px-1 text-xs text-zinc-600 font-mono">
+                  ...
+                </span>
+              );
+            }
+
+            const isCurrent = num === page;
             return (
-              <span
-                key={`ellipsis-${idx}`}
-                className="inline-flex h-9 w-8 items-center justify-center text-gray-500 font-mono font-bold tracking-widest text-xs"
+              <button
+                type="button"
+                key={`page-${num}`}
+                onClick={() => onPageChange(num as number)}
+                className={`h-7 min-w-[28px] px-1.5 rounded-md text-xs font-mono transition-colors ${
+                  isCurrent
+                    ? "bg-zinc-100 text-zinc-950 font-bold shadow-sm"
+                    : "bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800"
+                }`}
               >
-                ...
-              </span>
+                {num}
+              </button>
             );
-          }
+          })}
+        </div>
 
-          const isCurrent = num === page;
-          return (
-            <button
-              type="button"
-              key={`page-${num}`}
-              onClick={() => onPageChange(num as number)}
-              className={`inline-flex h-9 w-9 items-center justify-center rounded-xl text-xs font-mono font-bold transition-all duration-200 active:scale-95 ${
-                isCurrent
-                  ? "bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white shadow-lg shadow-indigo-600/30 scale-105 border border-indigo-400/40 ring-2 ring-indigo-500/20"
-                  : "border border-gray-800 bg-gray-900/60 text-gray-400 hover:border-indigo-500/30 hover:bg-indigo-500/10 hover:text-indigo-300"
-              }`}
-            >
-              {num}
-            </button>
-          );
-        })}
-
-        {/* Tombol Selanjutnya */}
         <button
           type="button"
           onClick={() => onPageChange(Math.min(totalPages, page + 1))}
           disabled={page >= totalPages}
-          className="inline-flex h-9 items-center gap-1.5 rounded-xl border border-gray-800 bg-gray-900/80 px-3 text-xs font-mono font-medium text-gray-300 transition-all duration-200 hover:border-indigo-500/40 hover:bg-indigo-500/10 hover:text-indigo-300 active:scale-95 disabled:pointer-events-none disabled:opacity-20 shadow-md"
+          className="inline-flex h-7 items-center gap-1 rounded-md border border-zinc-800 bg-zinc-950 px-2 text-xs text-zinc-300 hover:text-white hover:bg-zinc-800 transition-colors disabled:opacity-30 disabled:pointer-events-none"
         >
-          <span className="hidden sm:inline">Selanjutnya</span>
-          <ChevronRight className="w-4 h-4" />
+          <span className="hidden sm:inline text-[11px]">Selanjutnya</span>
+          <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>
     </div>
   );
-}
+};
+
+export default MasterPagination;

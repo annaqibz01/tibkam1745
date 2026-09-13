@@ -1,4 +1,4 @@
-// src/features/laporan/pages/LaporanRambutPage.tsx
+// src/features/laporan/rambut/pages/LaporanRambutPage.tsx
 import React, { useState } from "react";
 import { useToast } from "@/context/ToastContext";
 
@@ -61,18 +61,18 @@ export const LaporanRambutPage: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Header Banner Glassmorphism Shared */}
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
+      {/* 1. Header Banner */}
       <LaporanHeader
         selectedPeriode={selectedPeriode}
         onExportExcel={handleExportExcel}
         isExporting={isExporting}
       />
 
-      {/* 2. Kartu Statistik Presisi */}
+      {/* 2. Kartu Statistik Kompak */}
       <RambutStats stats={stats} isLoading={isLoading} />
 
-      {/* 3. Toolbar Filter Glassmorphism Shared */}
+      {/* 3. Toolbar Filter (Tinggi h-9, Palet Netral Zinc) */}
       <LaporanToolbar
         periodeList={periodeList}
         selectedPeriode={selectedPeriode}
@@ -90,7 +90,7 @@ export const LaporanRambutPage: React.FC = () => {
         isLoading={isLoading}
       />
 
-      {/* 4. Tabel Preview Data */}
+      {/* 4. Tabel Preview Rekapitulasi Data */}
       <LaporanTable
         reportType={reportType}
         items={paginatedData}

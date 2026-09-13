@@ -35,36 +35,24 @@ export const UsersTable: React.FC<UsersTableProps> = ({
   onDelete,
 }) => {
   return (
-    <div className="hidden md:block relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl">
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm table-fixed border-collapse font-sans">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm">
+      <div className="overflow-x-auto custom-scrollbar">
+        <table className="w-full text-xs table-fixed border-collapse font-sans">
           <thead>
-            <tr className="bg-gray-950/70 border-b border-gray-800/80 backdrop-blur-md select-none">
-              <th className="w-[30%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-left">
-                Pengguna
-              </th>
-              <th className="w-[15%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-left">
-                Role
-              </th>
-              <th className="w-[15%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-left">
-                Status
-              </th>
-              <th className="w-[20%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-left">
-                Terdaftar
-              </th>
-              <th className="w-[20%] px-6 py-4 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider text-right">
-                Aksi
-              </th>
+            <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
+              <th className="w-[30%] px-3 py-2.5 text-left">Pengguna</th>
+              <th className="w-[15%] px-3 py-2.5 text-left">Role</th>
+              <th className="w-[15%] px-3 py-2.5 text-left">Status</th>
+              <th className="w-[20%] px-3 py-2.5 text-left">Terdaftar</th>
+              <th className="w-[20%] px-3 py-2.5 text-right">Aksi</th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-800/50">
+          <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
             {users.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-6 py-8">
                   <EmptyState
-                    icon={<UserX className="w-8 h-8 text-gray-400" />}
+                    icon={<UserX className="w-6 h-6 text-zinc-500" />}
                     title="Tidak Ada Pengguna Ditemukan"
                     description="Coba sesuaikan kata kunci pencarian atau filter role/status Anda."
                   />
@@ -74,54 +62,48 @@ export const UsersTable: React.FC<UsersTableProps> = ({
               users.map((user) => {
                 const avatar = getAvatarUrl(user);
                 return (
-                  <tr
-                    key={user.id}
-                    className="group transition-colors duration-200 hover:bg-indigo-500/[0.03]"
-                  >
-                    {/* Column 1: Info User & Avatar */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-3.5 min-w-0">
+                  <tr key={user.id} className="hover:bg-zinc-800/40 transition-colors">
+                    {/* Kolom 1: Info User & Avatar */}
+                    <td className="px-3 py-2">
+                      <div className="flex items-center gap-2.5 min-w-0">
                         {avatar ? (
                           <img
                             src={avatar}
                             alt=""
-                            className="w-10 h-10 rounded-full object-cover ring-2 ring-indigo-500/20 border border-gray-700 flex-shrink-0 shadow-md group-hover:ring-indigo-500/40 transition-all"
+                            className="w-8 h-8 rounded-full object-cover border border-zinc-700 flex-shrink-0"
                           />
                         ) : (
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-950 to-gray-800 flex items-center justify-center text-indigo-300 font-mono font-bold text-sm ring-2 ring-indigo-500/20 border border-indigo-500/30 flex-shrink-0 shadow-md group-hover:ring-indigo-500/40 transition-all">
+                          <div className="w-8 h-8 rounded-full bg-zinc-800 flex items-center justify-center text-indigo-300 font-bold text-xs border border-zinc-700 flex-shrink-0">
                             {(user.name || user.username).charAt(0).toUpperCase()}
                           </div>
                         )}
                         <div className="min-w-0">
-                          <p className="font-semibold text-gray-200 text-sm truncate group-hover:text-indigo-300 transition-colors">
+                          <p className="font-semibold text-zinc-200 truncate">
                             {user.name || user.username}
                           </p>
-                          <p className="text-xs font-mono text-gray-500 truncate">
+                          <p className="text-xs font-mono text-zinc-500 truncate">
                             @{user.username}
                           </p>
                         </div>
                       </div>
                     </td>
 
-                    {/* Column 2: Role Badge */}
-                    <td className="px-6 py-4">
+                    {/* Kolom 2: Role Badge */}
+                    <td className="px-3 py-2">
                       <StatusBadge variant={getRoleBadgeVariant(user.role)}>
                         {user.role}
                       </StatusBadge>
                     </td>
 
-                    {/* Column 3: Status Badge */}
-                    <td className="px-6 py-4">
-                      <StatusBadge
-                        variant={user.status ? "success" : "danger"}
-                        dot
-                      >
+                    {/* Kolom 3: Status Badge */}
+                    <td className="px-3 py-2">
+                      <StatusBadge variant={user.status ? "success" : "danger"} dot>
                         {user.status ? "Aktif" : "Nonaktif"}
                       </StatusBadge>
                     </td>
 
-                    {/* Column 4: Registered Date */}
-                    <td className="px-6 py-4 text-xs font-mono text-gray-400">
+                    {/* Kolom 4: Registered Date */}
+                    <td className="px-3 py-2 text-xs font-mono text-zinc-400">
                       {new Date(user.created).toLocaleDateString("id-ID", {
                         day: "numeric",
                         month: "short",
@@ -129,32 +111,32 @@ export const UsersTable: React.FC<UsersTableProps> = ({
                       })}
                     </td>
 
-                    {/* Column 5: Action Buttons */}
-                    <td className="px-6 py-4 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
+                    {/* Kolom 5: Action Buttons */}
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-1">
                         <button
                           type="button"
                           onClick={() => onEdit(user)}
-                          className="p-2 rounded-xl text-gray-400 hover:text-indigo-400 hover:bg-indigo-500/10 border border-transparent hover:border-indigo-500/20 active:scale-95 transition-all"
+                          className="p-1.5 rounded-md text-zinc-400 hover:text-indigo-400 hover:bg-indigo-500/10 transition-colors"
                           title="Edit data & role"
                         >
-                          <Pencil className="w-4 h-4" />
+                          <Pencil className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => onResetPassword(user)}
-                          className="p-2 rounded-xl text-gray-400 hover:text-amber-400 hover:bg-amber-500/10 border border-transparent hover:border-amber-500/20 active:scale-95 transition-all"
+                          className="p-1.5 rounded-md text-zinc-400 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
                           title="Reset kata sandi"
                         >
-                          <KeyRound className="w-4 h-4" />
+                          <KeyRound className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => onDelete(user)}
-                          className="p-2 rounded-xl text-gray-400 hover:text-red-400 hover:bg-red-500/10 border border-transparent hover:border-red-500/20 active:scale-95 transition-all"
+                          className="p-1.5 rounded-md text-zinc-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
                           title="Hapus pengguna"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>

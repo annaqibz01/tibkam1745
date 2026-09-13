@@ -1,12 +1,12 @@
-// src/components/users/DeleteUserModal.tsx
+// src/features/users/components/DeleteUserModal.tsx
 import type { UsersResponse } from "@/types/pocketbase-types";
 import type { useUsers } from "../hooks/useUsers";
-import { BaseModal } from "@/components/shared/BaseModal"; // ✨ 1. Pakai BaseModal
+import { BaseModal } from "@/components/shared/BaseModal";
 import { Trash2, Loader2, AlertTriangle } from "lucide-react";
 
 interface DeleteUserModalProps {
-  isOpen: boolean; // ✨ 2. Tambahkan prop isOpen
-  user: UsersResponse | null; // ✨ 3. Izinkan null untuk keamanan animasi exit
+  isOpen: boolean;
+  user: UsersResponse | null;
   onClose: () => void;
   onSuccess: (msg: string) => void;
   onError: (msg: string) => void;
@@ -25,7 +25,6 @@ export default function DeleteUserModal({
 
   const handleDelete = () => {
     if (!user) return;
-
     deleteUser.mutate(user.id, {
       onSuccess: () => {
         onSuccess(`${user.name || user.username} berhasil dihapus.`);
@@ -37,7 +36,6 @@ export default function DeleteUserModal({
     });
   };
 
-  // Safe fallback name jika user ter-reset ke null saat animasi keluar
   const userName = user?.name || user?.username || "Pengguna";
 
   return (
@@ -45,34 +43,30 @@ export default function DeleteUserModal({
       isOpen={isOpen}
       onClose={onClose}
       title="Hapus Pengguna"
-      icon={<Trash2 className="w-5 h-5 text-red-400" />}
+      icon={<Trash2 className="w-4 h-4 text-rose-400" />}
       maxWidth="max-w-md"
     >
-      <div className="text-center space-y-4 py-2">
-        {/* Ikon Peringatan Bahaya */}
-        <div className="w-14 h-14 mx-auto rounded-2xl bg-red-500/10 border border-red-500/20 flex items-center justify-center text-red-400">
-          <AlertTriangle className="w-7 h-7" />
+      <div className="text-center space-y-4 py-1">
+        <div className="w-12 h-12 mx-auto rounded-lg bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400">
+          <AlertTriangle className="w-6 h-6" />
         </div>
 
         <div className="space-y-1.5">
-          <p className="text-sm text-gray-300">
+          <p className="text-xs text-zinc-300">
             Apakah Anda yakin ingin menghapus{" "}
-            <span className="text-white font-semibold underline decoration-red-500/50 underline-offset-4">
+            <span className="text-white font-semibold underline decoration-rose-500/50 underline-offset-4">
               {userName}
             </span>{" "}
             secara permanen?
           </p>
-          <p className="text-xs text-red-400/80 font-medium">
-            Tindakan ini tidak dapat dibatalkan.
-          </p>
+          <p className="text-xs text-rose-400/80 font-medium">Tindakan ini tidak dapat dibatalkan.</p>
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex justify-center gap-3 pt-4 border-t border-gray-800">
+        <div className="flex justify-center gap-2 pt-3 border-t border-zinc-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-gray-800 text-gray-300 rounded-xl hover:bg-gray-700 text-xs font-semibold transition-colors"
+            className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
           >
             Batal
           </button>
@@ -80,12 +74,12 @@ export default function DeleteUserModal({
             type="button"
             onClick={handleDelete}
             disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white font-semibold text-xs rounded-xl transition-all shadow-lg shadow-red-600/20 active:scale-[0.98]"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-rose-600 hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
             {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
-              <Trash2 className="w-4 h-4" />
+              <Trash2 className="w-3.5 h-3.5" />
             )}
             <span>Hapus Permanen</span>
           </button>

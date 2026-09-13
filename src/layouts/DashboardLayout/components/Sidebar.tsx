@@ -1,13 +1,10 @@
 // src/layouts/DashboardLayout/components/Sidebar.tsx
-import { useState, useEffect } from "react";
+import { useState, useRef } from "react";
+import { createPortal } from "react-dom";
 import { NavLink } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useAuth } from "@/features/auth";
 import { getAvatarUrl } from "@/features/users";
-import type {
-  UsersResponse,
-  UsersRoleOptions,
-} from "../../../types/pocketbase-types";
+import type { UsersResponse, UsersRoleOptions } from "../../../types/pocketbase-types";
 import {
   LayoutDashboard,
   User,
@@ -16,19 +13,13 @@ import {
   X,
   Scissors,
   Users,
-  PanelLeftClose,
-  PanelLeftOpen,
   Database,
-  Sparkles,
   CalendarDays,
   ShieldCheck,
   FileText,
   type LucideIcon,
 } from "lucide-react";
 
-// ----------------------------------------------------------------------
-// Type definitions
-// ----------------------------------------------------------------------
 interface NavItem {
   title: string;
   path: string;
@@ -36,89 +27,29 @@ interface NavItem {
   allowedRoles: UsersRoleOptions[];
 }
 
-// ----------------------------------------------------------------------
-// Sidebar Component
-// ----------------------------------------------------------------------
 const Sidebar = () => {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
-
-  // Initial collapsed state from localStorage (or false)
-  const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-    try {
-      const stored = localStorage.getItem("sidebar-collapsed");
-      if (stored !== null) return JSON.parse(stored);
-    } catch {}
-    return false;
-  });
+  const [hoveredItem, setHoveredItem] = useState<{ title: string; top: number } | null>(null);
+  const hoverTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const { user, logout } = useAuth();
   const currentUser = user as UsersResponse | null;
 
-  // Persist collapsed state to localStorage
-  useEffect(() => {
-    localStorage.setItem("sidebar-collapsed", JSON.stringify(isCollapsed));
-  }, [isCollapsed]);
-
-  // ---- Menu item definitions ----
   const menuItems: NavItem[] = [
-    {
-      title: "Dashboard",
-      path: "/dashboard",
-      icon: LayoutDashboard,
-      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
-    },
-    {
-      title: "Kelola Pengguna",
-      path: "/users",
-      icon: Users,
-      allowedRoles: ["admin", "admin_rambut"],
-    },
-    {
-      title: "Personil Tibkam",
-      path: "/personil",
-      icon: ShieldCheck,
-      allowedRoles: ["admin", "admin_rambut"],
-    },
-    {
-      title: "Data Master",
-      path: "/master",
-      icon: Database,
-      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
-    },
-    {
-      title: "Layanan Rambut",
-      path: "/rambut",
-      icon: Scissors,
-      allowedRoles: ["admin", "admin_rambut", "rambut"],
-    },
-    {
-      title: "Laporan",
-      path: "/laporan",
-      icon: FileText,
-      allowedRoles: ["admin", "admin_rambut", "rambut"], // Tambahkan role penyidik di sini jika sudah dibuat kelak
-    },
-    {
-      title: "Kalender",
-      path: "/kalender",
-      icon: CalendarDays,
-      allowedRoles: ["admin", "admin_rambut", "rambut"],
-    },
-    {
-      title: "Profil Saya",
-      path: "/profile",
-      icon: User,
-      allowedRoles: ["admin", "admin_rambut", "umum", "rambut"],
-    },
+    { title: "Dashboard", path: "/dashboard", icon: LayoutDashboard, allowedRoles: ["admin", "admin_rambut", "umum", "rambut"] },
+    { title: "Kelola Pengguna", path: "/users", icon: Users, allowedRoles: ["admin", "admin_rambut"] },
+    { title: "Personil Tibkam", path: "/personil", icon: ShieldCheck, allowedRoles: ["admin", "admin_rambut"] },
+    { title: "Data Master", path: "/master", icon: Database, allowedRoles: ["admin", "admin_rambut", "umum", "rambut"] },
+    { title: "Layanan Rambut", path: "/rambut", icon: Scissors, allowedRoles: ["admin", "admin_rambut", "rambut"] },
+    { title: "Laporan", path: "/laporan", icon: FileText, allowedRoles: ["admin", "admin_rambut", "rambut"] },
+    { title: "Kalender", path: "/kalender", icon: CalendarDays, allowedRoles: ["admin", "admin_rambut", "rambut"] },
+    { title: "Profil Saya", path: "/profile", icon: User, allowedRoles: ["admin", "admin_rambut", "umum", "rambut"] },
   ];
 
-  // Filter menu berdasarkan role user
   const filteredMenu = currentUser
-    ? menuItems.filter((item) =>
-        item.allowedRoles.includes(currentUser.role as UsersRoleOptions),
-      )
+    ? menuItems.filter((item) => item.allowedRoles.includes(currentUser.role as UsersRoleOptions))
     : [];
 
-  // ---- Avatar / Name handling ----
   const nameInitial = currentUser?.name
     ? currentUser.name.charAt(0).toUpperCase()
     : currentUser?.username
@@ -128,255 +59,202 @@ const Sidebar = () => {
   const getRoleBadgeClass = () => {
     switch (currentUser?.role) {
       case "admin":
-        return "bg-purple-500/10 text-purple-300 border-purple-500/20";
+        return "bg-purple-500/10 text-purple-400 border-purple-500/20";
       case "rambut":
-        return "bg-indigo-500/10 text-indigo-300 border-indigo-500/20";
+        return "bg-indigo-500/10 text-indigo-400 border-indigo-500/20";
       case "umum":
-        return "bg-emerald-500/10 text-emerald-300 border-emerald-500/20";
+        return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
       default:
-        return "bg-gray-800 text-gray-400 border-gray-700";
+        return "bg-zinc-800 text-zinc-400 border-zinc-700";
     }
   };
 
-  const toggleCollapse = () => setIsCollapsed((prev) => !prev);
   const closeMobile = () => setIsMobileOpen(false);
   const handleLogout = () => logout();
 
   const avatarImage = getAvatarUrl(currentUser);
 
-  // --------------------------------------------------------------------
-  // JSX
-  // --------------------------------------------------------------------
+  const showTooltip = (title: string, top: number) => {
+    setHoveredItem({ title, top });
+  };
+
+  const handleMouseEnter = (e: React.MouseEvent<HTMLElement>, title: string) => {
+    if (window.innerWidth < 1024) return;
+
+    const iconEl = e.currentTarget.querySelector("svg");
+    const rect = iconEl
+      ? iconEl.getBoundingClientRect()
+      : e.currentTarget.getBoundingClientRect();
+    const top = rect.top + rect.height / 2;
+
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+
+    hoverTimeoutRef.current = setTimeout(() => {
+      showTooltip(title, top);
+    }, 1000);
+  };
+
+  const handleMouseLeave = () => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredItem(null);
+  };
+
   return (
     <>
-      {/* 📱 Mobile Menu Trigger Button */}
+      {/* Mobile trigger */}
       <button
+        type="button"
         onClick={() => setIsMobileOpen(true)}
-        className="lg:hidden fixed top-4 left-4 z-50 p-2.5 rounded-2xl bg-gray-900/90 border border-gray-800/80 text-gray-300 hover:text-white hover:bg-gray-800 backdrop-blur-xl shadow-xl transition-all duration-200 active:scale-95"
-        aria-label="Open menu"
+        className="lg:hidden fixed top-3 left-3 z-50 p-2 rounded-lg bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white transition-colors"
+        aria-label="Buka menu navigasi"
       >
-        <Menu className="w-5 h-5 text-indigo-400" />
+        <Menu className="w-4 h-4 text-indigo-400" />
       </button>
 
-      {/* 🛡️ Mobile Overlay Backdrop */}
+      {/* Mobile overlay */}
       {isMobileOpen && (
         <div
-          className="lg:hidden fixed inset-0 z-40 bg-gray-950/80 backdrop-blur-md transition-opacity duration-300"
+          className="lg:hidden fixed inset-0 z-40 bg-black/80 transition-opacity"
           onClick={closeMobile}
+          aria-hidden="true"
         />
       )}
 
-      {/* 🚀 ---- Sidebar Desktop & Mobile ---- */}
+      {/* Sidebar desktop (always collapsed) + mobile full */}
       <aside
         className={`
-    fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full overflow-hidden
-    bg-gradient-to-b from-gray-900/95 via-gray-900/90 to-gray-950/95 backdrop-blur-2xl
-    border-r border-transparent shadow-2xl
-    flex flex-col transform-gpu
-    transition-[width,transform] duration-300 ease-in-out
-    lg:translate-x-0 lg:static lg:z-auto
-    ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
-    ${isCollapsed ? "w-20" : "w-64"}
-  `}
+          fixed top-9 lg:top-0 left-0 z-50 h-[calc(100vh-36px)] lg:h-full
+          w-60 lg:w-16 overflow-visible bg-zinc-900 border-r border-zinc-800
+          flex flex-col select-none
+          transition-transform duration-200 ease-out
+          lg:translate-x-0 lg:static lg:z-auto
+          ${isMobileOpen ? "translate-x-0" : "-translate-x-full"}
+        `}
       >
-        {/* 🔮 Garis Kilau Top-Border */}
-        <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent pointer-events-none" />
-
-        {/* 🔮 Ambient Glow Mesh */}
-        <div className="absolute -top-20 -left-20 w-40 h-40 rounded-full bg-indigo-600/10 blur-[60px] pointer-events-none" />
-
-        {/* ----- Top Section: Header, Profile & Navigation ----- */}
-        <div className="relative z-10 flex flex-col flex-1 min-h-0">
-          {/* 1. Header Logo Area (Tinggi Terkunci Presisi h-[73px]) */}
-          <div className="flex items-center justify-between px-3 h-[73px] border-b border-gray-800/80 flex-shrink-0 overflow-hidden">
-            {/* Logo Brand Title */}
-            <div
-              className={`flex items-center gap-2.5 overflow-hidden transition-all duration-300 ease-in-out ${
-                isCollapsed
-                  ? "max-w-0 opacity-0"
-                  : "max-w-[200px] opacity-100 pl-1"
-              }`}
-            >
-              {/* Logo Sayap Saja menggantikan box Sparkles lama */}
-              <img
-                src="logo_tibkam_sayap_saja.svg"
-                alt="Logo Tibkam"
-                className="h-7 w-auto flex-shrink-0 object-contain"
-              />
-
-              <div className="min-w-0">
-                <h2 className="text-base font-extrabold tracking-wider text-white whitespace-nowrap font-mono leading-none">
-                  TIBKAM<span className="text-indigo-400">1745</span>
-                </h2>
-                <p className="text-[10px] font-mono text-gray-500 mt-1 truncate leading-none">
-                  System Portal
-                </p>
-              </div>
-            </div>
-
-            {/* Desktop Toggle Button */}
-            <button
-              type="button"
-              onClick={toggleCollapse}
-              className={`hidden lg:inline-flex items-center justify-center p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800/80 border border-transparent hover:border-gray-700/60 transition-all duration-200 active:scale-95 flex-shrink-0 ${
-                isCollapsed ? "mx-auto" : "ml-auto"
-              }`}
-              aria-label={isCollapsed ? "Expand sidebar" : "Collapse sidebar"}
-              title={isCollapsed ? "Buka Sidebar" : "Tutup Sidebar"}
-            >
-              {isCollapsed ? (
-                <PanelLeftOpen className="w-5 h-5 text-indigo-400" />
-              ) : (
-                <PanelLeftClose className="w-5 h-5" />
-              )}
-            </button>
-
-            {/* Mobile Close Button */}
-            <button
-              type="button"
-              onClick={closeMobile}
-              className="lg:hidden p-2 rounded-xl text-gray-400 hover:text-white hover:bg-gray-800 border border-transparent hover:border-gray-700 transition-colors flex-shrink-0 ml-auto"
-              aria-label="Close menu"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          {/* 2. User Profile Card (✨ TINGGI TERKUNCI PRESISE h-[76px] - NUL LAYOUT SHIFT) */}
-          {currentUser && (
-            <div className="px-3 h-[76px] border-b border-gray-800/80 flex-shrink-0 flex items-center">
-              <div
-                className={`flex items-center w-full h-[52px] rounded-2xl px-2.5 border transition-colors duration-200 ${
-                  isCollapsed
-                    ? "bg-transparent border-transparent shadow-none"
-                    : "bg-gray-950/40 border-gray-800/60 shadow-sm"
-                }`}
-              >
-                {/* Avatar Box (Presisi Center X = 38px Terkunci Garis Vertikal) */}
-                <div className="relative w-9 h-9 flex-shrink-0 flex items-center justify-center">
-                  {avatarImage ? (
-                    <img
-                      src={avatarImage}
-                      alt={currentUser.name ?? "User"}
-                      className="w-9 h-9 rounded-full object-cover ring-2 ring-indigo-500/20 border border-gray-700 shadow-md"
-                    />
-                  ) : (
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-950 to-gray-800 flex items-center justify-center text-indigo-300 font-mono font-bold text-sm ring-2 ring-indigo-500/20 border border-indigo-500/30 shadow-md">
-                      {nameInitial}
-                    </div>
-                  )}
-                  {/* Status Indicator */}
-                  <span className="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-gray-900 animate-pulse" />
-                </div>
-
-                {/* User Details */}
-                <div
-                  className={`min-w-0 overflow-hidden transition-all duration-300 ease-in-out ${
-                    isCollapsed
-                      ? "max-w-0 opacity-0 pointer-events-none ml-0"
-                      : "max-w-[180px] opacity-100 ml-3"
-                  }`}
-                >
-                  <p className="text-xs font-semibold text-gray-200 truncate whitespace-nowrap leading-tight">
-                    {currentUser.name || currentUser.username}
-                  </p>
-                  <span
-                    className={`inline-block mt-1 text-[10px] font-mono font-semibold px-2 py-0.5 rounded-md border uppercase whitespace-nowrap leading-none ${getRoleBadgeClass()}`}
-                  >
-                    {currentUser.role}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 3. Navigation Links List */}
-          <nav className="flex-1 overflow-y-auto px-3 py-3 space-y-1.5 custom-scrollbar">
-            {filteredMenu.map((item) => {
-              const Icon = item.icon;
-
-              return (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  onClick={closeMobile}
-                  title={isCollapsed ? item.title : undefined}
-                  className={({ isActive: isLinkActive }) =>
-                    [
-                      "group relative flex items-center h-11 px-2 rounded-2xl text-xs font-medium transition-colors duration-200 w-full select-none",
-                      isLinkActive
-                        ? "text-indigo-300 font-semibold shadow-sm"
-                        : "text-gray-400 hover:bg-gray-800/50 hover:text-gray-200",
-                    ].join(" ")
-                  }
-                >
-                  {({ isActive: isLinkActive }) => (
-                    <>
-                      {/* Background & Garis Aksen Meluncur Satu Paket */}
-                      {isLinkActive && (
-                        <motion.div
-                          layoutId="sidebarActiveIndicator"
-                          className="absolute inset-0 rounded-2xl bg-gradient-to-r from-indigo-500/15 via-purple-500/10 to-transparent border-l-2 border-indigo-400 pointer-events-none"
-                          transition={{
-                            type: "spring",
-                            stiffness: 380,
-                            damping: 30,
-                          }}
-                        />
-                      )}
-
-                      {/* Icon Box (Center X = 38px Terkunci Garis Vertikal) */}
-                      <div className="w-9 h-9 flex items-center justify-center flex-shrink-0 relative z-10">
-                        <Icon
-                          className={`w-5 h-5 transition-colors duration-200 ${
-                            isLinkActive
-                              ? "text-indigo-400"
-                              : "text-gray-400 group-hover:text-gray-200"
-                          }`}
-                        />
-                      </div>
-
-                      {/* Navigation Title */}
-                      <span
-                        className={`relative z-10 whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
-                          isCollapsed
-                            ? "max-w-0 opacity-0 pointer-events-none ml-0"
-                            : "max-w-[180px] opacity-100 ml-3"
-                        }`}
-                      >
-                        {item.title}
-                      </span>
-                    </>
-                  )}
-                </NavLink>
-              );
-            })}
-          </nav>
+        {/* Header mobile: hanya tombol close */}
+        <div className="lg:hidden flex items-center justify-end px-2 h-12 border-b border-zinc-800 shrink-0">
+          <button
+            type="button"
+            onClick={closeMobile}
+            className="p-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors shrink-0"
+            aria-label="Tutup menu"
+          >
+            <X className="w-4 h-4" />
+          </button>
         </div>
 
-        {/* ----- Bottom Section: Logout Button ----- */}
-        <div className="relative z-10 px-3 py-3 h-[65px] border-t border-gray-800/80 mt-auto flex-shrink-0 flex items-center">
+        {/* User Profile Card */}
+        {currentUser && (
+          <div className="p-2 border-b border-zinc-800 shrink-0">
+            <div className="flex items-center rounded-lg bg-zinc-950/60 border border-zinc-800/80 p-1.5 lg:p-0 lg:justify-center lg:border-transparent lg:bg-transparent">
+              <div className="relative w-10 h-10 shrink-0 flex items-center justify-center">
+                {avatarImage ? (
+                  <img
+                    src={avatarImage}
+                    alt={currentUser.name ?? "User"}
+                    className="w-10 h-10 rounded-full object-cover border border-zinc-700"
+                  />
+                ) : (
+                  <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center text-zinc-300 font-bold text-base border border-zinc-700">
+                    {nameInitial}
+                  </div>
+                )}
+                <span className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-zinc-900" />
+              </div>
+
+              <div className="min-w-0 ml-2.5 lg:hidden">
+                <p className="text-xs font-medium text-zinc-200 truncate leading-tight font-sans">
+                  {currentUser.name || currentUser.username}
+                </p>
+                <span
+                  className={`inline-block mt-0.5 text-[9px] font-mono font-medium px-1.5 py-0.2 rounded border uppercase leading-none ${getRoleBadgeClass()}`}
+                >
+                  {currentUser.role}
+                </span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-2 space-y-1 custom-scrollbar">
+          {filteredMenu.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                onClick={closeMobile}
+                onMouseEnter={(e) => handleMouseEnter(e, item.title)}
+                onMouseLeave={handleMouseLeave}
+                className={({ isActive }) =>
+                  [
+                    "group relative flex items-center h-9 rounded-lg text-xs font-sans transition-colors duration-150 w-full",
+                    "justify-start px-2.5 lg:justify-center lg:px-0",
+                    isActive
+                      ? "bg-zinc-800 text-white font-semibold border border-zinc-700/60"
+                      : "text-zinc-400 hover:bg-zinc-800/60 hover:text-zinc-200 border border-transparent",
+                  ].join(" ")
+                }
+              >
+                {({ isActive }) => (
+                  <>
+                    <Icon
+                      className={`w-5 h-5 shrink-0 ${
+                        isActive ? "text-indigo-400" : "text-zinc-400 group-hover:text-zinc-200"
+                      }`}
+                    />
+                    <span className="ml-2.5 truncate lg:hidden">{item.title}</span>
+                  </>
+                )}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Logout */}
+        <div className="p-2 border-t border-zinc-800 mt-auto shrink-0">
           <button
             type="button"
             onClick={handleLogout}
-            title={isCollapsed ? "Keluar Sesi" : undefined}
-            className="group w-full flex items-center h-11 px-2 rounded-2xl text-xs font-mono font-semibold text-gray-400 hover:bg-red-500/10 hover:text-red-400 border border-transparent hover:border-red-500/20 active:scale-95 transition-all duration-200 select-none"
+            onMouseEnter={(e) => handleMouseEnter(e, "Keluar Sesi")}
+            onMouseLeave={handleMouseLeave}
+            className="group relative flex items-center h-9 rounded-lg text-xs font-sans font-medium transition-colors w-full px-2.5 lg:px-0 lg:justify-center text-zinc-400 hover:bg-rose-500/10 hover:text-rose-400 border border-transparent hover:border-rose-500/20"
           >
-            <div className="w-9 h-9 flex items-center justify-center flex-shrink-0">
-              <LogOut className="w-5 h-5 text-gray-400 group-hover:text-red-400 transition-colors duration-200" />
-            </div>
-            <span
-              className={`whitespace-nowrap overflow-hidden transition-all duration-300 ease-in-out ${
-                isCollapsed
-                  ? "max-w-0 opacity-0 pointer-events-none ml-0"
-                  : "max-w-[180px] opacity-100 ml-3"
-              }`}
-            >
-              Keluar Sesi
-            </span>
+            <LogOut className="w-5 h-5 shrink-0 text-zinc-400 group-hover:text-rose-400" />
+            <span className="ml-2.5 lg:hidden">Keluar Sesi</span>
           </button>
         </div>
       </aside>
+
+      {/* Tooltip portal dengan delay & animasi */}
+      {hoveredItem &&
+        createPortal(
+          <div
+            className="fixed z-[9999] pointer-events-none"
+            style={{
+              left: "72px",
+              top: hoveredItem.top,
+              transform: "translateY(-50%)",
+            }}
+          >
+            <div
+              className="flex items-center"
+              style={{ animation: "tooltipFadeSlide 0.25s cubic-bezier(0.22, 0.61, 0.36, 1)" }}
+            >
+              <div className="w-0 h-0 border-y-8 border-y-transparent border-r-8 border-r-zinc-800" />
+              <div className="ml-[-1px] px-3 py-1.5 rounded-md bg-zinc-800 text-zinc-100 text-xs font-medium whitespace-nowrap shadow-xl border border-zinc-700">
+                {hoveredItem.title}
+              </div>
+            </div>
+          </div>,
+          document.body
+        )}
     </>
   );
 };

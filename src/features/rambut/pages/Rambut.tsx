@@ -1,7 +1,6 @@
 // src/features/rambut/pages/Rambut.tsx
 import React from "react";
 import { useRambutPage } from "../hooks/useRambutPage";
-
 import { RambutHeader } from "../components/RambutHeader";
 import { RambutStats } from "../components/RambutStats";
 import { RambutScanToolbar } from "../components/RambutScanToolbar";
@@ -13,7 +12,7 @@ export default function RambutPage() {
   const p = useRambutPage();
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
       {/* 1. Header Banner Shared */}
       <RambutHeader
         activePeriode={p.activePeriode || null}
@@ -80,7 +79,7 @@ export default function RambutPage() {
         canExecute={p.canExecute}
       />
 
-      {/* 5. Pagination Kontrol */}
+      {/* 5. Pagination */}
       {p.activeTab === "queue" && p.totalItems > 0 && (
         <MasterPagination
           page={p.page}
@@ -90,7 +89,6 @@ export default function RambutPage() {
           onPageChange={p.setPage}
         />
       )}
-
       {p.activeTab === "pengurus" && p.totalPengurusItems > 0 && (
         <MasterPagination
           page={p.pengurusPage}
@@ -100,7 +98,6 @@ export default function RambutPage() {
           onPageChange={p.setPengurusPage}
         />
       )}
-
       {p.activeTab === "audit" && p.totalAuditItems > 0 && (
         <MasterPagination
           page={p.auditPage}
@@ -111,7 +108,7 @@ export default function RambutPage() {
         />
       )}
 
-      {/* 6. Isolated Modal Container */}
+      {/* 6. Modals */}
       <RambutModals {...p} />
     </div>
   );

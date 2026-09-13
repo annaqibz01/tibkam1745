@@ -1,6 +1,6 @@
 // src/components/shared/NotificationToast.tsx
 import { useEffect, useState, useCallback, useRef } from "react";
-import { createPortal } from "react-dom"; // 👈 Kita pakai Portal dari React DOM
+import { createPortal } from "react-dom";
 import {
   CheckCircle2,
   AlertCircle,
@@ -39,7 +39,7 @@ export default function NotificationToast({
     timerRef.current = setTimeout(() => {
       setDisplayToast(null);
       onClose();
-    }, 300);
+    }, 150);
   }, [onClose]);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function NotificationToast({
       };
     } else {
       setIsVisible(false);
-      const clearDelay = setTimeout(() => setDisplayToast(null), 300);
+      const clearDelay = setTimeout(() => setDisplayToast(null), 150);
       return () => clearTimeout(clearDelay);
     }
   }, [toast, duration, handleClose]);
@@ -69,71 +69,62 @@ export default function NotificationToast({
   const toastConfig = {
     success: {
       border: "border-emerald-500/30",
-      bgShadow: "shadow-emerald-950/50",
-      icon: <CheckCircle2 size={20} className="text-emerald-400" />,
+      icon: <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />,
       titleColor: "text-emerald-300",
     },
     error: {
       border: "border-rose-500/30",
-      bgShadow: "shadow-rose-950/50",
-      icon: <AlertCircle size={20} className="text-rose-400" />,
+      icon: <AlertCircle className="w-4 h-4 text-rose-400 shrink-0" />,
       titleColor: "text-rose-300",
     },
     warning: {
       border: "border-amber-500/30",
-      bgShadow: "shadow-amber-950/50",
-      icon: <AlertTriangle size={20} className="text-amber-400" />,
+      icon: <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />,
       titleColor: "text-amber-300",
     },
     info: {
-      border: "border-indigo-500/30",
-      bgShadow: "shadow-indigo-950/50",
-      icon: <Info size={20} className="text-indigo-400" />,
-      titleColor: "text-indigo-300",
+      border: "border-zinc-700",
+      icon: <Info className="w-4 h-4 text-zinc-400 shrink-0" />,
+      titleColor: "text-zinc-200",
     },
   }[currentType];
 
-  // 💡 Menggunakan createPortal untuk merender komponen langsung di bawah <body>
   return createPortal(
-    <div className="fixed top-12 inset-x-0 z-[99999] flex justify-center px-4 pointer-events-none">
+    <div className="fixed top-11 inset-x-0 z-[99999] flex justify-center px-4 pointer-events-none font-sans">
       <div
-        className={`pointer-events-auto max-w-md w-full rounded-2xl border bg-gray-900/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
+        className={`pointer-events-auto max-w-sm w-full rounded-lg border bg-zinc-900/98 p-3 shadow-xl transition-all duration-200 ease-out flex items-start gap-2.5 ${
           toastConfig.border
-        } ${toastConfig.bgShadow} ${
+        } ${
           isVisible
             ? "translate-y-0 opacity-100 scale-100"
-            : "-translate-y-8 opacity-0 scale-95"
+            : "-translate-y-2 opacity-0 scale-98"
         }`}
       >
-        {/* Ikon Kiri */}
-        <div className="flex-shrink-0 mt-0.5">{toastConfig.icon}</div>
+        <div className="mt-0.5">{toastConfig.icon}</div>
 
-        {/* Isi Teks / Pesan */}
-        <div className="flex-1 space-y-0.5">
+        <div className="flex-1 space-y-0.5 min-w-0">
           {displayToast.title && (
-            <h4 className={`font-semibold text-sm ${toastConfig.titleColor}`}>
+            <h4 className={`font-semibold text-xs leading-tight ${toastConfig.titleColor}`}>
               {displayToast.title}
             </h4>
           )}
           {displayToast.message && (
-            <p className="text-xs text-gray-300 leading-relaxed">
+            <p className="text-[11px] text-zinc-300 leading-normal">
               {displayToast.message}
             </p>
           )}
         </div>
 
-        {/* Tombol Close Manual */}
-        <div className="flex-shrink-0">
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-800 hover:text-gray-300 focus:outline-none"
-          >
-            <X size={16} />
-          </button>
-        </div>
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={handleClose}
+          className="rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 focus:outline-none shrink-0"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>,
-    document.body, // 👈 Target injeksi portal
+    document.body
   );
 }

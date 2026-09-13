@@ -13,3 +13,4 @@ export * from "./rambut/hooks/useLaporanRambut";
 // export * from "./penyidik/pages/LaporanPenyidikPage";
 // Tambahkan di src/features/laporan/index.ts
 export * from "./components/LaporanRedirect";
+export * from "./components/LaporanCenter";

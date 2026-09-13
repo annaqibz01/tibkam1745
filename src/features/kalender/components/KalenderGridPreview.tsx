@@ -1,4 +1,4 @@
-// src/components/kalender/KalenderGridPreview.tsx
+// src/features/kalender/components/KalenderGridPreview.tsx
 import React, { useState, useEffect } from "react";
 import { useAdminKalender, useTodayHijri } from "../hooks/useKalenderHijriyah";
 import type { KalenderHijriyahBulanHijriNamaOptions } from "@/types/pocketbase-types";
@@ -6,8 +6,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
-  Calendar,
-  Sparkles,
   Moon,
   AlertCircle,
   RotateCcw,
@@ -40,13 +38,12 @@ const BULAN_LIST: { angka: number; nama: KalenderHijriyahBulanHijriNamaOptions }
 
 export const KalenderGridPreview: React.FC = () => {
   const { useKalenderBulan, useLatestKalender } = useAdminKalender();
-  const { data: todayHijri } = useTodayHijri(); // ✨ Fetch data Hijriyah hari ini
+  const { data: todayHijri } = useTodayHijri();
   const { data: latestRecord } = useLatestKalender();
 
   const [selectedBulan, setSelectedBulan] = useState(1);
   const [selectedTahun, setSelectedTahun] = useState(1448);
 
-  // ✨ UTAMA: Defaultkan ke TANGGAL HARI INI dari Database jika tersedia!
   useEffect(() => {
     if (todayHijri) {
       if (todayHijri.bulan_hijri_angka) setSelectedBulan(todayHijri.bulan_hijri_angka);
@@ -59,7 +56,6 @@ export const KalenderGridPreview: React.FC = () => {
 
   const { data: daysData, isLoading } = useKalenderBulan(selectedTahun, selectedBulan);
 
-  // Fungsi Lompat Cepat ke Bulan Hari Ini
   const handleJumpToToday = () => {
     if (todayHijri) {
       if (todayHijri.bulan_hijri_angka) setSelectedBulan(todayHijri.bulan_hijri_angka);
@@ -67,7 +63,6 @@ export const KalenderGridPreview: React.FC = () => {
     }
   };
 
-  // Navigasi Bulan
   const handlePrevMonth = () => {
     if (selectedBulan === 1) {
       setSelectedBulan(12);
@@ -88,13 +83,11 @@ export const KalenderGridPreview: React.FC = () => {
 
   const namaBulanAktif = BULAN_LIST.find((b) => b.angka === selectedBulan)?.nama || "Muharram";
 
-  // Hitung offset hari pertama
   const firstRecord = daysData && daysData.length > 0 ? daysData[0] : null;
   const firstDayOffset = firstRecord
     ? new Date(firstRecord.tanggal_masehi).getDay()
     : 0;
 
-  // Helper Pembanding Tanggal Lokal (Format YYYY-MM-DD)
   const getLocalDateStr = (dateInput: Date | string) => {
     const d = new Date(dateInput);
     const yyyy = d.getFullYear();
@@ -106,37 +99,34 @@ export const KalenderGridPreview: React.FC = () => {
   const todayStr = getLocalDateStr(new Date());
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-7 shadow-2xl backdrop-blur-xl space-y-6">
-      {/* 🔮 Garis Kilau Top-Border */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-amber-500/40 to-transparent" />
-
-      {/* 1. HEADER KALENDER GRID */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-800/80 pb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-400 shadow-inner">
-            <Moon className="w-5 h-5" />
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5 shadow-sm space-y-4 font-sans select-none">
+      {/* 1. Toolbar Header Kalender */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="p-2 rounded-lg bg-zinc-800 border border-zinc-700 text-amber-400">
+            <Moon className="w-4 h-4" />
           </div>
           <div>
-            <span className="block text-[10px] font-mono font-bold uppercase tracking-wider text-amber-400">
-              Kalender Hijriyah
+            <span className="block text-[10px] font-mono font-medium uppercase tracking-wider text-zinc-500">
+              Penanggalan Aktif
             </span>
-            <h2 className="text-xl sm:text-2xl font-extrabold text-white font-mono flex items-center gap-2">
+            <h2 className="text-base sm:text-lg font-bold text-zinc-100 flex items-center gap-2">
               <span>{namaBulanAktif}</span>
-              <span className="text-amber-300">{selectedTahun} H</span>
+              <span className="text-amber-400 font-mono">{selectedTahun} H</span>
             </h2>
           </div>
         </div>
 
-        {/* Tombol Navigasi & Pintasan Hari Ini */}
-        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+        {/* Kontrol Navigasi Bulan */}
+        <div className="flex items-center gap-1.5 self-start sm:self-auto">
           {todayHijri && (
             <button
               type="button"
               onClick={handleJumpToToday}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 text-amber-300 text-xs font-mono font-bold transition-all active:scale-95 shadow-sm mr-1"
-              title="Kembali ke Bulan Hari Ini"
+              className="inline-flex items-center gap-1 h-8 px-2.5 rounded-md bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-xs font-medium transition-colors active:scale-98 mr-1"
+              title="Kembali ke Hari Ini"
             >
-              <RotateCcw className="w-3.5 h-3.5" />
+              <RotateCcw className="w-3 h-3 text-amber-400" />
               <span>Hari Ini</span>
             </button>
           )}
@@ -144,20 +134,20 @@ export const KalenderGridPreview: React.FC = () => {
           <button
             type="button"
             onClick={handlePrevMonth}
-            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 text-gray-300 hover:text-white hover:border-amber-500/40 hover:bg-amber-500/10 active:scale-95 transition-all shadow-md"
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
             title="Bulan Sebelumnya"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
 
-          <span className="px-3.5 py-1.5 rounded-xl bg-gray-950/60 border border-gray-800 text-xs font-mono font-bold text-gray-300">
+          <span className="px-2.5 h-8 flex items-center justify-center rounded-md bg-zinc-950 border border-zinc-800 text-xs font-mono font-medium text-zinc-300">
             {selectedBulan} / 12
           </span>
 
           <button
             type="button"
             onClick={handleNextMonth}
-            className="p-2 rounded-xl bg-gray-950/80 border border-gray-800 text-gray-300 hover:text-white hover:border-amber-500/40 hover:bg-amber-500/10 active:scale-95 transition-all shadow-md"
+            className="w-8 h-8 flex items-center justify-center rounded-md bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
             title="Bulan Selanjutnya"
           >
             <ChevronRight className="w-4 h-4" />
@@ -165,33 +155,33 @@ export const KalenderGridPreview: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. GRID KALENDER DINDING */}
+      {/* 2. Kisi Kalender */}
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 gap-3">
-          <Loader2 className="w-8 h-8 animate-spin text-amber-400" />
-          <span className="text-gray-400 font-mono text-xs">Menyusun kisi kalender...</span>
+        <div className="flex flex-col items-center justify-center py-16 gap-2 text-zinc-500">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <span className="text-xs">Menyusun kisi kalender...</span>
         </div>
       ) : !daysData || daysData.length === 0 ? (
-        <div className="p-12 text-center space-y-2.5 rounded-2xl bg-gray-950/40 border border-gray-800/80">
-          <AlertCircle className="w-8 h-8 text-amber-400/60 mx-auto" />
-          <p className="text-sm font-semibold text-gray-300">
+        <div className="p-8 text-center space-y-1.5 rounded-lg bg-zinc-950/60 border border-zinc-800">
+          <AlertCircle className="w-6 h-6 text-zinc-500 mx-auto" />
+          <p className="text-xs font-semibold text-zinc-300">
             Bulan {namaBulanAktif} {selectedTahun} H Belum Dipetakan
           </p>
-          <p className="text-xs text-gray-500 max-w-sm mx-auto">
-            Gunakan tombol "Generate Bulan Baru" di atas untuk memetakan tanggal Masehi ke Hijriyah.
+          <p className="text-[11px] text-zinc-500 max-w-xs mx-auto">
+            Gunakan tombol "Generate Bulan Baru" di pojok kanan atas untuk memetakan tanggal.
           </p>
         </div>
       ) : (
-        <div className="space-y-2">
-          {/* Header Nama Hari (7 Kolom) */}
-          <div className="grid grid-cols-7 gap-1.5 text-center">
+        <div className="space-y-1.5">
+          {/* Header 7 Hari */}
+          <div className="grid grid-cols-7 gap-1 text-center">
             {NAMA_HARI_HEADER.map((hari) => (
               <div
                 key={hari.id}
-                className={`py-2 rounded-xl text-xs font-mono font-bold uppercase tracking-wider ${
+                className={`py-1.5 rounded-md text-[11px] font-medium uppercase tracking-wider ${
                   hari.isJumat
                     ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-                    : "bg-gray-950/60 border border-gray-800/60 text-gray-400"
+                    : "bg-zinc-950 border border-zinc-800 text-zinc-400"
                 }`}
               >
                 {hari.label}
@@ -199,17 +189,17 @@ export const KalenderGridPreview: React.FC = () => {
             ))}
           </div>
 
-          {/* Body Grid Kotak Tanggal */}
-          <div className="grid grid-cols-7 gap-1.5 sm:gap-2">
-            {/* Blank Offset Hari Kosong */}
+          {/* Sel Hari Kalender */}
+          <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
+            {/* Offset Blank Cells */}
             {Array.from({ length: firstDayOffset }).map((_, idx) => (
               <div
                 key={`offset-${idx}`}
-                className="min-h-[75px] sm:min-h-[90px] rounded-2xl bg-gray-950/20 border border-gray-900/40"
+                className="min-h-[58px] sm:min-h-[68px] rounded-lg bg-zinc-950/30 border border-zinc-800/40"
               />
             ))}
 
-            {/* Sel Hari Hijriyah */}
+            {/* Kotak Tanggal */}
             {daysData.map((item) => {
               const dateMasehiObj = new Date(item.tanggal_masehi);
               const isJumat = dateMasehiObj.getDay() === 5;
@@ -223,63 +213,40 @@ export const KalenderGridPreview: React.FC = () => {
               return (
                 <div
                   key={item.id}
-                  className={`group relative min-h-[75px] sm:min-h-[90px] p-2.5 sm:p-3 rounded-2xl border transition-all duration-200 flex flex-col justify-between overflow-hidden ${
+                  className={`p-2 rounded-lg border flex flex-col justify-between transition-colors ${
                     isToday
-                      ? "bg-gradient-to-br from-amber-500/20 via-amber-950/40 to-gray-950 border-amber-400 ring-2 ring-amber-500/40 shadow-xl shadow-amber-500/10 scale-[1.02]"
+                      ? "bg-amber-500/10 border-amber-500/60 ring-1 ring-amber-500/30"
                       : isJumat
-                      ? "bg-emerald-950/30 border-emerald-500/30 hover:border-emerald-500/60"
-                      : "bg-gray-950/60 border-gray-800/80 hover:border-indigo-500/40 hover:bg-gray-900/80"
+                      ? "bg-emerald-950/20 border-emerald-500/30 hover:border-emerald-500/50"
+                      : "bg-zinc-950/60 border-zinc-800 hover:border-zinc-700 hover:bg-zinc-850"
                   }`}
                 >
-                  {/* ✨ PENANDA KHUSUS HARI INI (BADGE & PULSING DOT) */}
-                  {isToday && (
-                    <div className="absolute top-1.5 right-1.5 flex items-center gap-1">
-                      <span className="text-[8px] font-mono font-black uppercase tracking-wider text-amber-300 bg-amber-500/20 px-1.5 py-0.5 rounded border border-amber-500/40 shadow-sm hidden sm:inline-block">
-                        Hari Ini
-                      </span>
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-400 border border-gray-950" />
-                      </span>
-                    </div>
-                  )}
-
-                  {/* 🟢 ANGKAH UTAMA: TANGGAL HIJRIYAH */}
-                  <div className="flex items-baseline justify-between">
+                  <div className="flex items-center justify-between">
                     <span
-                      className={`font-mono text-2xl sm:text-3xl font-extrabold tracking-tight ${
+                      className={`font-mono text-lg sm:text-xl font-bold tracking-tight ${
                         isToday
-                          ? "text-amber-300 drop-shadow-md"
+                          ? "text-amber-300 font-black"
                           : isJumat
-                          ? "text-emerald-300"
-                          : "text-white group-hover:text-indigo-300"
+                          ? "text-emerald-400"
+                          : "text-zinc-100"
                       }`}
                     >
                       {item.tanggal_hijri}
                     </span>
-                    {isJumat && !isToday && (
-                      <span className="text-[9px] font-mono text-emerald-400 font-bold bg-emerald-500/10 px-1 rounded border border-emerald-500/20 hidden sm:inline-block">
+
+                    {isToday ? (
+                      <span className="text-[9px] font-medium text-amber-300 bg-amber-500/20 px-1 py-0.2 rounded">
+                        Hari Ini
+                      </span>
+                    ) : isJumat ? (
+                      <span className="text-[9px] font-medium text-emerald-400">
                         Jum'at
                       </span>
-                    )}
+                    ) : null}
                   </div>
 
-                  {/* ⚪ ANGKAH SUB: TANGGAL MASEHI */}
-                  <div className="mt-1 flex items-center justify-between border-t border-gray-800/60 pt-1 text-[10px] font-mono">
-                    <span
-                      className={
-                        isToday
-                          ? "text-amber-200 font-bold"
-                          : "text-gray-400 group-hover:text-gray-300 transition-colors"
-                      }
-                    >
-                      {formatMasehiSmall}
-                    </span>
-                    <Calendar
-                      className={`w-3 h-3 ${
-                        isToday ? "text-amber-400" : "text-gray-500 group-hover:text-indigo-400"
-                      } transition-colors`}
-                    />
+                  <div className="mt-1 pt-1 border-t border-zinc-800/60 flex items-center justify-between text-[10px] font-mono text-zinc-500">
+                    <span>{formatMasehiSmall}</span>
                   </div>
                 </div>
               );

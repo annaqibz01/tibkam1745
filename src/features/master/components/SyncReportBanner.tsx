@@ -1,4 +1,4 @@
-// src/components/master/SyncReportBanner.tsx
+// src/features/master/components/SyncReportBanner.tsx
 import { useEffect, useState } from "react";
 import { CheckCircle2, X } from "lucide-react";
 
@@ -11,7 +11,7 @@ interface SyncReport {
 
 interface SyncReportBannerProps {
   report: SyncReport | null;
-  onClose: () => void; // ✨ Tambahkan properti onClose baru
+  onClose: () => void;
 }
 
 export default function SyncReportBanner({ report, onClose }: SyncReportBannerProps) {
@@ -21,7 +21,7 @@ export default function SyncReportBanner({ report, onClose }: SyncReportBannerPr
   useEffect(() => {
     if (report) {
       setLocalReport(report);
-      const openTimeout = setTimeout(() => setIsVisible(true), 50);
+      const openTimeout = setTimeout(() => setIsVisible(true), 20);
       const closeTimeout = setTimeout(() => {
         handleClose();
       }, 6000);
@@ -33,63 +33,62 @@ export default function SyncReportBanner({ report, onClose }: SyncReportBannerPr
     }
   }, [report]);
 
-  // ✨ KUNCI PERBAIKAN: Beri sinyal balik ke Master.tsx setelah animasi keluar selesai
   const handleClose = () => {
     setIsVisible(false);
     setTimeout(() => {
-      onClose(); // Mengubah syncReport di Master.tsx menjadi null
+      onClose();
       setLocalReport(null);
-    }, 300);
+    }, 150);
   };
 
   if (!localReport && !isVisible) return null;
 
   return (
-    <div className="fixed top-6 inset-x-0 z-50 flex justify-center px-4 pointer-events-none">
+    <div className="fixed top-11 inset-x-0 z-50 flex justify-center px-4 pointer-events-none font-sans select-none">
       <div
-        className={`pointer-events-auto max-w-md w-full rounded-2xl border border-emerald-500/30 bg-gray-900/95 p-4 text-emerald-300 shadow-2xl shadow-emerald-950/50 backdrop-blur-md transition-all duration-300 ease-out flex gap-3 ${
-          isVisible
-            ? "translate-y-0 opacity-100 scale-100"
-            : "-translate-y-8 opacity-0 scale-95"
+        className={`pointer-events-auto max-w-sm w-full rounded-lg border border-emerald-500/30 bg-zinc-900/98 p-3 shadow-xl transition-all duration-200 ease-out flex items-start gap-2.5 ${
+          isVisible ? "translate-y-0 opacity-100 scale-100" : "-translate-y-2 opacity-0 scale-98"
         }`}
       >
-        <div className="flex-shrink-0 mt-0.5">
-          <CheckCircle2 size={20} className="text-emerald-400" />
+        <div className="mt-0.5 shrink-0">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400" />
         </div>
-        <div className="flex-1 space-y-2">
+
+        <div className="flex-1 space-y-1.5 min-w-0">
           <div>
-            <h4 className="font-semibold text-white text-sm">Sinkronisasi Selesai</h4>
-            <p className="text-xs text-gray-400 mt-0.5">Berkas Excel berhasil diproses ke database.</p>
+            <h4 className="font-semibold text-zinc-100 text-xs">Sinkronisasi Database Selesai</h4>
+            <p className="text-[11px] text-zinc-400">Berkas Excel berhasil diproses ke database induk.</p>
           </div>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 border-t border-gray-800 pt-2 text-xs font-medium">
-            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
-              <span className="text-gray-400">Baru:</span>
-              <span className="font-mono font-bold text-emerald-400">{localReport?.inserted}</span>
+
+          {/* Grid Metrik Hasil Import (Font Mono untuk Angka) */}
+          <div className="grid grid-cols-2 gap-1.5 border-t border-zinc-800 pt-1.5 text-xs font-medium">
+            <div className="flex items-center justify-between bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+              <span className="text-zinc-500 text-[10px]">Data Baru:</span>
+              <span className="font-mono font-bold text-emerald-400 text-[11px]">{localReport?.inserted}</span>
             </div>
-            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
-              <span className="text-gray-400">Update:</span>
-              <span className="font-mono font-bold text-amber-400">{localReport?.updated}</span>
+            <div className="flex items-center justify-between bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+              <span className="text-zinc-500 text-[10px]">Diperbarui:</span>
+              <span className="font-mono font-bold text-amber-400 text-[11px]">{localReport?.updated}</span>
             </div>
-            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
-              <span className="text-gray-400">Nonaktif:</span>
-              <span className="font-mono font-bold text-rose-400">{localReport?.softDeleted}</span>
+            <div className="flex items-center justify-between bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+              <span className="text-zinc-500 text-[10px]">Dinonaktifkan:</span>
+              <span className="font-mono font-bold text-rose-400 text-[11px]">{localReport?.softDeleted}</span>
             </div>
-            <div className="flex items-center justify-between bg-gray-950/40 px-2 py-1 rounded-lg border border-gray-800/30">
-              <span className="text-gray-400">Lewat:</span>
-              <span className="font-mono font-bold text-gray-400">{localReport?.skipped}</span>
+            <div className="flex items-center justify-between bg-zinc-950 px-2 py-0.5 rounded border border-zinc-800">
+              <span className="text-zinc-500 text-[10px]">Dilewati:</span>
+              <span className="font-mono font-bold text-zinc-400 text-[11px]">{localReport?.skipped}</span>
             </div>
           </div>
         </div>
-        <div className="flex-shrink-0">
-          {/* Ubah onClick menjadi handleClose */}
-          <button
-            type="button"
-            onClick={handleClose}
-            className="rounded-lg p-1 text-gray-500 transition hover:bg-gray-800 hover:text-gray-300 focus:outline-none"
-          >
-            <X size={16} />
-          </button>
-        </div>
+
+        <button
+          type="button"
+          tabIndex={-1}
+          onClick={handleClose}
+          className="rounded-md p-1 text-zinc-500 hover:bg-zinc-800 hover:text-zinc-200 focus:outline-none shrink-0"
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
       </div>
     </div>
   );

@@ -1,8 +1,8 @@
-// src/components/rambut/toolbars/AuditToolbar.tsx
+// src/features/rambut/components/toolbars/AuditToolbar.tsx
 import React from "react";
 import { Moon } from "lucide-react";
-import { BaseToolbar } from "../../../../components/shared/BaseToolbar";
-import { CustomGlassDropdown, type DropdownOption } from "./CustomGlassDropdown";
+import { BaseToolbar } from "@/components/shared/BaseToolbar";
+import { GlassDropdown, type DropdownOption } from "@/components/shared";
 
 interface AuditToolbarProps {
   search: string;
@@ -32,18 +32,13 @@ export const AuditToolbar: React.FC<AuditToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-amber-400"
     >
-      {/* 
-        Dropdown Tanggal Hijriyah dimasukkan sebagai children.
-        Pastikan trigger/tombol di dalam <CustomGlassDropdown> memakai class `h-12` 
-        dan `rounded-2xl` agar tingginya presisi mendampingi search bar.
-      */}
-      <CustomGlassDropdown
+      <GlassDropdown
         value={dateFilter}
         onChange={onDateFilterChange}
         options={availableHijriDateOptions}
         defaultLabel="Semua Tanggal Hijriyah"
-        icon={<Moon className="w-4 h-4 text-amber-400 shrink-0" />}
-        activeColorClass="border-amber-500/60 text-amber-200 ring-amber-500/20"
+        icon={<Moon className="w-3.5 h-3.5 text-amber-400" />}
+        activeColorClass="border-amber-500/60 text-amber-200"
         minWidthClass="min-w-[220px]"
       />
     </BaseToolbar>

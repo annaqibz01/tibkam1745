@@ -19,7 +19,7 @@ export default function PersonilPage() {
   const currentUser = user as UsersResponse | null;
   const isAdmin = Boolean(currentUser?.role?.startsWith("admin"));
 
-  // State Filters (Default statusFilter = "all" agar tampilan dropdown seragam)
+  // State Filters
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | "aktif" | "nonaktif">("all");
@@ -103,7 +103,7 @@ export default function PersonilPage() {
   };
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
       {/* 1. Header Hero Banner */}
       <PersonilHeader
         onOpenImportModal={() => setIsImportModalOpen(true)}

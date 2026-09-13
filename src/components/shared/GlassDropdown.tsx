@@ -17,7 +17,6 @@ interface GlassDropdownProps {
   activeColorClass?: string;
   minWidthClass?: string;
   disabled?: boolean;
-  /** Aktifkan pencarian internal di dalam dropdown (Default: true jika opsi > 3) */
   searchable?: boolean;
   searchPlaceholder?: string;
 }
@@ -28,8 +27,8 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
   options,
   defaultLabel,
   icon,
-  activeColorClass = "border-indigo-500/60 text-indigo-200 ring-indigo-500/20",
-  minWidthClass = "min-w-[190px]",
+  activeColorClass = "border-zinc-700 text-zinc-100",
+  minWidthClass = "min-w-[180px]",
   disabled = false,
   searchable = true,
   searchPlaceholder = "Cari opsi...",
@@ -53,7 +52,7 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
     if (isOpen) {
       setInternalSearch("");
       if (searchable) {
-        setTimeout(() => searchInputRef.current?.focus(), 100);
+        setTimeout(() => searchInputRef.current?.focus(), 60);
       }
     }
   }, [isOpen, searchable]);
@@ -66,7 +65,6 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
     ? defaultLabel
     : selectedOption?.label || value;
 
-  // Filter opsi berdasarkan input pencarian internal
   const filteredOptions = useMemo(() => {
     if (!internalSearch.trim()) return options;
     const query = internalSearch.trim().toLowerCase();
@@ -82,15 +80,16 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
   }, [options, internalSearch]);
 
   return (
-    <div ref={dropdownRef} className={`relative ${minWidthClass} select-none`}>
+    <div ref={dropdownRef} className={`relative ${minWidthClass} select-none font-sans`}>
+      {/* Trigger Button (Tinggi h-9 / 36px, Radius rounded-lg) */}
       <button
         type="button"
         disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className={`w-full h-12 flex items-center justify-between px-4 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg disabled:opacity-50 disabled:cursor-not-allowed ${
+        className={`w-full h-9 flex items-center justify-between px-3 bg-zinc-900 border rounded-lg text-xs font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed ${
           isOpen || !isDefaultSelected
-            ? `${activeColorClass} ring-2`
-            : "border-gray-800/80 text-gray-300 hover:border-gray-700"
+            ? `${activeColorClass} border-zinc-700 bg-zinc-800/80`
+            : "border-zinc-800 text-zinc-300 hover:border-zinc-700 hover:text-white"
         }`}
       >
         <div className="flex items-center gap-2 truncate min-w-0">
@@ -98,38 +97,40 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
           <span className="truncate">{selectedLabel}</span>
         </div>
         <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform duration-200 shrink-0 ml-1.5 ${
-            isOpen ? "rotate-180 text-white" : ""
+          className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 shrink-0 ml-1.5 ${
+            isOpen ? "rotate-180 text-zinc-200" : ""
           }`}
         />
       </button>
 
+      {/* Popover Menu Dropdown */}
       <AnimatePresence>
         {isOpen && !disabled && (
           <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 z-30 mt-2 w-full min-w-[220px] max-h-64 overflow-hidden bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-2xl shadow-2xl p-2 flex flex-col space-y-2 font-mono text-xs"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.12 }}
+            className="absolute right-0 z-40 mt-1 w-full min-w-[200px] max-h-60 overflow-hidden bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl p-1 flex flex-col space-y-1 font-sans text-xs"
           >
-            {/* 🔍 INTERNAL SEARCH BOX (Tampil jika opsi > 3) */}
+            {/* Search Box Internal */}
             {searchable && options.length > 3 && (
-              <div className="relative shrink-0">
+              <div className="relative shrink-0 px-1 pt-1 pb-0.5">
                 <input
                   ref={searchInputRef}
                   type="text"
                   value={internalSearch}
                   onChange={(e) => setInternalSearch(e.target.value)}
                   placeholder={searchPlaceholder}
-                  className="w-full h-8 pl-8 pr-7 bg-gray-950/80 border border-gray-800 rounded-xl text-white text-[11px] placeholder-gray-500 focus:outline-none focus:ring-1 focus:ring-indigo-500/40"
+                  className="w-full h-7 pl-7 pr-6 bg-zinc-950 border border-zinc-800 rounded-md text-zinc-100 text-[11px] placeholder-zinc-500 focus:outline-none focus:border-zinc-700"
                 />
-                <Search className="w-3.5 h-3.5 text-gray-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                 {internalSearch && (
                   <button
                     type="button"
+                    tabIndex={-1}
                     onClick={() => setInternalSearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-300"
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300"
                   >
                     <X className="w-3 h-3" />
                   </button>
@@ -137,7 +138,7 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
               </div>
             )}
 
-            {/* 📊 OPTIONS LIST */}
+            {/* List Pilihan */}
             <div className="overflow-y-auto max-h-48 space-y-0.5 custom-scrollbar pr-0.5 flex-1">
               <button
                 type="button"
@@ -147,10 +148,10 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
                   onChange(defaultValue);
                   setIsOpen(false);
                 }}
-                className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors ${
+                className={`w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs transition-colors ${
                   isDefaultSelected
-                    ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
-                    : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                    ? "bg-zinc-800 text-white font-semibold"
+                    : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white"
                 }`}
               >
                 <span className="truncate">{defaultLabel}</span>
@@ -158,7 +159,7 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
               </button>
 
               {filteredOptions.length === 0 ? (
-                <div className="py-4 text-center text-[10px] text-gray-500 font-sans">
+                <div className="py-3 text-center text-[11px] text-zinc-500 font-sans">
                   Opsi tidak ditemukan
                 </div>
               ) : (
@@ -174,10 +175,10 @@ export const GlassDropdown: React.FC<GlassDropdownProps> = ({
                         onChange(opt.value);
                         setIsOpen(false);
                       }}
-                      className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs transition-colors ${
+                      className={`w-full flex items-center justify-between rounded-md px-2.5 py-1.5 text-xs transition-colors ${
                         isSelected
-                          ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
-                          : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
+                          ? "bg-zinc-800 text-white font-semibold"
+                          : "text-zinc-300 hover:bg-zinc-800/60 hover:text-white"
                       }`}
                     >
                       <span className="truncate">{opt.label}</span>

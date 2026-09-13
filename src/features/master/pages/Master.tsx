@@ -42,7 +42,6 @@ export default function MasterPage() {
 
   const { useMasterList } = useMaster();
 
-  // Filter Dinamis Berantai
   const { data: dynamicFilterOptions } = useMasterFilterOptions({
     statusFilter,
     tingkatanFilter,
@@ -51,7 +50,6 @@ export default function MasterPage() {
     domisiliFilter,
   });
 
-  // Auto-reset jika nilai filter aktif tidak ada dalam opsi baru
   useEffect(() => {
     if (
       domisiliFilter !== "all" &&
@@ -143,21 +141,21 @@ export default function MasterPage() {
   };
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
-      {/* 1. Header Hero Banner Shared */}
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
+      {/* 1. Header Banner */}
       <MasterHeader
         onOpenImportModal={() => setIsImportModalOpen(true)}
         onOpenSyncFotoModal={() => setIsSyncFotoModalOpen(true)}
         isAdmin={isAdmin}
       />
 
-      {/* 2. Banner Hasil Laporan Sinkronisasi */}
+      {/* 2. Banner Hasil Sinkronisasi */}
       <SyncReportBanner
         report={syncReport}
         onClose={() => setSyncReport(null)}
       />
 
-      {/* 3. Search & Multi-Dropdown Filter Toolbar Shared */}
+      {/* 3. Toolbar Pencarian & Filter (Tinggi h-9) */}
       <MasterToolbar
         search={search}
         onSearchChange={handleSearchChange}
@@ -179,7 +177,7 @@ export default function MasterPage() {
         isListLoading={isLoading || isFetching}
       />
 
-      {/* 4. Tabel Data Master Santri */}
+      {/* 4. Tabel Data Master Santri (Kompak py-2) */}
       <MasterTable
         items={items}
         isLoading={isLoading}
@@ -189,7 +187,7 @@ export default function MasterPage() {
         onSelectSantri={(santri) => setSelectedSantriDetail(santri)}
       />
 
-      {/* 5. Pagination Navigasi Data */}
+      {/* 5. Pagination Data (Kompak h-7) */}
       <MasterPagination
         page={page}
         totalPages={totalPages}

@@ -17,10 +17,10 @@ export function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) 
   // 1. Loading State Verifikasi Sesi
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-950 text-white font-mono">
-        <div className="flex flex-col items-center gap-3 p-6 rounded-3xl border border-gray-800/80 bg-gray-900/60 backdrop-blur-xl shadow-2xl">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-          <p className="text-gray-400 text-xs font-semibold">Memverifikasi Sesi Kredensial...</p>
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 text-zinc-100 font-sans select-none">
+        <div className="flex flex-col items-center gap-3 p-5 rounded-xl border border-zinc-800 bg-zinc-900 shadow-xl">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <p className="text-zinc-400 text-xs font-medium">Memverifikasi sesi kredensial...</p>
         </div>
       </div>
     );

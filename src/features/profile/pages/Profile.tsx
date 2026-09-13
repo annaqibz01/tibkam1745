@@ -20,7 +20,7 @@ const Profile = () => {
   const [isPasswordModalOpen, setIsPasswordModalOpen] = useState(false);
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6 w-full">
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans w-full">
       {/* 1. Hero Header Shared */}
       <ProfileHeroHeader />
 

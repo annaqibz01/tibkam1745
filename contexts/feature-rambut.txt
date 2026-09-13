@@ -11,7 +11,6 @@
 - `src/features/rambut/components/pos/PosResultCard.tsx`
 - `src/features/rambut/components/pos/PosSessionLogs.tsx`
 - `src/features/rambut/components/RambutHeader.tsx`
-- `src/features/rambut/components/RambutHistoryTable.tsx`
 - `src/features/rambut/components/RambutModals.tsx`
 - `src/features/rambut/components/RambutQueueTable.tsx`
 - `src/features/rambut/components/RambutScanToolbar.tsx`
@@ -21,7 +20,6 @@
 - `src/features/rambut/components/subtables/RambutPengurusSubTable.tsx`
 - `src/features/rambut/components/subtables/RambutQueueSubTable.tsx`
 - `src/features/rambut/components/toolbars/AuditToolbar.tsx`
-- `src/features/rambut/components/toolbars/CustomGlassDropdown.tsx`
 - `src/features/rambut/components/toolbars/PengurusToolbar.tsx`
 - `src/features/rambut/components/toolbars/QueueToolbar.tsx`
 - `src/features/rambut/hooks/useImportPengurus.ts`
@@ -46,13 +44,7 @@ import NotificationToast, { ToastMessage } from "@/components/shared/Notificatio
 import { useTodayHijri } from "@/features/kalender";
 import { toLocalYMD } from "@/utils/dateHelpers";
 import type { CreatePeriodePayload } from "../hooks/useRambut";
-import {
-  Calendar,
-  Loader2,
-  Save,
-  Minus,
-  Plus,
-} from "lucide-react";
+import { Calendar, Loader2, Save, Minus, Plus } from "lucide-react";
 
 interface CreatePeriodeModalProps {
   isOpen: boolean;
@@ -85,7 +77,6 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   existingPeriodes = [],
 }) => {
   const { data: todayHijri } = useTodayHijri();
-
   const [namaPeriode, setNamaPeriode] = useState("");
   const [bulanHijri, setBulanHijri] = useState<number>(1);
   const [tahunHijri, setTahunHijri] = useState<number>(1448);
@@ -94,34 +85,26 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   const [toast, setToast] = useState<ToastMessage | null>(null);
 
   const activeBulan = useMemo(() => {
-    return (
-      BULAN_HIJRI_OPTIONS.find((b) => b.angka === bulanHijri) ||
-      BULAN_HIJRI_OPTIONS[0]
-    );
+    return BULAN_HIJRI_OPTIONS.find((b) => b.angka === bulanHijri) || BULAN_HIJRI_OPTIONS[0];
   }, [bulanHijri]);
 
-  // 🎯 FIX 1: Reset Form & Toast baik saat BUKA maupun saat TUTUP modal
   useEffect(() => {
     if (isOpen) {
       setNamaPeriode("");
       setTglMulai("");
       setTglSelesai("");
       setToast(null);
-
       if (todayHijri) {
         if (todayHijri.bulan_hijri_angka) setBulanHijri(todayHijri.bulan_hijri_angka);
         if (todayHijri.tahun_hijri) setTahunHijri(todayHijri.tahun_hijri);
       }
     } else {
-      // Bersihkan state total ketika modal tertutup agar tidak membocorkan toast ke halaman utama
       setNamaPeriode("");
       setTglMulai("");
       setTglSelesai("");
       setToast(null);
     }
   }, [isOpen, todayHijri]);
-
-  // ==================== AREA VALIDASI STRICT ====================
 
   const isDateInvalid = useMemo(() => {
     if (!tglMulai || !tglSelesai) return false;
@@ -133,51 +116,32 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   const isNameDuplicate = useMemo(() => {
     if (!namaPeriode.trim() || !Array.isArray(existingPeriodes)) return false;
     const target = namaPeriode.trim().toLowerCase();
-    return existingPeriodes.some(
-      (p) => (p?.nama_periode || "").trim().toLowerCase() === target
-    );
+    return existingPeriodes.some((p) => (p?.nama_periode || "").trim().toLowerCase() === target);
   }, [namaPeriode, existingPeriodes]);
 
   const isDateOverlapping = useMemo(() => {
     if (!tglMulai || !tglSelesai || !Array.isArray(existingPeriodes)) return false;
-
     const startNew = toLocalYMD(tglMulai);
     const endNew = toLocalYMD(tglSelesai);
-
     return existingPeriodes.some((p) => {
       if (!p?.tanggal_mulai || !p?.tanggal_selesai) return false;
       const startExisting = toLocalYMD(p.tanggal_mulai);
       const endExisting = toLocalYMD(p.tanggal_selesai);
-
       return startNew <= endExisting && endNew >= startExisting;
     });
   }, [tglMulai, tglSelesai, existingPeriodes]);
 
-  // 🎯 FIX 2: Pemicu Toast HANYA berjalan jika modal sedang TERBUKA (`isOpen === true`)
   useEffect(() => {
     if (!isOpen) {
       setToast(null);
       return;
     }
-
     if (isDateInvalid) {
-      setToast({
-        title: "Tanggal Tidak Valid",
-        message: "Tanggal selesai tidak boleh lebih awal dari tanggal mulai!",
-        type: "error",
-      });
+      setToast({ title: "Tanggal Tidak Valid", message: "Tanggal selesai tidak boleh lebih awal dari tanggal mulai!", type: "error" });
     } else if (isNameDuplicate) {
-      setToast({
-        title: "Nama Periode Sama",
-        message: "Nama periode sudah terdaftar di sistem. Gunakan nama lain!",
-        type: "warning",
-      });
+      setToast({ title: "Nama Periode Sama", message: "Nama periode sudah terdaftar di sistem. Gunakan nama lain!", type: "warning" });
     } else if (isDateOverlapping) {
-      setToast({
-        title: "Jadwal Bentrok",
-        message: "Rentang tanggal bertabrakan dengan periode yang sudah ada!",
-        type: "error",
-      });
+      setToast({ title: "Jadwal Bentrok", message: "Rentang tanggal bertabrakan dengan periode yang sudah ada!", type: "error" });
     } else {
       setToast(null);
     }
@@ -186,10 +150,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   const handlePrevBulan = () => {
     let nextBulan = bulanHijri - 1;
     let nextTahun = tahunHijri;
-    if (nextBulan < 1) {
-      nextBulan = 12;
-      nextTahun -= 1;
-    }
+    if (nextBulan < 1) { nextBulan = 12; nextTahun -= 1; }
     setBulanHijri(nextBulan);
     setTahunHijri(nextTahun);
   };
@@ -197,10 +158,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
   const handleNextBulan = () => {
     let nextBulan = bulanHijri + 1;
     let nextTahun = tahunHijri;
-    if (nextBulan > 12) {
-      nextBulan = 1;
-      nextTahun += 1;
-    }
+    if (nextBulan > 12) { nextBulan = 1; nextTahun += 1; }
     setBulanHijri(nextBulan);
     setTahunHijri(nextTahun);
   };
@@ -212,7 +170,6 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!namaPeriode.trim() || !tglMulai || !tglSelesai) {
       setToast({ title: "Form Belum Lengkap", message: "Harap isi semua data.", type: "warning" });
       return;
@@ -221,7 +178,6 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
       setToast({ title: "Gagal Menyimpan", message: "Harap periksa kembali eror pada form.", type: "error" });
       return;
     }
-
     onSubmit({
       nama_periode: namaPeriode.trim(),
       bulan_hijriyah_angka: bulanHijri,
@@ -238,14 +194,12 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title="Buat Periode Setoran Baru"
-        icon={<Calendar className="w-5 h-5 text-indigo-400" />}
+        icon={<Calendar className="w-4 h-4 text-indigo-400" />}
         maxWidth="max-w-xl"
       >
-        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4 select-none font-mono">
-
-          {/* NAMA PERIODE */}
+        <form onSubmit={handleSubmit} className="space-y-4 py-1 px-1 sm:px-4 select-none font-sans">
           <div>
-            <label className="block text-xs font-medium text-gray-300 mb-1.5">
+            <label className="block text-xs font-medium text-zinc-300 mb-1.5">
               Nama Periode {isNameDuplicate && <span className="text-rose-400 font-bold ml-1">(Sudah Ada)</span>}
             </label>
             <input
@@ -253,38 +207,33 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
               value={namaPeriode}
               onChange={(e) => setNamaPeriode(e.target.value)}
               placeholder="Contoh: Setoran Rambut Muharram 1448 H"
-              className={`w-full h-[42px] px-4 bg-gray-950/60 border rounded-2xl text-white text-xs focus:outline-none focus:ring-2 shadow-inner transition-all ${
-                isNameDuplicate ? "border-rose-500 focus:ring-rose-500/40" : "border-gray-800 focus:ring-indigo-500/40"
+              className={`w-full h-9 px-3 bg-zinc-950 border rounded-lg text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 transition-colors ${
+                isNameDuplicate ? "border-rose-500/50 focus:border-rose-500 focus:ring-rose-500" : "border-zinc-800 focus:border-indigo-500 focus:ring-indigo-500"
               }`}
               required
             />
           </div>
 
-          {/* BULAN & TAHUN HIJRIYAH */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Bulan Hijriyah Target
-              </label>
-              <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
-                <button type="button" onClick={handlePrevBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Bulan Hijriyah Target</label>
+              <div className="relative flex items-center h-9 bg-zinc-950 border border-zinc-800 rounded-lg px-1.5">
+                <button type="button" onClick={handlePrevBulan} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors z-10">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <div className="flex-1 text-center text-xs font-bold text-amber-300 truncate px-2 select-none">
                   {activeBulan.angka}. {activeBulan.nama}
                 </div>
-                <button type="button" onClick={handleNextBulan} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
+                <button type="button" onClick={handleNextBulan} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors z-10">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Tahun Hijriyah
-              </label>
-              <div className="relative flex items-center h-[42px] bg-gray-950/60 border border-gray-800 rounded-2xl px-1.5 shadow-inner">
-                <button type="button" onClick={() => handleYearChange(tahunHijri - 1)} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Tahun Hijriyah</label>
+              <div className="relative flex items-center h-9 bg-zinc-950 border border-zinc-800 rounded-lg px-1.5">
+                <button type="button" onClick={() => handleYearChange(tahunHijri - 1)} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors z-10">
                   <Minus className="w-3.5 h-3.5" />
                 </button>
                 <input
@@ -292,62 +241,50 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
                   value={tahunHijri}
                   onChange={(e) => handleYearChange(Number(e.target.value))}
                   placeholder="1448"
-                  className="w-full h-full px-2 bg-transparent text-white text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="w-full h-full px-2 bg-transparent text-zinc-100 text-xs text-center font-bold focus:outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   required
                 />
-                <button type="button" onClick={() => handleYearChange(tahunHijri + 1)} className="p-1.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white hover:bg-gray-800 active:scale-90 transition-all shadow-sm z-10">
+                <button type="button" onClick={() => handleYearChange(tahunHijri + 1)} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors z-10">
                   <Plus className="w-3.5 h-3.5" />
                 </button>
               </div>
             </div>
           </div>
 
-          {/* TANGGAL MULAI & SELESAI */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
-                Tanggal Mulai
-              </label>
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">Tanggal Mulai</label>
               <CustomDatePickerHijriyah value={tglMulai} onChange={(val) => setTglMulai(val)} />
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-300 mb-1.5">
+              <label className="block text-xs font-medium text-zinc-300 mb-1.5">
                 Tanggal Selesai {(isDateOverlapping || isDateInvalid) && <span className="text-rose-400 font-bold ml-1">(! Error)</span>}
               </label>
               <CustomDatePickerHijriyah value={tglSelesai} onChange={(val) => setTglSelesai(val)} />
             </div>
           </div>
 
-          {/* FOOTER ACTIONS */}
-          <div className="flex items-center justify-end gap-3 pt-4 mt-2 border-t border-gray-800/80">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
             <button
               type="button"
               onClick={onClose}
-              className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-semibold transition-all active:scale-95"
+              className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
             >
               Batal
             </button>
             <button
               type="submit"
-              disabled={
-                isPending ||
-                !namaPeriode.trim() ||
-                !tglMulai ||
-                !tglSelesai ||
-                isDateInvalid ||
-                isNameDuplicate ||
-                isDateOverlapping
-              }
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
+              disabled={isPending || !namaPeriode.trim() || !tglMulai || !tglSelesai || isDateInvalid || isNameDuplicate || isDateOverlapping}
+              className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
             >
               {isPending ? (
                 <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   <span>Memproses...</span>
                 </>
               ) : (
                 <>
-                  <Save className="w-4 h-4" />
+                  <Save className="w-3.5 h-3.5" />
                   <span>Simpan Periode</span>
                 </>
               )}
@@ -356,10 +293,7 @@ export const CreatePeriodeModal: React.FC<CreatePeriodeModalProps> = ({
         </form>
       </BaseModal>
 
-      {/* 🎯 FIX 3: Hanya render Toast jika modal sedang aktif/terbuka */}
-      {isOpen && (
-        <NotificationToast toast={toast} onClose={() => setToast(null)} duration={4000} />
-      )}
+      {isOpen && <NotificationToast toast={toast} onClose={() => setToast(null)} duration={4000} />}
     </>
   );
 };
@@ -391,13 +325,10 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
   const [alasan, setAlasan] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // 🎯 Auto Focus ke input alasan saat modal dibuka
   useEffect(() => {
     if (isOpen) {
       setAlasan("");
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      const timer = setTimeout(() => inputRef.current?.focus(), 100);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -416,39 +347,30 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Beri Dispensasi Setoran"
-      icon={<ShieldAlert className="w-5 h-5 text-purple-400" />}
+      icon={<ShieldAlert className="w-4 h-4 text-purple-400" />}
       maxWidth="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="space-y-5 px-1.5 pt-1.5 pb-1">
-        {/* Detail Santri */}
-        <div className="p-4 sm:p-4.5 rounded-2xl bg-gray-950/70 border border-gray-800/80 space-y-3 select-none shadow-inner">
-          <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
-            <span className="text-[10px] font-mono font-semibold text-gray-400 uppercase tracking-wider">
-              ID PPS Santri
-            </span>
-            <span className="text-xs font-mono font-bold text-purple-300 bg-purple-500/10 px-2.5 py-1 rounded-lg border border-purple-500/20">
+      <form onSubmit={handleSubmit} className="space-y-4 px-1.5 pt-1.5 pb-1 font-sans">
+        <div className="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 space-y-3 select-none">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ID PPS Santri</span>
+            <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
               {item.id_pps}
             </span>
           </div>
-
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
+            <div className="p-2 rounded-md bg-purple-500/10 text-purple-400 border border-purple-500/20 shrink-0">
               <User className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <p className="text-sm font-bold text-white truncate">
-                {santriData?.nama || "Santri"}
-              </p>
-              <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.kelas || "-"} {santriData?.tingkatan || "-"}
-              </p>
+              <p className="text-sm font-bold text-white truncate">{santriData?.nama || "Santri"}</p>
+              <p className="text-xs text-zinc-400 truncate">{santriData?.kelas || "-"} {santriData?.tingkatan || "-"}</p>
             </div>
           </div>
         </div>
 
-        {/* Input Alasan Dispensasi (Auto-focused) */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-mono font-medium text-gray-300">
+          <label className="block text-xs font-medium text-zinc-300">
             Alasan / Keterangan Dispensasi <span className="text-rose-400">*</span>
           </label>
           <input
@@ -457,30 +379,25 @@ export const DispensasiModal: React.FC<DispensasiModalProps> = ({
             value={alasan}
             onChange={(e) => setAlasan(e.target.value)}
             placeholder=""
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-purple-500/40 focus:border-purple-500/50 transition-all duration-200"
+            className="w-full h-9 px-3 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:border-purple-500 focus:ring-purple-500"
             required
           />
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3.5 border-t border-gray-800/80">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold active:scale-95 transition-all"
+            className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={isPending || !alasan.trim()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:opacity-40 text-white font-mono text-xs font-semibold rounded-2xl shadow-lg shadow-purple-600/25 active:scale-95 transition-all border border-purple-400/30"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-purple-600 hover:bg-purple-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
-            {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Save className="w-4 h-4" />
-            )}
+            {isPending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Save className="w-3.5 h-3.5" />}
             <span>Simpan Dispensasi</span>
           </button>
         </div>
@@ -516,17 +433,12 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
 }) => {
   const waktuWis = useWaktuIstiwa();
   const [catatan, setCatatan] = useState("");
-
-  // Ref untuk Auto-Focus ke input saat modal terbuka
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen) {
       setCatatan("");
-      // Focus otomatis ke input catatan saat modal aktif
-      const timer = setTimeout(() => {
-        inputRef.current?.focus();
-      }, 100);
+      const timer = setTimeout(() => inputRef.current?.focus(), 100);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
@@ -545,81 +457,68 @@ export const ExecuteSetorModal: React.FC<ExecuteSetorModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Verifikasi Perapian Rambut"
-      icon={<Scissors className="w-5 h-5 text-indigo-400" />}
+      icon={<Scissors className="w-4 h-4 text-indigo-400" />}
       maxWidth="max-w-md"
     >
-      <form onSubmit={handleSubmit} className="space-y-5 px-1.5 pt-1.5 pb-1">
-        {/* Detail Santri Target */}
-        <div className="p-4 sm:p-4.5 rounded-2xl bg-gray-950/70 border border-gray-800/80 space-y-3 select-none shadow-inner">
-          <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
-            <span className="text-[10px] font-mono font-semibold text-gray-400 uppercase tracking-wider">
-              ID PPS Santri
-            </span>
-            <span className="text-xs font-mono font-bold text-indigo-300 bg-indigo-500/10 px-2.5 py-1 rounded-lg border border-indigo-500/20">
+      <form onSubmit={handleSubmit} className="space-y-4 px-1.5 pt-1.5 pb-1 font-sans">
+        <div className="p-3 rounded-lg bg-zinc-950/70 border border-zinc-800 space-y-3 select-none">
+          <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+            <span className="text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">ID PPS Santri</span>
+            <span className="text-xs font-bold text-indigo-300 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">
               {item.id_pps}
             </span>
           </div>
-
           <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
+            <div className="p-2 rounded-md bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 shrink-0">
               <User className="w-4 h-4" />
             </div>
             <div className="space-y-0.5 min-w-0">
-              <p className="text-sm font-bold text-white truncate">
-                {santriData?.nama || "Santri"}
-              </p>
-              <p className="text-xs font-mono text-gray-400 truncate">
-                {santriData?.kelas || "-"} {santriData?.tingkatan || "-"}
-              </p>
+              <p className="text-sm font-bold text-white truncate">{santriData?.nama || "Santri"}</p>
+              <p className="text-xs text-zinc-400 truncate">{santriData?.kelas || "-"} {santriData?.tingkatan || "-"}</p>
             </div>
           </div>
         </div>
 
-        {/* Live Waktu Istiwa' Banner */}
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-emerald-950/20 to-gray-950 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 shadow-inner">
-          <div className="flex items-center gap-2 text-xs font-mono text-emerald-300 font-bold shrink-0">
-            <Clock className="w-4 h-4 text-emerald-400 animate-pulse" />
+        <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          <div className="flex items-center gap-2 text-xs font-bold text-emerald-300">
+            <Clock className="w-4 h-4 text-emerald-400" />
             <span>Waktu Istiwa' Sidogiri:</span>
           </div>
-          <span className="font-mono text-xs sm:text-sm font-extrabold text-white bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 self-start sm:self-auto">
+          <span className="font-mono text-xs font-extrabold text-white bg-emerald-500/10 px-2.5 py-1 rounded border border-emerald-500/20">
             {waktuWis.stringLengkap}
           </span>
         </div>
 
-        {/* Catatan Tambahan (Auto-Focused & Placeholder Kosong) */}
         <div className="space-y-1.5">
-          <label className="block text-xs font-mono font-medium text-gray-300">
-            Catatan Tambahan (Opsional)
-          </label>
+          <label className="block text-xs font-medium text-zinc-300">Catatan Tambahan (Opsional)</label>
           <input
             ref={inputRef}
             type="text"
             value={catatan}
             onChange={(e) => setCatatan(e.target.value)}
             placeholder=""
-            className="w-full px-4 py-3 bg-gray-950/70 border border-gray-800 rounded-2xl text-white font-mono text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-500/50 transition-all duration-200"
+            className="w-full h-9 px-3 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>
 
-        {/* Footer Actions */}
-        <div className="flex items-center justify-end gap-3 pt-3.5 border-t border-gray-800/80">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4.5 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 hover:bg-gray-800 hover:text-white text-xs font-mono font-semibold active:scale-95 transition-all"
+            className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
           >
             Batal
           </button>
           <button
             type="submit"
             disabled={isPending}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-40 text-white font-mono text-xs font-semibold rounded-2xl shadow-lg shadow-indigo-600/25 active:scale-95 transition-all border border-indigo-400/30"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
             {isPending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
             ) : (
               <>
-                <Save className="w-4 h-4" />
+                <Save className="w-3.5 h-3.5" />
                 <span>Verifikasi Setor</span>
               </>
             )}
@@ -691,32 +590,31 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
       isOpen={isOpen}
       onClose={handleCloseModal}
       title="Import Pengurus via Excel"
-      icon={<FileSpreadsheet className="w-5 h-5 text-emerald-400" />}
+      icon={<FileSpreadsheet className="w-4 h-4 text-emerald-400" />}
       maxWidth="max-w-3xl"
     >
-      <div className="flex flex-col h-[370px] overflow-hidden justify-between space-y-3 pt-1 text-sm no-scrollbar">
-
-        {/* 1. TOP BAR INFO & TEMPLATE DOWNLOAD */}
-        <div className="flex items-center justify-between p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
-          <div className="text-xs text-gray-400">
+      <div className="flex flex-col h-[370px] overflow-hidden justify-between space-y-2.5 pt-1 font-sans select-none text-xs">
+        {/* Top Bar */}
+        <div className="flex items-center justify-between p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0">
+          <div className="text-xs text-zinc-400">
             Kolom WAJIB: <b className="text-indigo-400 font-mono">ID PPS</b> dan <b className="text-purple-400 font-mono">JABATAN</b>.
           </div>
           <button
             type="button"
             onClick={handleDownloadTemplate}
-            className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl bg-gray-900 border border-gray-800 hover:border-emerald-500/40 text-emerald-300 text-xs font-mono font-bold transition-all active:scale-95 shrink-0"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 text-emerald-300 text-xs font-semibold transition-colors shrink-0"
           >
             <Download className="w-3.5 h-3.5" />
             <span>Download Template</span>
           </button>
         </div>
 
-        {/* 2. AREA TENGAH */}
+        {/* Area Tengah */}
         <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
           {parsedRows.length === 0 ? (
             <div
               onClick={() => fileInputRef.current?.click()}
-              className="h-full border-2 border-dashed border-gray-800 hover:border-indigo-500/50 rounded-3xl flex flex-col items-center justify-center p-4 text-center bg-gray-950/40 hover:bg-indigo-500/[0.02] cursor-pointer transition-all duration-200 group"
+              className="h-full border-2 border-dashed border-zinc-800 hover:border-indigo-500/50 rounded-lg flex flex-col items-center justify-center p-4 text-center bg-zinc-950/50 hover:bg-zinc-800/60 cursor-pointer transition-colors"
             >
               <input
                 ref={fileInputRef}
@@ -728,59 +626,55 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
               />
               {isParsing ? (
                 <div className="flex flex-col items-center justify-center space-y-2">
-                  <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
-                  <p className="text-xs font-mono text-gray-400">
-                    Menganalisis berkas induk pengurus...
-                  </p>
+                  <Loader2 className="w-6 h-6 text-indigo-400 animate-spin" />
+                  <p className="text-xs text-zinc-400">Menganalisis berkas induk pengurus...</p>
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className="p-3.5 rounded-2xl bg-indigo-500/10 text-indigo-400 border border-indigo-500/20 group-hover:scale-110 transition-transform">
-                    <UploadCloud className="w-7 h-7" />
+                  <div className="p-3 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                    <UploadCloud className="w-6 h-6" />
                   </div>
                   <div>
                     <p className="text-sm font-bold text-white">Klik untuk Unggah File Excel Pengurus</p>
-                    <p className="text-xs text-gray-500 mt-0.5 font-mono">Format didukung: .XLSX, .XLS</p>
+                    <p className="text-xs text-zinc-500 mt-0.5">Format didukung: .XLSX, .XLS</p>
                   </div>
                 </div>
               )}
             </div>
           ) : (
             <div className="h-full flex flex-col space-y-2 overflow-hidden">
-              {/* SUMMARY STATS BAR */}
-              <div className="flex items-center justify-between p-2 rounded-2xl bg-gray-950/90 border border-gray-800 shrink-0 font-mono text-xs">
-                <div className="flex items-center gap-2">
+              {/* Summary Stats Bar */}
+              <div className="flex items-center justify-between p-2 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0 text-xs">
+                <div className="flex items-center gap-2 min-w-0">
                   <FileCheck className="w-4 h-4 text-emerald-400 shrink-0" />
-                  <span className="font-bold text-white truncate max-w-[180px] sm:max-w-[240px]">
+                  <span className="font-bold text-zinc-200 truncate max-w-[180px] sm:max-w-[240px]">
                     {selectedFile?.name}
                   </span>
-                  <span className="text-gray-600">•</span>
-                  <span className="text-gray-400">{parsedRows.length} Baris</span>
+                  <span className="text-zinc-600">•</span>
+                  <span className="text-zinc-400">{parsedRows.length} Baris</span>
                 </div>
-
-                <div className="flex items-center gap-2.5">
-                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
                     {createRowsCount > 0 && (
-                      <span className="text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                      <span className="text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded border border-emerald-500/20">
                         +{createRowsCount} Baru
                       </span>
                     )}
                     {updateRowsCount > 0 && (
-                      <span className="text-amber-400 bg-amber-500/10 px-2 py-0.5 rounded-md border border-amber-500/20">
+                      <span className="text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20">
                         ~{updateRowsCount} Update
                       </span>
                     )}
                     {skipRowsCount > 0 && (
-                      <span className="text-gray-400 bg-gray-800 px-2 py-0.5 rounded-md">
+                      <span className="text-zinc-400 bg-zinc-800 px-1.5 py-0.5 rounded">
                         ={skipRowsCount} Lewat
                       </span>
                     )}
                   </div>
-
                   <button
                     type="button"
                     onClick={handleReset}
-                    className="p-1 rounded-lg bg-gray-900 border border-gray-800 text-gray-400 hover:text-white transition-colors"
+                    className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-white transition-colors"
                     title="Ganti file Excel"
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
@@ -788,59 +682,59 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
                 </div>
               </div>
 
-              {/* TABEL PREVIEW MUKIM */}
-              <div className="flex-1 min-h-0 border border-gray-800 rounded-2xl overflow-hidden bg-gray-950/60 shadow-inner flex flex-col">
-                <div className="flex-1 overflow-y-auto no-scrollbar">
-                  <table className="w-full text-xs text-left border-collapse font-mono">
+              {/* Tabel Preview */}
+              <div className="flex-1 min-h-0 border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950 flex flex-col">
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <table className="w-full text-xs text-left border-collapse">
                     <thead>
-                      <tr className="bg-gray-900 border-b border-gray-800 text-gray-400 text-[10px] uppercase sticky top-0 z-10 select-none">
-                        <th className="px-3.5 py-2 w-10 text-center">#</th>
-                        <th className="px-3.5 py-2 w-28">ID PPS</th>
-                        <th className="px-3.5 py-2 min-w-[150px]">Nama Santri</th>
-                        <th className="px-3.5 py-2 min-w-[130px]">Jabatan Excel</th>
-                        <th className="px-3.5 py-2 min-w-[150px] text-left">Aksi Sinkronisasi</th>
+                      <tr className="bg-zinc-900 border-b border-zinc-800 text-zinc-400 text-[10px] uppercase select-none">
+                        <th className="px-3 py-2 w-10 text-center">#</th>
+                        <th className="px-3 py-2 w-28">ID PPS</th>
+                        <th className="px-3 py-2 min-w-[150px]">Nama Santri</th>
+                        <th className="px-3 py-2 min-w-[130px]">Jabatan Excel</th>
+                        <th className="px-3 py-2 min-w-[150px] text-left">Aksi Sinkronisasi</th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-gray-800/50 bg-gray-900/20">
+                    <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/20">
                       {parsedRows.map((row) => (
-                        <tr key={row.rowNum} className="hover:bg-indigo-500/[0.02] transition-colors">
-                          <td className="px-3.5 py-2 text-center text-gray-500">{row.rowNum}</td>
-                          <td className="px-3.5 py-2 font-bold text-indigo-300 whitespace-nowrap">
+                        <tr key={row.rowNum} className="hover:bg-zinc-800/40 transition-colors">
+                          <td className="px-3 py-1.5 text-center text-zinc-500">{row.rowNum}</td>
+                          <td className="px-3 py-1.5 font-bold text-indigo-300 whitespace-nowrap">
                             {row.idPps ? (
                               <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">{row.idPps}</span>
                             ) : (
-                              <span className="text-gray-600">-</span>
+                              <span className="text-zinc-600">-</span>
                             )}
                           </td>
-                          <td className="px-3.5 py-2 font-semibold">
+                          <td className="px-3 py-1.5 font-semibold">
                             <div className="flex items-center gap-1.5">
-                              <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                              <span className={row.namaSantri === "Santri Tidak Ditemukan" ? "text-amber-400/80 italic text-[11px] flex items-center gap-1" : "text-white"}>
+                              <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                              <span className={row.namaSantri === "Santri Tidak Ditemukan" ? "text-amber-400 italic text-[11px] flex items-center gap-1" : "text-zinc-200"}>
                                 {row.namaSantri === "Santri Tidak Ditemukan" && <AlertCircle className="w-3 h-3 text-amber-400 shrink-0" />}
                                 {row.namaSantri}
                               </span>
                             </div>
                           </td>
-                          <td className="px-3.5 py-2 text-gray-300 font-medium">{row.jabatan || "-"}</td>
-                          <td className="px-3.5 py-2 whitespace-nowrap">
+                          <td className="px-3 py-1.5 text-zinc-300 font-medium">{row.jabatan || "-"}</td>
+                          <td className="px-3 py-1.5 whitespace-nowrap">
                             {row.status === "success" ? (
-                              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                                 <CheckCircle2 className="w-3 h-3" /> {row.message}
                               </span>
                             ) : row.status === "skipped" ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-gray-400 bg-gray-800/80 border border-gray-700">
-                                <MinusCircle className="w-3 h-3 text-gray-500" /> {row.message}
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-zinc-400 bg-zinc-800 border border-zinc-700">
+                                <MinusCircle className="w-3 h-3 text-zinc-500" /> {row.message}
                               </span>
                             ) : row.syncAction === "create" ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
                                 <PlusCircle className="w-3 h-3" /> Tambah Baru
                               </span>
                             ) : row.syncAction === "update" ? (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20" title={row.message}>
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-amber-300 bg-amber-500/10 border border-amber-500/20" title={row.message}>
                                 <UpdateIcon className="w-3 h-3 text-amber-400" /> Update Jabatan
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20">
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold text-rose-400 bg-rose-500/10 border border-rose-500/20">
                                 <AlertTriangle className="w-3 h-3 shrink-0" /> <span>{row.message || "Eror"}</span>
                               </span>
                             )}
@@ -855,38 +749,37 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
           )}
         </div>
 
-        {/* 3. ERROR BANNER */}
+        {/* Error Banner */}
         {errorMessage && (
-          <div className="p-2 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs font-mono flex items-center gap-2 shrink-0">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="p-2 rounded-lg bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center gap-2 shrink-0">
+            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-400" />
             <span className="truncate">{errorMessage}</span>
           </div>
         )}
 
-        {/* 4. TOMBOL AKSI BAWAH */}
-        <div className="flex items-center justify-end gap-3 pt-2 border-t border-gray-800/80 shrink-0">
+        {/* Tombol Aksi Bawah */}
+        <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800 shrink-0">
           <button
             type="button"
             onClick={handleCloseModal}
-            className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-400 hover:text-white font-mono text-xs font-bold transition-all"
+            className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
           >
             Batal
           </button>
-
           <button
             type="button"
             onClick={() => handleExecuteImport(onClose)}
             disabled={totalProcessable === 0 || isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2 rounded-xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-mono text-xs font-bold shadow-lg shadow-emerald-600/20 active:scale-95 transition-all border border-emerald-400/30 disabled:opacity-50"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
             {isSubmitting ? (
               <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Memproses Batch Transaction...</span>
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                <span>Memproses...</span>
               </>
             ) : (
               <>
-                <UploadCloud className="w-4 h-4" />
+                <UploadCloud className="w-3.5 h-3.5" />
                 <span>Proses Import ({totalProcessable} Data)</span>
               </>
             )}
@@ -900,12 +793,12 @@ export const ImportPengurusModal: React.FC<ImportPengurusModalProps> = ({
 
 ### `src/features/rambut/components/ManagePengurusModal.tsx`
 ```tsx
-// src/components/rambut/ManagePengurusModal.tsx
+// src/features/rambut/components/ManagePengurusModal.tsx
 import React, { useState } from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { pb } from "@/lib/pocketbase";
 import { useToast } from "@/context/ToastContext";
-import { UserCheck, Plus, Loader2, Trash2 } from "lucide-react";
+import { UserCheck, Plus, Loader2 } from "lucide-react";
 
 interface ManagePengurusModalProps {
   isOpen: boolean;
@@ -924,18 +817,15 @@ export const ManagePengurusModal: React.FC<ManagePengurusModalProps> = ({
   const handleAddPengurus = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!idPpsInput) return;
-
     setIsSubmitting(true);
     try {
       const santri = await pb.collection("master").getFirstListItem(`id_pps = "${idPpsInput.trim()}"`);
-
       await pb.collection("pengurus_santri").create({
         santri: santri.id,
         id_pps: santri.id_pps,
         jabatan: jabatanInput || "Pengurus/Petugas",
         status_aktif: true,
       });
-
       showSuccess(`Berhasil mendaftarkan ${santri.nama} sebagai pengurus.`, "Pengurus Ditambahkan");
       setIdPpsInput("");
       setJabatanInput("");
@@ -951,55 +841,51 @@ export const ManagePengurusModal: React.FC<ManagePengurusModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="Kelola Registrasi Pengurus / Petugas"
-      icon={<UserCheck className="w-5 h-5 text-indigo-400" />}
+      icon={<UserCheck className="w-4 h-4 text-indigo-400" />}
       maxWidth="max-w-md"
     >
-      <form onSubmit={handleAddPengurus} className="space-y-4 pt-1">
-        <div className="p-3 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-mono">
+      <form onSubmit={handleAddPengurus} className="space-y-3 pt-1 font-sans">
+        <div className="p-2.5 rounded-lg bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs">
           Santri non-Aliyah/Kuliah Syariah yang terdaftar di sini otomatis dimasukkan ke daftar Wajib Setor.
         </div>
 
         <div>
-          <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
-            ID PPS Santri
-          </label>
+          <label className="block text-xs font-medium text-zinc-300 mb-1">ID PPS Santri</label>
           <input
             type="text"
             value={idPpsInput}
             onChange={(e) => setIdPpsInput(e.target.value)}
             placeholder="Ketik / Scan ID PPS..."
-            className="w-full px-3.5 py-2.5 bg-gray-950/60 border border-gray-800 rounded-2xl text-white font-mono text-xs"
+            className="w-full h-9 px-3 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:border-indigo-500 focus:ring-indigo-500"
             required
           />
         </div>
 
         <div>
-          <label className="block text-xs font-mono font-medium text-gray-300 mb-1.5">
-            Jabatan / Tugas
-          </label>
+          <label className="block text-xs font-medium text-zinc-300 mb-1">Jabatan / Tugas</label>
           <input
             type="text"
             value={jabatanInput}
             onChange={(e) => setJabatanInput(e.target.value)}
             placeholder="Contoh: Pengurus Daerah B / Petugas Kamar"
-            className="w-full px-3.5 py-2.5 bg-gray-950/60 border border-gray-800 rounded-2xl text-white font-mono text-xs"
+            className="w-full h-9 px-3 bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 text-xs focus:outline-none focus:ring-1 focus:border-indigo-500 focus:ring-indigo-500"
           />
         </div>
 
-        <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800/80">
+        <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2.5 rounded-2xl border border-gray-800 bg-gray-900/80 text-gray-300 text-xs font-mono font-semibold"
+            className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors"
           >
             Tutup
           </button>
           <button
             type="submit"
             disabled={isSubmitting}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-mono text-xs font-semibold rounded-2xl"
+            className="inline-flex items-center gap-2 h-9 px-4 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 text-white rounded-lg text-xs font-semibold shadow-sm transition-colors"
           >
-            {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+            {isSubmitting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
             <span>Tambah Pengurus</span>
           </button>
         </div>
@@ -1042,33 +928,21 @@ interface ManagePeriodeModalProps {
   isLoading: boolean;
   selectedPeriodeId?: string;
   onSelectPeriode: (periode: PeriodeRambutResponse) => void;
-  onUpdateStatus: (
-    periodeId: string,
-    status: PeriodeRambutStatusPeriodeOptions
-  ) => void;
+  onUpdateStatus: (periodeId: string, status: PeriodeRambutStatusPeriodeOptions) => void;
   isUpdatingStatus: boolean;
   onDeletePeriode: (periodeId: string) => void;
   isDeletingPeriode: boolean;
   onOpenCreateModal: () => void;
 }
 
-/**
- * 🌙 HELPER SUB-COMPONENT: Format Tanggal Hijriyah Ringkas (DD-MM-YYYY)
- * Contoh: "07-02-1448" -> Ukuran string 100% terkunci fixed-width!
- */
-const HijriShortText: React.FC<{ date: string | Date | null | undefined }> = ({
-  date,
-}) => {
+const HijriShortText: React.FC<{ date: string | Date | null | undefined }> = ({ date }) => {
   const { data, isLoading } = useHijriByDate(date);
-
   if (!date) return <>--/--/----</>;
   if (isLoading) return <span className="animate-pulse">..-..-....</span>;
   if (!data) return <>--/--/----</>;
-
   const dd = String(data.tanggal_hijri || 0).padStart(2, "0");
   const mm = String(data.bulan_hijri_angka || 0).padStart(2, "0");
   const yyyy = data.tahun_hijri || "----";
-
   return <>{`${dd}-${mm}-${yyyy}`}</>;
 };
 
@@ -1085,10 +959,7 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
   isDeletingPeriode,
   onOpenCreateModal,
 }) => {
-  // State Pop-up Konfirmasi Hapus Periode
   const [periodeToDelete, setPeriodeToDelete] = useState<PeriodeRambutResponse | null>(null);
-
-  // State Pop-up Konfirmasi Ubah Status Periode
   const [statusTarget, setStatusTarget] = useState<{
     periode: PeriodeRambutResponse;
     newStatus: PeriodeRambutStatusPeriodeOptions;
@@ -1098,21 +969,21 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
     switch (status) {
       case "aktif":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 whitespace-nowrap">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
             Aktif
           </span>
         );
       case "selesai":
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-gray-800 text-gray-400 border border-gray-700 whitespace-nowrap">
-            <CheckCircle2 className="w-3 h-3 text-gray-500" />
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-zinc-800 text-zinc-400 border border-zinc-700 whitespace-nowrap">
+            <CheckCircle2 className="w-3 h-3 text-zinc-500" />
             Selesai
           </span>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-500/10 text-amber-300 border border-amber-500/20 whitespace-nowrap">
             <Clock className="w-3 h-3 text-amber-400" />
             Draft
           </span>
@@ -1140,67 +1011,51 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         isOpen={isOpen}
         onClose={onClose}
         title="Kelola Daftar Periode Setor Rambut"
-        icon={<CalendarDays className="w-5 h-5 text-indigo-400" />}
+        icon={<CalendarDays className="w-4 h-4 text-indigo-400" />}
         maxWidth="max-w-3xl"
       >
-        <div className="space-y-3 px-1 sm:px-2 pb-3 pt-1 select-none flex flex-col min-h-0 font-mono">
-          {/* TOP TOOLBAR */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800 shrink-0">
-            <div className="text-xs text-gray-400 leading-relaxed">
+        <div className="space-y-3 px-1 sm:px-2 pb-3 pt-1 select-none flex flex-col min-h-0 font-sans">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 shrink-0">
+            <div className="text-xs text-zinc-400 leading-relaxed">
               Pilih periode untuk ditinjau atau ubah status operasional.
             </div>
             <button
               type="button"
               disabled={isUpdatingStatus || isDeletingPeriode}
-              onClick={() => {
-                onClose();
-                onOpenCreateModal();
-              }}
-              className="inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-xs font-bold shadow-md transition-all active:scale-95 border border-indigo-400/30 shrink-0"
+              onClick={() => { onClose(); onOpenCreateModal(); }}
+              className="inline-flex items-center justify-center gap-1.5 h-9 px-3 bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed text-white rounded-lg text-xs font-semibold shadow-sm transition-colors shrink-0"
             >
-              <PlusCircle className="w-3.5 h-3.5 text-indigo-100" />
+              <PlusCircle className="w-3.5 h-3.5" />
               <span>Buat Periode Baru</span>
             </button>
           </div>
 
-          {/* CONTAINER TABEL PERIODE (TINGGI FIXED TERKUNCI ISTIMEWA) */}
-          <div className="border border-gray-800/80 rounded-2xl overflow-hidden bg-gray-950/60 shadow-inner flex flex-col">
-            {/* 🎯 KUNCI UTAMA: Menggunakan h-[280px] agar tinggi modal konsisten & tidak melompat */}
+          <div className="border border-zinc-800 rounded-lg overflow-hidden bg-zinc-950/60 flex flex-col">
             <div className="overflow-y-auto h-[280px] custom-scrollbar">
               <table className="w-full text-xs text-left border-collapse table-auto">
                 <thead>
-                  <tr className="bg-gray-950 border-b border-gray-800 text-gray-400 text-[10px] uppercase sticky top-0 z-20 backdrop-blur-md">
-                    <th className="px-2 py-2.5 w-8 text-center bg-gray-950">#</th>
-                    <th className="px-2.5 py-2.5 bg-gray-950">Nama Periode</th>
-                    <th className="px-2 py-2.5 text-center bg-gray-950">Rentang Hijriyah</th>
-                    <th className="px-2 py-2.5 w-20 text-center bg-gray-950">Status</th>
-                    <th className="px-2 py-2.5 w-[220px] text-center bg-gray-950">Aksi & Kontrol</th>
+                  <tr className="bg-zinc-950 border-b border-zinc-800 text-zinc-400 text-[10px] uppercase select-none">
+                    <th className="px-2 py-2.5 w-8 text-center bg-zinc-950">#</th>
+                    <th className="px-2.5 py-2.5 bg-zinc-950">Nama Periode</th>
+                    <th className="px-2 py-2.5 text-center bg-zinc-950">Rentang Hijriyah</th>
+                    <th className="px-2 py-2.5 w-20 text-center bg-zinc-950">Status</th>
+                    <th className="px-2 py-2.5 w-[220px] text-center bg-zinc-950">Aksi & Kontrol</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-800/50 bg-gray-900/20">
+                <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/20">
                   {isLoading ? (
                     Array.from({ length: 3 }).map((_, idx) => (
                       <tr key={`skel-per-${idx}`} className="animate-pulse">
-                        <td className="px-2 py-2 text-center">
-                          <div className="h-3 bg-gray-800/60 rounded w-4 mx-auto" />
-                        </td>
-                        <td className="px-2.5 py-2">
-                          <div className="h-3 bg-gray-800/60 rounded w-28" />
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <div className="h-4 bg-gray-800/60 rounded-lg w-36 mx-auto" />
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <div className="h-4 bg-gray-800/60 rounded-full w-14 mx-auto" />
-                        </td>
-                        <td className="px-2 py-2 text-center">
-                          <div className="h-5 bg-gray-800/60 rounded-xl w-32 mx-auto" />
-                        </td>
+                        <td className="px-2 py-2 text-center"><div className="h-3 bg-zinc-800 rounded w-4 mx-auto" /></td>
+                        <td className="px-2.5 py-2"><div className="h-3 bg-zinc-800 rounded w-28" /></td>
+                        <td className="px-2 py-2 text-center"><div className="h-4 bg-zinc-800 rounded-lg w-36 mx-auto" /></td>
+                        <td className="px-2 py-2 text-center"><div className="h-4 bg-zinc-800 rounded-full w-14 mx-auto" /></td>
+                        <td className="px-2 py-2 text-center"><div className="h-5 bg-zinc-800 rounded-lg w-32 mx-auto" /></td>
                       </tr>
                     ))
                   ) : periodeList.length === 0 ? (
                     <tr>
-                      <td colSpan={5} className="px-4 py-16 text-center text-gray-500 text-xs">
+                      <td colSpan={5} className="px-4 py-16 text-center text-zinc-500 text-xs">
                         Belum ada periode setor yang terdaftar di sistem.
                       </td>
                     </tr>
@@ -1209,74 +1064,50 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                       const isBeingInspected = selectedPeriodeId === p.id;
                       const isAktif = p.status_periode === "aktif";
                       const isSelesai = p.status_periode === "selesai";
-
                       return (
-                        <tr
-                          key={p.id}
-                          className={`transition-colors hover:bg-indigo-500/[0.04] ${
-                            isBeingInspected ? "bg-indigo-500/10 border-l-2 border-indigo-400" : ""
-                          }`}
-                        >
-                          <td className="px-2 py-2 text-center text-gray-500">
-                            {index + 1}
-                          </td>
-
-                          {/* NAMA PERIODE */}
+                        <tr key={p.id} className={`transition-colors hover:bg-zinc-800/40 ${isBeingInspected ? "bg-indigo-500/10" : ""}`}>
+                          <td className="px-2 py-2 text-center text-zinc-500">{index + 1}</td>
                           <td className="px-2.5 py-2 font-bold text-white whitespace-nowrap">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <Calendar className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
                               <span className="truncate max-w-[130px] sm:max-w-[170px]">{p.nama_periode}</span>
                             </div>
                           </td>
-
-                          {/* RENTANG HIJRIYAH FORMAT ANGKA RINGKAS (DD-MM-YYYY) */}
                           <td className="px-2 py-2 text-center whitespace-nowrap">
-                            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-amber-300 text-[11px] font-mono font-bold tracking-tight">
+                            <div className="inline-flex items-center gap-1.5 bg-amber-500/10 px-2.5 py-0.5 rounded-lg border border-amber-500/20 text-amber-300 text-[11px] font-bold">
                               <Moon className="w-3 h-3 text-amber-400 shrink-0" />
                               <span><HijriShortText date={p.tanggal_mulai} /></span>
                               <span className="text-amber-500/60">–</span>
                               <span><HijriShortText date={p.tanggal_selesai} /></span>
                             </div>
                           </td>
-
-                          <td className="px-2 py-2 text-center whitespace-nowrap">
-                            {getStatusBadge(p.status_periode)}
-                          </td>
-
-                          {/* AKSI & KONTROL */}
+                          <td className="px-2 py-2 text-center whitespace-nowrap">{getStatusBadge(p.status_periode)}</td>
                           <td className="px-2 py-2 text-center whitespace-nowrap">
                             <div className="flex items-center justify-center gap-1.5">
-                              {/* SLOT 1: TINJAU / DITINJAU */}
                               <button
                                 type="button"
                                 onClick={() => onSelectPeriode(p)}
                                 disabled={isBeingInspected || isUpdatingStatus || isDeletingPeriode}
-                                className={`w-[78px] h-7 inline-flex items-center justify-center gap-1 rounded-lg text-[10px] font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
+                                className={`w-[78px] h-7 inline-flex items-center justify-center gap-1 rounded-lg text-[10px] font-bold transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
                                   isBeingInspected
-                                    ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40 cursor-default"
-                                    : "bg-gray-900 border border-gray-800 text-gray-300 hover:text-white hover:border-indigo-500/40 active:scale-95"
+                                    ? "bg-indigo-600/30 text-indigo-300 border border-indigo-500/40"
+                                    : "bg-zinc-900 border border-zinc-800 text-zinc-300 hover:text-white hover:border-indigo-500/40"
                                 }`}
                                 title="Tampilkan antrean periode ini di halaman utama"
                               >
                                 <Eye className="w-3 h-3 text-indigo-400 shrink-0" />
                                 <span>{isBeingInspected ? "Ditinjau" : "Tinjau"}</span>
                               </button>
-
-                              {/* SLOT 2: AKTIFKAN / SELESAIKAN */}
                               <div className="w-[90px] flex justify-center">
                                 {!isAktif ? (
                                   <button
                                     type="button"
                                     onClick={() => setStatusTarget({ periode: p, newStatus: "aktif" })}
                                     disabled={isUpdatingStatus || isDeletingPeriode}
-                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-emerald-300 text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                     title="Jadikan sebagai Periode Aktif Utama"
                                   >
-                                    {isUpdatingStatus ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <Play className="w-3 h-3 text-emerald-400 shrink-0" />
-                                    )}
+                                    {isUpdatingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3 text-emerald-400 shrink-0" />}
                                     <span>Aktifkan</span>
                                   </button>
                                 ) : !isSelesai ? (
@@ -1284,27 +1115,21 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
                                     type="button"
                                     onClick={() => setStatusTarget({ periode: p, newStatus: "selesai" })}
                                     disabled={isUpdatingStatus || isDeletingPeriode}
-                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-gray-800 hover:bg-gray-700 border border-gray-700 text-gray-300 text-[10px] font-bold transition-all active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed"
+                                    className="w-full h-7 inline-flex items-center justify-center gap-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 border border-zinc-700 text-zinc-300 text-[10px] font-bold transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                                     title="Tutup & Selesaikan Periode Ini"
                                   >
-                                    {isUpdatingStatus ? (
-                                      <Loader2 className="w-3 h-3 animate-spin" />
-                                    ) : (
-                                      <Check className="w-3 h-3 text-gray-400 shrink-0" />
-                                    )}
+                                    {isUpdatingStatus ? <Loader2 className="w-3 h-3 animate-spin" /> : <Check className="w-3 h-3 text-zinc-400 shrink-0" />}
                                     <span>Selesaikan</span>
                                   </button>
                                 ) : (
                                   <div className="w-full" />
                                 )}
                               </div>
-
-                              {/* SLOT 3: TOMBOL HAPUS */}
                               <button
                                 type="button"
                                 onClick={() => setPeriodeToDelete(p)}
                                 disabled={isDeletingPeriode || isUpdatingStatus}
-                                className="w-7 h-7 flex items-center justify-center rounded-lg bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-all active:scale-90 disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
+                                className="w-7 h-7 flex items-center justify-center rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                                 title="Hapus Periode Ini"
                               >
                                 <Trash2 className="w-3.5 h-3.5" />
@@ -1320,13 +1145,12 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
             </div>
           </div>
 
-          {/* FOOTER ACTIONS */}
-          <div className="flex items-center justify-end pt-2 border-t border-gray-800 shrink-0">
+          <div className="flex items-center justify-end pt-2 border-t border-zinc-800 shrink-0">
             <button
               type="button"
               onClick={onClose}
               disabled={isUpdatingStatus || isDeletingPeriode}
-              className="px-4 py-1.5 rounded-xl border border-gray-800 bg-gray-900 text-gray-300 hover:bg-gray-800 text-xs font-semibold transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Tutup
             </button>
@@ -1334,54 +1158,38 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
         </div>
       </BaseModal>
 
-      {/* 🚨 1. POP-UP KONFIRMASI UBAH STATUS PERIODE */}
+      {/* Pop-up Konfirmasi Ubah Status */}
       <BaseModal
         isOpen={!!statusTarget}
-        onClose={() => {
-          if (!isUpdatingStatus) setStatusTarget(null);
-        }}
+        onClose={() => !isUpdatingStatus && setStatusTarget(null)}
         title="Konfirmasi Ubah Status Periode"
-        icon={<HelpCircle className="w-5 h-5 text-indigo-400" />}
+        icon={<HelpCircle className="w-4 h-4 text-indigo-400" />}
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-mono select-none">
-          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
-            statusTarget?.newStatus === "aktif"
-              ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400"
-              : "bg-gray-800 border border-gray-700 text-gray-300"
+        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-sans select-none">
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center mx-auto ${
+            statusTarget?.newStatus === "aktif" ? "bg-emerald-500/10 border border-emerald-500/20 text-emerald-400" : "bg-zinc-800 border border-zinc-700 text-zinc-300"
           }`}>
-            {statusTarget?.newStatus === "aktif" ? (
-              <Play className="w-6 h-6 text-emerald-400" />
-            ) : (
-              <CheckCircle2 className="w-6 h-6 text-gray-400" />
-            )}
+            {statusTarget?.newStatus === "aktif" ? <Play className="w-6 h-6 text-emerald-400" /> : <CheckCircle2 className="w-6 h-6 text-zinc-400" />}
           </div>
-
           <div className="space-y-1.5">
             <h4 className="text-sm font-bold text-white">
-              {statusTarget?.newStatus === "aktif"
-                ? `Aktifkan Periode "${statusTarget?.periode.nama_periode}"?`
-                : `Selesaikan Periode "${statusTarget?.periode.nama_periode}"?`}
+              {statusTarget?.newStatus === "aktif" ? `Aktifkan Periode "${statusTarget?.periode.nama_periode}"?` : `Selesaikan Periode "${statusTarget?.periode.nama_periode}"?`}
             </h4>
-            <p className="text-xs text-gray-300 leading-relaxed bg-gray-950/60 p-3 rounded-2xl border border-gray-800 text-left font-sans">
+            <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-950/60 p-3 rounded-lg border border-zinc-800 text-left">
               {statusTarget?.newStatus === "aktif" ? (
-                <>
-                  Mengaktifkan periode ini akan otomatis menonaktifkan periode lain yang sedang aktif. Seluruh transaksi POS dan scan kartu akan dialihkan ke periode <strong>{statusTarget?.periode.nama_periode}</strong>.
-                </>
+                <>Mengaktifkan periode ini akan otomatis menonaktifkan periode lain yang sedang aktif. Seluruh transaksi POS dan scan kartu akan dialihkan ke periode <strong>{statusTarget?.periode.nama_periode}</strong>.</>
               ) : (
-                <>
-                  Menyelesaikan periode ini akan menutup seluruh siklus perapian rambut untuk periode <strong>{statusTarget?.periode.nama_periode}</strong>. Transaksi baru tidak dapat dilakukan setelah diselesaikan.
-                </>
+                <>Menyelesaikan periode ini akan menutup seluruh siklus perapian rambut untuk periode <strong>{statusTarget?.periode.nama_periode}</strong>. Transaksi baru tidak dapat dilakukan setelah diselesaikan.</>
               )}
             </p>
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
             <button
               type="button"
               disabled={isUpdatingStatus}
               onClick={() => setStatusTarget(null)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-50"
             >
               Batal
             </button>
@@ -1389,55 +1197,41 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
               type="button"
               onClick={handleConfirmStatusUpdate}
               disabled={isUpdatingStatus}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl shadow-lg active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${
-                statusTarget?.newStatus === "aktif"
-                  ? "bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 shadow-emerald-600/20"
-                  : "bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-indigo-600/20"
+              className={`inline-flex items-center gap-1.5 h-9 px-4 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50 ${
+                statusTarget?.newStatus === "aktif" ? "bg-emerald-600 hover:bg-emerald-500" : "bg-indigo-600 hover:bg-indigo-500"
               }`}
             >
-              {isUpdatingStatus ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : statusTarget?.newStatus === "aktif" ? (
-                <Play className="w-3.5 h-3.5" />
-              ) : (
-                <Check className="w-3.5 h-3.5" />
-              )}
+              {isUpdatingStatus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : statusTarget?.newStatus === "aktif" ? <Play className="w-3.5 h-3.5" /> : <Check className="w-3.5 h-3.5" />}
               <span>Ya, Ubah Status</span>
             </button>
           </div>
         </div>
       </BaseModal>
 
-      {/* 🚨 2. POP-UP KONFIRMASI HAPUS PERIODE */}
+      {/* Pop-up Konfirmasi Hapus Periode */}
       <BaseModal
         isOpen={!!periodeToDelete}
-        onClose={() => {
-          if (!isDeletingPeriode) setPeriodeToDelete(null);
-        }}
+        onClose={() => !isDeletingPeriode && setPeriodeToDelete(null)}
         title="Konfirmasi Hapus Periode"
-        icon={<AlertTriangle className="w-5 h-5 text-rose-400" />}
+        icon={<AlertTriangle className="w-4 h-4 text-rose-400" />}
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-mono select-none">
-          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-inner">
+        <div className="space-y-4 px-4 pb-4 pt-1 text-center font-sans select-none">
+          <div className="w-12 h-12 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
             <Trash2 className="w-6 h-6" />
           </div>
-
           <div className="space-y-1.5">
-            <h4 className="text-sm font-bold text-white">
-              Hapus Periode "{periodeToDelete?.nama_periode}"?
-            </h4>
-            <p className="text-xs text-rose-300/90 leading-relaxed bg-rose-500/10 p-3 rounded-2xl border border-rose-500/20 font-sans text-left">
+            <h4 className="text-sm font-bold text-white">Hapus Periode "{periodeToDelete?.nama_periode}"?</h4>
+            <p className="text-xs text-rose-300/90 leading-relaxed bg-rose-500/10 p-3 rounded-lg border border-rose-500/20 text-left">
               ⚠️ Peringatan: Tindakan ini akan <strong>menghapus secara permanen</strong> seluruh data antrean wajib setor di dalamnya!
             </p>
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
             <button
               type="button"
               disabled={isDeletingPeriode}
               onClick={() => setPeriodeToDelete(null)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-50"
             >
               Batal
             </button>
@@ -1445,13 +1239,9 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
               type="button"
               onClick={handleConfirmDelete}
               disabled={isDeletingPeriode}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl shadow-lg shadow-rose-600/20 active:scale-95 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="inline-flex items-center gap-1.5 h-9 px-4 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
             >
-              {isDeletingPeriode ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : (
-                <Trash2 className="w-3.5 h-3.5" />
-              )}
+              {isDeletingPeriode ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
               <span>Ya, Hapus Permanen</span>
             </button>
           </div>
@@ -1466,7 +1256,6 @@ export const ManagePeriodeModal: React.FC<ManagePeriodeModalProps> = ({
 ```tsx
 // src/features/rambut/components/pos/PosHeader.tsx
 import React from "react";
-import { motion } from "framer-motion";
 import { Clock, Volume2, VolumeX, Printer, ZapOff, PrinterCheck } from "lucide-react";
 import type { PrintMode } from "@/types/printer";
 
@@ -1492,76 +1281,56 @@ export const PosHeader: React.FC<PosHeaderProps> = ({
   ];
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-2xl bg-gray-950/80 border border-gray-800">
+    <div className="flex flex-wrap items-center justify-between gap-2 p-2.5 rounded-lg bg-zinc-950 border border-zinc-800">
       <div className="flex items-center gap-2">
-        <span className="px-2.5 py-0.5 text-[10px] font-mono font-bold bg-indigo-600/20 text-indigo-300 rounded-lg border border-indigo-500/30">
+        <span className="px-2.5 py-0.5 text-[10px] font-bold bg-indigo-600/20 text-indigo-300 rounded border border-indigo-500/30">
           MODE SCAN
         </span>
-        <span className="text-[11px] font-mono text-gray-400 hidden sm:inline">
+        <span className="text-[11px] text-zinc-400 hidden sm:inline">
           Scan barcode / ketik ID PPS + Enter
         </span>
       </div>
 
       <div className="flex items-center gap-2 ml-auto">
-        {/* Live Jam WIS */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 font-mono text-xs font-bold">
-          <Clock className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
+        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/20 text-amber-300 font-mono text-xs font-bold">
+          <Clock className="w-3.5 h-3.5 text-amber-400" />
           <span>{wisTimeStr || "00:00:00 WIS"}</span>
         </div>
 
-        {/* Toggle Sound */}
         <button
           type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleSound();
-          }}
-          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border transition-all font-mono text-xs font-bold ${
+          onClick={(e) => { e.stopPropagation(); onToggleSound(); }}
+          className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-colors font-sans text-xs font-medium ${
             enableSound
               ? "bg-indigo-600/20 border-indigo-500/40 text-indigo-300"
-              : "bg-gray-900 border-gray-800 text-gray-500"
+              : "bg-zinc-900 border-zinc-800 text-zinc-500"
           }`}
           title="Toggle Suara Beep (Shortcut: F1)"
         >
           {enableSound ? <Volume2 className="w-3.5 h-3.5" /> : <VolumeX className="w-3.5 h-3.5" />}
-          <span className="text-[10px] text-gray-400">F1</span>
+          <span className="text-[10px] text-zinc-400">F1</span>
         </button>
 
-        {/* Segmented Toggle 3-Mode Printing */}
         <div
-          className="flex items-center bg-gray-900/90 border border-gray-800 p-0.5 rounded-xl text-xs font-mono select-none"
+          className="flex items-center bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg text-xs select-none"
           onClick={(e) => e.stopPropagation()}
           title="Ganti Mode Cetak (Shortcut: F2)"
         >
-          <span className="px-1.5 text-[10px] font-bold text-gray-500">F2</span>
+          <span className="px-1.5 text-[10px] font-bold text-zinc-500">F2</span>
           {modes.map((m) => {
             const isActive = printMode === m.id;
             const Icon = m.icon;
-
             return (
               <button
                 key={m.id}
                 type="button"
                 onClick={() => onChangePrintMode(m.id)}
-                className={`relative px-2.5 py-1 rounded-lg flex items-center gap-1.5 transition-colors duration-200 font-bold ${
-                  isActive ? "text-white" : "text-gray-500 hover:text-gray-300"
+                className={`relative px-2.5 py-1 rounded-md flex items-center gap-1.5 transition-colors font-medium ${
+                  isActive ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"
                 }`}
               >
-                {isActive && (
-                  <motion.div
-                    layoutId="activePrintModeBg"
-                    className={`absolute inset-0 rounded-lg shadow-md border ${
-                      m.id === "silent"
-                        ? "bg-emerald-600 border-emerald-400/40"
-                        : m.id === "auto"
-                        ? "bg-purple-600 border-purple-400/40"
-                        : "bg-gray-800 border-gray-700"
-                    }`}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                  />
-                )}
-                <Icon className={`w-3.5 h-3.5 relative z-10 ${isActive ? "text-white" : "text-gray-500"}`} />
-                <span className="relative z-10 text-[11px]">{m.label}</span>
+                <Icon className={`w-3.5 h-3.5 ${isActive ? "text-white" : "text-zinc-500"}`} />
+                <span className="text-[11px]">{m.label}</span>
               </button>
             );
           })}
@@ -1609,100 +1378,89 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
 
   return (
     <div
-      className={`p-3 rounded-2xl border-2 transition-all duration-200 flex flex-col justify-between text-center h-[335px] ${
+      className={`p-3 rounded-xl border transition-all duration-200 flex flex-col justify-between text-center h-[335px] ${
         lastResult.status === "success"
-          ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300 shadow-emerald-500/10 shadow-xl"
+          ? "bg-emerald-500/10 border-emerald-500/40 text-emerald-300"
           : lastResult.status === "error"
-          ? "bg-rose-500/10 border-rose-500/40 text-rose-300 shadow-rose-500/10 shadow-xl"
-          : "bg-gray-950/40 border-gray-800 text-gray-500"
+          ? "bg-rose-500/10 border-rose-500/40 text-rose-300"
+          : "bg-zinc-950/40 border-zinc-800 text-zinc-500"
       }`}
     >
       {lastResult.status === "success" ? (
         <div className="w-full space-y-2.5 animate-in zoom-in-95 duration-150 my-auto">
-          {/* BADGE VERIFIKASI */}
           <div className="flex items-center justify-center gap-1.5 bg-emerald-500/20 py-0.5 px-3 rounded-full border border-emerald-500/30 w-fit mx-auto text-emerald-300 font-mono text-[10px] font-bold">
             <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
             <span>VERIFIKASI SETOR RAMBUT</span>
           </div>
 
-          {/* HERO PROFILE: FOTO SANTRI (PROPORSI PASFOTO 3:4) */}
           <div className="flex flex-col sm:flex-row items-center justify-center sm:justify-start gap-3.5 px-1 text-center sm:text-left">
-            <div className="relative w-24 h-32 rounded-2xl bg-gradient-to-br from-emerald-600 via-teal-700 to-indigo-800 flex items-center justify-center text-white shadow-xl shadow-emerald-600/25 border-2 border-emerald-400/40 shrink-0 overflow-hidden group mx-auto sm:mx-0">
+            <div className="relative w-24 h-32 rounded-lg bg-zinc-900 border border-emerald-500/30 flex items-center justify-center text-white shadow-lg overflow-hidden mx-auto sm:mx-0">
               {fotoUrl && !imageError ? (
                 <img
                   src={fotoUrl}
                   alt={lastResult.santriName || "Foto Santri"}
-                  className="w-full h-full object-cover object-top transition-transform duration-300 group-hover:scale-105"
+                  className="w-full h-full object-cover object-top"
                   onError={() => setImageError(true)}
                 />
               ) : (
-                <span className="font-sans font-extrabold text-4xl leading-none tracking-wider uppercase select-none drop-shadow-md">
+                <span className="font-sans font-extrabold text-4xl leading-none tracking-wider uppercase select-none">
                   {lastResult.santriName ? lastResult.santriName.charAt(0) : "?"}
                 </span>
               )}
             </div>
 
-            {/* DETAIL NAMA & ID PPS */}
             <div className="space-y-1 min-w-0 flex-1 pt-0.5">
               <div className="flex items-center justify-center sm:justify-start gap-1.5">
                 <span className="px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 font-mono text-[11px] font-extrabold border border-emerald-500/30">
                   ID PPS: {lastResult.idPps}
                 </span>
               </div>
-
-              <h2 className="text-lg font-black text-white tracking-wide truncate">
+              <h2 className="text-lg font-bold text-white tracking-wide truncate">
                 {lastResult.santriName}
               </h2>
-
               <p className="text-[11px] font-mono text-emerald-400 font-bold">
                 ✓ Setoran Berhasil Diverifikasi
               </p>
             </div>
           </div>
 
-          {/* GRID INFORMASI AKADEMIK & ALAMAT */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-left pt-2 border-t border-emerald-500/20 font-mono text-xs">
-            <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20">
+            <div className="flex items-center gap-2 bg-zinc-950/60 p-1.5 px-2.5 rounded-lg border border-emerald-500/20">
               <GraduationCap className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Kelas</p>
-                <p className="font-bold text-gray-200 text-[10.5px] truncate uppercase">
+                <p className="text-[8.5px] text-zinc-400 uppercase font-semibold">Kelas</p>
+                <p className="font-bold text-zinc-200 text-[10.5px] truncate uppercase">
                   {lastResult.kelasTingkatan || "-"}
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20">
+            <div className="flex items-center gap-2 bg-zinc-950/60 p-1.5 px-2.5 rounded-lg border border-emerald-500/20">
               <MapPin className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0">
-                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Domisili</p>
+                <p className="text-[8.5px] text-zinc-400 uppercase font-semibold">Domisili</p>
                 <p className="font-bold text-emerald-300 text-[10.5px] truncate">
                   {lastResult.domisili || "-"}
                 </p>
               </div>
             </div>
-
-            <div className="flex items-center gap-2 bg-gray-950/60 p-1.5 px-2.5 rounded-xl border border-emerald-500/20 sm:col-span-2">
+            <div className="flex items-center gap-2 bg-zinc-950/60 p-1.5 px-2.5 rounded-lg border border-emerald-500/20 sm:col-span-2">
               <Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <div className="min-w-0 flex-1">
-                <p className="text-[8.5px] text-gray-400 uppercase font-semibold">Alamat</p>
-                <p className="font-semibold text-gray-300 text-[10.5px] truncate" title={lastResult.alamat}>
+                <p className="text-[8.5px] text-zinc-400 uppercase font-semibold">Alamat</p>
+                <p className="font-semibold text-zinc-300 text-[10.5px] truncate" title={lastResult.alamat}>
                   {lastResult.alamat || "-"}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* FOOTER TIMESTAMPS & PENERIMA */}
           <div className="text-[9.5px] font-mono text-emerald-400/80 pt-0.5 flex flex-wrap items-center justify-center gap-x-3 gap-y-1">
             <div className="flex items-center gap-1">
               <Clock className="w-3 h-3 text-emerald-400" />
-              <span>
-                {lastResult.tanggalHijri} {lastResult.waktu ? `(${lastResult.waktu})` : ""}
-              </span>
+              <span>{lastResult.tanggalHijri} {lastResult.waktu ? `(${lastResult.waktu})` : ""}</span>
             </div>
             {lastResult.penerima && (
-              <div className="flex items-center gap-1 text-gray-400">
+              <div className="flex items-center gap-1 text-zinc-400">
                 <UserCheck className="w-3 h-3 text-indigo-400" />
                 <span>Penerima: <b className="text-indigo-300 uppercase">{lastResult.penerima}</b></span>
               </div>
@@ -1714,24 +1472,20 @@ export const PosResultCard: React.FC<PosResultCardProps> = ({ lastResult }) => {
           <div className="p-2.5 bg-rose-500/20 rounded-full w-fit mx-auto border border-rose-500/30">
             <AlertTriangle className="w-9 h-9 text-rose-400 animate-bounce" />
           </div>
-
           <div className="space-y-2 w-full max-w-md mx-auto">
             <div className="flex items-center justify-center gap-1.5 bg-rose-500/20 py-1 px-3.5 rounded-full border border-rose-500/30 w-fit mx-auto text-rose-300 font-mono text-xs font-bold">
               <XCircle className="w-4 h-4 text-rose-400" />
               <span>TIDAK DAPAT MEMPROSES SETORAN</span>
             </div>
-
-            <p className="text-xs font-mono font-bold text-white bg-rose-950/60 p-3.5 rounded-2xl border border-rose-500/40 shadow-lg leading-relaxed">
+            <p className="text-xs font-mono font-bold text-white bg-rose-950/60 p-3 rounded-lg border border-rose-500/40 leading-relaxed">
               {lastResult.message}
             </p>
           </div>
         </div>
       ) : (
-        <div className="my-auto py-10 space-y-2 text-gray-500 flex flex-col items-center justify-center">
+        <div className="my-auto py-10 space-y-2 text-zinc-500 flex flex-col items-center justify-center">
           <Scissors className="w-9 h-9 mx-auto stroke-1" />
-          <p className="text-xs font-mono font-bold">
-            Arahkan Kartu santri ke barcode scanner
-          </p>
+          <p className="text-xs font-mono font-bold">Arahkan Kartu santri ke barcode scanner</p>
         </div>
       )}
     </div>
@@ -1759,39 +1513,29 @@ export const PosSessionLogs: React.FC<PosSessionLogsProps> = ({ logs }) => {
   const handlePrintFromLog = async (logItem: ScanSessionLog) => {
     try {
       setPrintingId(logItem.id);
-
       let logRecord = null;
       try {
-        logRecord = await pb
-          .collection("riwayat_setor_rambut")
-          .getOne(logItem.id, {
-            expand: "santri,petugas_eksekutor",
-          });
+        logRecord = await pb.collection("riwayat_setor_rambut").getOne(logItem.id, {
+          expand: "santri,petugas_eksekutor",
+        });
       } catch {
-        logRecord = await pb
-          .collection("riwayat_setor_rambut")
-          .getFirstListItem(`id_pps = "${logItem.idPps}"`, {
-            sort: "-created",
-            expand: "santri,petugas_eksekutor",
-          });
+        logRecord = await pb.collection("riwayat_setor_rambut").getFirstListItem(`id_pps = "${logItem.idPps}"`, {
+          sort: "-created",
+          expand: "santri,petugas_eksekutor",
+        });
       }
-
       if (logRecord) {
         const santri = logRecord.expand?.santri;
         const petugas = logRecord.expand?.petugas_eksekutor;
-
         const hijriData = await fetchHijriByDate(logRecord.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
-
         const kelasVal = santri?.kelas || logItem.kelas;
         const tingkatanVal = santri?.tingkatan || logItem.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
-
         const addressParts = [santri?.desa, santri?.kecamatan, santri?.kabupaten]
           .map((v) => v?.toString().trim())
           .filter(Boolean);
         const alamatStr = addressParts.length > 0 ? addressParts.join(", ") : "-";
-
         triggerAutoPrintReceipt({
           idPps: logRecord.id_pps || logItem.idPps,
           nama: santri?.nama || logItem.namaSantri || "Santri",
@@ -1811,19 +1555,16 @@ export const PosSessionLogs: React.FC<PosSessionLogsProps> = ({ logs }) => {
   };
 
   return (
-    <div className="flex flex-col bg-gray-950/50 border border-gray-800 rounded-2xl p-3 space-y-2 h-[380px]">
-      {/* HEADER SESI SCAN */}
-      <div className="flex items-center justify-between border-b border-gray-800/80 pb-1.5 shrink-0">
-        <span className="text-xs font-mono font-bold text-gray-300 uppercase tracking-wider flex items-center gap-1.5">
+    <div className="flex flex-col bg-zinc-950/50 border border-zinc-800 rounded-xl p-3 space-y-2 h-[380px]">
+      <div className="flex items-center justify-between border-b border-zinc-800 pb-1.5 shrink-0">
+        <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
           <History className="w-3.5 h-3.5 text-indigo-400" />
           <span>Sesi Scan Terbaru ({logs.length})</span>
         </span>
       </div>
-
-      {/* DYNAMIC SCROLL CONTAINER INTERNAL */}
       <div className="flex-1 min-h-0 overflow-y-auto custom-scrollbar space-y-1.5 pr-1">
         {logs.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center py-10 text-xs font-mono text-gray-600 space-y-1">
+          <div className="h-full flex flex-col items-center justify-center text-center py-10 text-xs text-zinc-600 space-y-1">
             <History className="w-8 h-8 opacity-30 stroke-1" />
             <p>Belum ada setoran di sesi ini.</p>
           </div>
@@ -1831,33 +1572,28 @@ export const PosSessionLogs: React.FC<PosSessionLogsProps> = ({ logs }) => {
           logs.map((log) => (
             <div
               key={log.id}
-              className="p-2 rounded-xl bg-gray-900/80 border border-gray-800 flex items-center justify-between gap-2.5 text-xs font-mono hover:border-gray-700 transition-all animate-in fade-in slide-in-from-top-1 duration-150"
+              className="p-2 rounded-lg bg-zinc-900/80 border border-zinc-800 flex items-center justify-between gap-2.5 text-xs hover:border-zinc-700 transition-colors animate-in fade-in slide-in-from-top-1 duration-150"
             >
               <div className="flex items-center gap-2 truncate min-w-0">
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0">
+                <div className="p-1.5 rounded-md bg-emerald-500/10 text-emerald-400 shrink-0">
                   <User className="w-3.5 h-3.5" />
                 </div>
                 <div className="truncate">
-                  <p className="font-bold text-white truncate text-xs">
-                    {log.namaSantri}
-                  </p>
-                  <p className="text-[10px] text-gray-400 mt-0.5">
-                    ID: <span className="text-indigo-300 font-bold">{log.idPps}</span> •{" "}
-                    {log.tingkatan}/{log.kelas}
+                  <p className="font-bold text-white truncate">{log.namaSantri}</p>
+                  <p className="text-[10px] text-zinc-400 mt-0.5">
+                    ID: <span className="text-indigo-300 font-bold">{log.idPps}</span> • {log.tingkatan}/{log.kelas}
                   </p>
                 </div>
               </div>
-
               <div className="flex items-center gap-1.5 shrink-0">
                 <span className="text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded-md border border-amber-500/20">
                   {log.timestampWis}
                 </span>
-
                 <button
                   type="button"
                   disabled={printingId === log.id}
                   onClick={() => handlePrintFromLog(log)}
-                  className="p-1.5 rounded-lg bg-gray-900 hover:bg-emerald-500/20 text-gray-400 hover:text-emerald-300 border border-gray-800 hover:border-emerald-500/30 transition-all active:scale-90 disabled:opacity-50"
+                  className="p-1.5 rounded-md bg-zinc-900 hover:bg-emerald-500/20 text-zinc-400 hover:text-emerald-300 border border-zinc-800 hover:border-emerald-500/30 transition-colors disabled:opacity-50"
                   title="Cetak Ulang Struk Bukti Setor"
                 >
                   {printingId === log.id ? (
@@ -1918,12 +1654,9 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
       badgeLabel="Modul Layanan Rambut"
       statusBadge={statusBadge}
       title={
-        <>
-          Layanan{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-            Rambut Santri
-          </span>
-        </>
+        <span className="font-sans font-bold text-white tracking-tight">
+          Layanan <span className="text-indigo-400">Rambut Santri</span>
+        </span>
       }
       description="Sistem pemantauan setoran bulanan santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri."
       actions={
@@ -1932,7 +1665,7 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenManagePeriode}
-              className="px-4 py-3 bg-gray-900/90 hover:bg-gray-800 text-indigo-300 hover:text-white font-mono font-bold text-xs rounded-2xl border border-indigo-500/30 transition-all duration-200 shadow-lg active:scale-95 flex items-center gap-2 select-none"
+              className="h-9 px-3.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-indigo-300 hover:text-white font-semibold text-xs border border-zinc-800 hover:border-indigo-500/30 transition-colors active:scale-[0.98] flex items-center gap-2 select-none"
             >
               <CalendarDays className="w-4 h-4 text-indigo-400" />
               <span>Daftar Periode</span>
@@ -1941,9 +1674,9 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCreatePeriode}
-              className="relative group overflow-hidden inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 active:scale-95 border border-indigo-400/30 select-none"
+              className="h-9 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors active:scale-[0.98] flex items-center gap-2 select-none"
             >
-              <PlusCircle className="w-4 h-4 text-indigo-100" />
+              <PlusCircle className="w-4 h-4 text-white" />
               <span>Periode Baru</span>
             </button>
           </>
@@ -1954,99 +1687,9 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
 };
 ```
 
-### `src/features/rambut/components/RambutHistoryTable.tsx`
-```tsx
-// src/components/rambut/RambutHistoryTable.tsx
-import React from "react";
-import type { RiwayatSetorExpanded } from "../hooks/useRambut";
-import { Clock, UserCheck, Calendar } from "lucide-react";
-
-interface RambutHistoryTableProps {
-  items: RiwayatSetorExpanded[];
-  isLoading: boolean;
-}
-
-export const RambutHistoryTable: React.FC<RambutHistoryTableProps> = ({
-  items,
-  isLoading,
-}) => {
-  return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[420px]">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left border-collapse table-auto">
-          <thead>
-            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider">
-              <th className="px-5 py-4 w-14 text-center">No</th>
-              <th className="px-5 py-4 w-32">ID PPS</th>
-              <th className="px-5 py-4 min-w-[200px]">Nama Santri</th>
-              <th className="px-5 py-4 w-44">Waktu Masehi</th>
-              <th className="px-5 py-4 w-36 text-center">Waktu WIS</th>
-              <th className="px-5 py-4 min-w-[160px]">Petugas Eksekutor</th>
-              <th className="px-5 py-4 min-w-[180px]">Catatan Eksekusi</th>
-            </tr>
-          </thead>
-
-          <tbody className="divide-y divide-gray-800/50 bg-gray-900/30">
-            {isLoading ? (
-              Array.from({ length: 6 }).map((_, idx) => (
-                <tr key={`skel-hist-${idx}`} className="animate-pulse">
-                  {Array.from({ length: 7 }).map((_, cell) => (
-                    <td key={cell} className="px-5 py-4">
-                      <div className="h-4 bg-gray-800/60 rounded w-20 mx-auto" />
-                    </td>
-                  ))}
-                </tr>
-              ))
-            ) : items.length === 0 ? (
-              <tr>
-                <td colSpan={7} className="px-6 py-16 text-center text-gray-500 font-mono text-xs">
-                  Belum ada log histori eksekusi perapian rambut pada periode ini.
-                </td>
-              </tr>
-            ) : (
-              items.map((row, index) => (
-                <tr key={row.id} className="hover:bg-indigo-500/[0.03] transition-colors">
-                  <td className="px-5 py-3.5 text-center text-gray-500 font-mono text-xs">
-                    {index + 1}
-                  </td>
-                  <td className="px-5 py-3.5 font-mono text-xs font-bold text-indigo-400">
-                    {row.id_pps}
-                  </td>
-                  <td className="px-5 py-3.5 font-semibold text-white">
-                    {row.expand?.santri?.nama || "Santri"}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-300 font-mono">
-                    <div className="flex items-center gap-1.5">
-                      <Calendar className="w-3.5 h-3.5 text-indigo-400" />
-                      <span>{new Date(row.tanggal_setor).toLocaleString("id-ID")}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-center font-mono font-bold text-emerald-400 text-xs">
-                    {row.waktu_wis}
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-300 font-mono">
-                    <div className="flex items-center gap-1.5">
-                      <UserCheck className="w-3.5 h-3.5 text-purple-400" />
-                      <span>@{row.expand?.petugas_eksekutor?.username || "operator"}</span>
-                    </div>
-                  </td>
-                  <td className="px-5 py-3.5 text-xs text-gray-400 font-mono italic">
-                    {row.catatan || "-"}
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-```
-
 ### `src/features/rambut/components/RambutModals.tsx`
 ```tsx
-// src/components/rambut/RambutModals.tsx
+// src/features/rambut/components/RambutModals.tsx
 import React from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { CreatePeriodeModal } from "./CreatePeriodeModal";
@@ -2062,7 +1705,6 @@ import type { useRambutPage } from "../hooks/useRambutPage";
 type RambutModalsProps = ReturnType<typeof useRambutPage>;
 
 export const RambutModals: React.FC<RambutModalsProps> = (p) => {
-  // ✨ Pengecekan hasQueue lebih akurat berdasarkan total antrean statistik saat ini
   const hasQueue = p.stats.total > 0;
   const currentPeriodeNama = p.selectedPeriode?.nama_periode || p.activePeriode?.nama_periode || "Periode Aktif";
 
@@ -2075,7 +1717,6 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         isPending={p.isCreatePending}
         existingPeriodes={p.periodeList}
       />
-
       <ManagePeriodeModal
         isOpen={p.activeModal === "MANAGE_PERIODE"}
         onClose={() => p.setActiveModal(null)}
@@ -2093,7 +1734,6 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         isDeletingPeriode={p.isDeletePeriodePending}
         onOpenCreateModal={() => p.setActiveModal("CREATE_PERIODE")}
       />
-
       <ExecuteSetorModal
         isOpen={!!p.selectedExecuteItem}
         onClose={() => p.setSelectedExecuteItem(null)}
@@ -2101,7 +1741,6 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         onConfirm={p.handleConfirmSetor}
         isPending={p.isExecutePending}
       />
-
       <DispensasiModal
         isOpen={!!p.selectedDispensasiItem}
         onClose={() => p.setSelectedDispensasiItem(null)}
@@ -2109,67 +1748,59 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         onConfirm={p.handleConfirmDispensasi}
         isPending={p.isDispensasiPending}
       />
-
       <ManagePengurusModal
         isOpen={p.activeModal === "MANAGE_PENGURUS"}
         onClose={() => p.setActiveModal(null)}
       />
-
       <RapidScanPosModal
         isOpen={p.activeModal === "POS"}
         onClose={() => p.setActiveModal(null)}
         periodeId={p.currentPeriodeId}
       />
-
       <ImportPengurusModal
         isOpen={p.activeModal === "IMPORT_PENGURUS"}
         onClose={() => p.setActiveModal(null)}
         onSuccessImport={p.refetchAll}
       />
 
-      {/* POP-UP KONFIRMASI HAPUS PENGURUS */}
+      {/* Konfirmasi Hapus Pengurus */}
       <BaseModal
         isOpen={!!p.selectedDeletePengurus}
         onClose={() => !p.isDeletingPengurus && p.setSelectedDeletePengurus(null)}
         title="Konfirmasi Hapus Pengurus"
-        icon={<Trash2 className="w-5 h-5 text-rose-400" />}
+        icon={<Trash2 className="w-4 h-4 text-rose-400" />}
         maxWidth="max-w-md"
       >
         {p.selectedDeletePengurus && (
-          <div className="space-y-4 px-6 pb-6 pt-2 select-none font-mono">
-            <div className="p-4 rounded-2xl bg-gray-950/70 border border-rose-500/30 space-y-2.5">
-              <div className="flex items-center justify-between border-b border-gray-800 pb-2">
-                <span className="text-[10px] text-gray-400 uppercase">ID PPS Pengurus</span>
-                <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2.5 py-0.5 rounded border border-purple-500/20">
+          <div className="space-y-4 px-1 pt-1 select-none font-sans">
+            <div className="p-3 rounded-lg bg-zinc-950/70 border border-rose-500/30 space-y-2.5">
+              <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+                <span className="text-[10px] text-zinc-400 uppercase">ID PPS Pengurus</span>
+                <span className="text-xs font-bold text-purple-300 bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">
                   {p.selectedDeletePengurus.id_pps}
                 </span>
               </div>
-
               <div className="flex items-center gap-3">
-                <div className="p-2.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
+                <div className="p-2 rounded-md bg-rose-500/10 text-rose-400 border border-rose-500/20 shrink-0">
                   <User className="w-4 h-4" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-bold text-white truncate font-sans">
+                  <p className="text-sm font-bold text-white truncate">
                     {p.selectedDeletePengurus.expand?.santri?.nama || "Pengurus / Petugas"}
                   </p>
-                  <p className="text-xs text-purple-300">
-                    {p.selectedDeletePengurus.jabatan || "Petugas Cukur"}
-                  </p>
+                  <p className="text-xs text-purple-300">{p.selectedDeletePengurus.jabatan || "Petugas Cukur"}</p>
                 </div>
               </div>
             </div>
-
-            <p className="text-xs text-gray-300 leading-relaxed bg-rose-950/30 p-3 rounded-xl border border-rose-500/20 font-sans">
+            <p className="text-xs text-zinc-300 leading-relaxed bg-rose-950/30 p-3 rounded-lg border border-rose-500/20">
               Apakah Anda yakin ingin menghapus data petugas/pengurus ini dari sistem?
             </p>
-
-            <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
               <button
                 type="button"
                 onClick={() => p.setSelectedDeletePengurus(null)}
                 disabled={p.isDeletingPengurus}
-                className="px-4 py-2.5 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-50"
               >
                 Batal
               </button>
@@ -2177,9 +1808,9 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
                 type="button"
                 onClick={p.handleConfirmDeletePengurus}
                 disabled={p.isDeletingPengurus}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-500 hover:to-red-500 text-white text-xs font-semibold rounded-xl border border-rose-400/30 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all"
+                className="inline-flex items-center gap-2 h-9 px-4 bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50"
               >
-                {p.isDeletingPengurus ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                {p.isDeletingPengurus ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                 <span>Ya, Hapus Pengurus</span>
               </button>
             </div>
@@ -2187,44 +1818,25 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
         )}
       </BaseModal>
 
-      {/* POP-UP GENERATE ATAU SMART SYNC */}
+      {/* Generate / Smart Sync */}
       <BaseModal
         isOpen={p.activeModal === "CONFIRM_GENERATE"}
         onClose={() => !p.isGeneratePending && p.setActiveModal(null)}
         title={hasQueue ? "Smart Sync Rekonsiliasi Antrean" : "Generate Antrean Periode"}
-        icon={
-          hasQueue ? (
-            <RefreshCw className="w-5 h-5 text-purple-400" />
-          ) : (
-            /* ✨ Ikon Wand2 melambangkan Fitur Generate Otomatis */
-            <Wand2 className="w-5 h-5 text-amber-400" />
-          )
-        }
+        icon={hasQueue ? <RefreshCw className="w-4 h-4 text-purple-400" /> : <Wand2 className="w-4 h-4 text-amber-400" />}
         maxWidth="max-w-md"
       >
-        <div className="space-y-4 px-6 pb-6 pt-2 text-center font-mono select-none">
-          {/* Box Ikon Header */}
-          <div
-            className={`w-12 h-12 rounded-2xl flex items-center justify-center mx-auto shadow-inner ${
-              hasQueue
-                ? "bg-purple-500/10 border border-purple-500/20 text-purple-400"
-                : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
-            }`}
-          >
-            {hasQueue ? (
-              <RefreshCw className="w-6 h-6 animate-spin" />
-            ) : (
-              /* ✨ Ikon Wand2 dengan Efek Pulse untuk Mode Generate */
-              <Wand2 className="w-6 h-6 text-amber-300 animate-pulse" />
-            )}
+        <div className="space-y-4 px-1 pt-1 text-center font-sans select-none">
+          <div className={`w-12 h-12 rounded-lg flex items-center justify-center mx-auto ${
+            hasQueue ? "bg-purple-500/10 border border-purple-500/20 text-purple-400" : "bg-amber-500/10 border border-amber-500/20 text-amber-400"
+          }`}>
+            {hasQueue ? <RefreshCw className="w-6 h-6" /> : <Wand2 className="w-6 h-6 text-amber-300" />}
           </div>
-
           <div className="space-y-2">
             <h4 className="text-sm font-bold text-white">
               {hasQueue ? `Sync Antrean "${currentPeriodeNama}"?` : `Generate Antrean "${currentPeriodeNama}"?`}
             </h4>
-
-            <p className="text-xs text-gray-300 leading-relaxed bg-gray-950/60 p-3.5 rounded-2xl border border-gray-800 text-left font-sans">
+            <p className="text-xs text-zinc-300 leading-relaxed bg-zinc-950/60 p-3 rounded-lg border border-zinc-800 text-left">
               {hasQueue ? (
                 <>
                   Sistem akan melakukan rekonsiliasi data:
@@ -2240,13 +1852,12 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
               )}
             </p>
           </div>
-
-          <div className="flex items-center justify-end gap-3 pt-3 border-t border-gray-800">
+          <div className="flex items-center justify-end gap-2 pt-3 border-t border-zinc-800">
             <button
               type="button"
               disabled={p.isGeneratePending}
               onClick={() => p.setActiveModal(null)}
-              className="px-4 py-2 rounded-xl bg-gray-900 border border-gray-800 text-gray-300 hover:text-white text-xs font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              className="h-9 px-3.5 rounded-lg border border-zinc-800 bg-zinc-900 text-zinc-400 hover:text-white text-xs font-medium transition-colors disabled:opacity-50"
             >
               Batal
             </button>
@@ -2254,20 +1865,11 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
               type="button"
               onClick={p.handleConfirmGenerateQueue}
               disabled={p.isGeneratePending}
-              className={`inline-flex items-center gap-1.5 px-4 py-2 text-white text-xs font-semibold rounded-xl shadow-lg disabled:opacity-50 disabled:cursor-not-allowed active:scale-95 transition-all ${
-                hasQueue
-                  ? "bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 shadow-purple-600/20"
-                  : "bg-gradient-to-r from-amber-600 to-indigo-600 hover:from-amber-500 hover:to-indigo-500 shadow-amber-600/20"
+              className={`inline-flex items-center gap-1.5 h-9 px-4 text-white text-xs font-semibold rounded-lg shadow-sm transition-colors disabled:opacity-50 ${
+                hasQueue ? "bg-purple-600 hover:bg-purple-500" : "bg-amber-600 hover:bg-amber-500"
               }`}
             >
-              {p.isGeneratePending ? (
-                <Loader2 className="w-3.5 h-3.5 animate-spin" />
-              ) : hasQueue ? (
-                <RefreshCw className="w-3.5 h-3.5" />
-              ) : (
-                /* ✨ Ikon Sparkles pada tombol Generate */
-                <Sparkles className="w-3.5 h-3.5 text-amber-200" />
-              )}
+              {p.isGeneratePending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : hasQueue ? <RefreshCw className="w-3.5 h-3.5" /> : <Sparkles className="w-3.5 h-3.5 text-amber-200" />}
               <span>{hasQueue ? "Jalankan Smart Sync" : "Proses Generate"}</span>
             </button>
           </div>
@@ -2280,13 +1882,14 @@ export const RambutModals: React.FC<RambutModalsProps> = (p) => {
 
 ### `src/features/rambut/components/RambutQueueTable.tsx`
 ```tsx
-// src/components/rambut/RambutQueueTable.tsx
+// src/features/rambut/components/RambutQueueTable.tsx
 import React from "react";
 import type { WajibSetorExpanded, RiwayatSetorExpanded } from "../hooks/useRambut";
 import type { RambutTabType } from "./RambutScanToolbar";
 import { RambutQueueSubTable } from "./subtables/RambutQueueSubTable";
 import { RambutPengurusSubTable } from "./subtables/RambutPengurusSubTable";
 import { RambutAuditSubTable } from "./subtables/RambutAuditSubTable";
+
 export interface PengurusItem {
   id: string;
   id_pps: string;
@@ -2339,9 +1942,8 @@ export const RambutQueueTable: React.FC<RambutQueueTableProps> = ({
   isAuditLoading = false,
 }) => {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-      <div className="overflow-x-auto">
+    <div className="relative overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm min-h-[480px]">
+      <div className="overflow-x-auto custom-scrollbar">
         {activeTab === "queue" && (
           <RambutQueueSubTable
             items={items}
@@ -2447,10 +2049,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
   ];
 
   return (
-    <div className="space-y-3 w-full select-none">
+    <div className="space-y-3 w-full select-none font-sans">
       {/* BARIS 1: TAB NAVIGASI UTAMA & AKSI POS/GENERATE */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-3 border-b border-gray-800/80 w-full">
-        {/* Tab Penukar Utama dengan SegmentedControl */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800 w-full">
         <SegmentedControl
           options={mainTabOptions}
           value={activeTab}
@@ -2458,10 +2059,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
           layoutId="activeRambutMainTabPill"
         />
 
-        {/* Akses Cepat & Badge Periode */}
-        <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2 px-3.5 h-12 rounded-2xl bg-gray-900/80 border border-gray-800/90 shadow-sm backdrop-blur-xl text-xs font-mono flex-1 min-w-0">
-            <div className={`p-1 rounded-lg shrink-0 ${selectedPeriode ? "bg-amber-500/10 text-amber-400" : "bg-rose-500/10 text-rose-400"}`}>
+        <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 shadow-sm text-xs flex-1 min-w-0">
+            <div className={`p-1 rounded-md shrink-0 ${selectedPeriode ? "bg-amber-500/10 text-amber-400" : "bg-rose-500/10 text-rose-400"}`}>
               <Moon className="w-3.5 h-3.5" />
             </div>
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -2483,16 +2083,16 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenGenerateQueue}
-                  className="flex items-center justify-center gap-2 h-12 px-4 bg-gray-900/90 hover:bg-gray-800 text-purple-300 hover:text-white font-mono font-bold text-xs rounded-2xl border border-purple-500/30 transition-all shadow-sm active:scale-95 whitespace-nowrap shrink-0"
+                  className="h-9 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-purple-300 hover:text-white font-semibold text-xs border border-zinc-800 hover:border-purple-500/30 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
                   {hasGeneratedQueue ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                      <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
                       <span>Sync Antrean</span>
                     </>
                   ) : (
                     <>
-                      <Wand2 className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                      <Wand2 className="w-3.5 h-3.5 text-purple-400" />
                       <span>Generate Antrean</span>
                     </>
                   )}
@@ -2503,9 +2103,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenPosModal}
-                  className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-mono text-xs font-bold shadow-sm shadow-indigo-600/20 active:scale-95 transition-all border border-indigo-400/30 whitespace-nowrap shrink-0"
+                  className="h-9 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
-                  <ScanBarcode className="w-3.5 h-3.5 shrink-0 text-amber-300 animate-pulse" />
+                  <ScanBarcode className="w-3.5 h-3.5 text-amber-300" />
                   <span>POS Setoran Rambut</span>
                 </button>
               )}
@@ -2516,9 +2116,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
             <button
               type="button"
               onClick={onOpenAddPengurusModal}
-              className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-bold shadow-sm shadow-purple-600/20 active:scale-95 transition-all border border-purple-400/30 whitespace-nowrap shrink-0"
+              className="h-9 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-1.5"
             >
-              <UserPlus className="w-3.5 h-3.5 shrink-0" />
+              <UserPlus className="w-3.5 h-3.5" />
               <span>+ Import Pengurus</span>
             </button>
           )}
@@ -2567,7 +2167,7 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
 
 ### `src/features/rambut/components/RambutStats.tsx`
 ```tsx
-// src/components/rambut/RambutStats.tsx
+// src/features/rambut/components/RambutStats.tsx
 import React from "react";
 import { Users, CheckCircle2, Clock, ShieldAlert } from "lucide-react";
 
@@ -2585,8 +2185,7 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
   stats,
   isLoading = false,
 }) => {
-  const percentSudah =
-    stats.total > 0 ? Math.round((stats.sudah / stats.total) * 100) : 0;
+  const percentSudah = stats.total > 0 ? Math.round((stats.sudah / stats.total) * 100) : 0;
 
   const cards = [
     {
@@ -2594,9 +2193,6 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
       value: stats.total,
       sub: "Santri Aliyah, Syariah & Pengurus",
       icon: Users,
-      gradientText: "from-indigo-200 via-indigo-300 to-purple-300",
-      glowBg: "bg-indigo-600/15",
-      topBorder: "via-indigo-500/50",
       iconBox: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
       dotColor: "bg-indigo-400",
     },
@@ -2605,9 +2201,6 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
       value: stats.sudah,
       sub: `${percentSudah}% Tuntas terverifikasi`,
       icon: CheckCircle2,
-      gradientText: "from-emerald-200 via-emerald-300 to-teal-300",
-      glowBg: "bg-emerald-600/15",
-      topBorder: "via-emerald-500/50",
       iconBox: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
       dotColor: "bg-emerald-400",
     },
@@ -2616,9 +2209,6 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
       value: stats.belum,
       sub: "Antrean menunggu tindakan",
       icon: Clock,
-      gradientText: "from-amber-200 via-amber-300 to-yellow-300",
-      glowBg: "bg-amber-600/15",
-      topBorder: "via-amber-500/50",
       iconBox: "bg-amber-500/10 border-amber-500/20 text-amber-400",
       dotColor: "bg-amber-400",
     },
@@ -2627,9 +2217,6 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
       value: stats.dispensasi,
       sub: "Izin berhalangan sementara",
       icon: ShieldAlert,
-      gradientText: "from-purple-200 via-purple-300 to-pink-300",
-      glowBg: "bg-purple-600/15",
-      topBorder: "via-purple-500/50",
       iconBox: "bg-purple-500/10 border-purple-500/20 text-purple-400",
       dotColor: "bg-purple-400",
     },
@@ -2637,25 +2224,22 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {Array.from({ length: 4 }).map((_, idx) => (
           <div
             key={`stat-skeleton-${idx}`}
-            className="rounded-3xl border border-gray-800/80 bg-gray-900/60 p-5 md:p-6 animate-pulse flex flex-col justify-between"
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 animate-pulse flex flex-col justify-between"
           >
-            {/* Top Section: Title, Value & Placeholder Icon Box */}
             <div className="flex items-start justify-between gap-3">
               <div className="space-y-2">
-                <div className="h-3 w-28 rounded-lg bg-gray-800" />
-                <div className="h-9 w-24 rounded-xl bg-gray-800" />
+                <div className="h-3 w-28 rounded bg-zinc-800" />
+                <div className="h-8 w-24 rounded bg-zinc-800" />
               </div>
-              <div className="w-11 h-11 rounded-2xl bg-gray-800/80 flex-shrink-0" />
+              <div className="w-9 h-9 rounded-lg bg-zinc-800" />
             </div>
-
-            {/* Bottom Section: Border + Subtext Placeholder */}
-            <div className="mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2">
-              <div className="w-1.5 h-1.5 rounded-full bg-gray-800" />
-              <div className="h-3 w-36 rounded bg-gray-800/60" />
+            <div className="mt-3 pt-2 border-t border-zinc-800 flex items-center gap-2">
+              <div className="w-1.5 h-1.5 rounded-full bg-zinc-800" />
+              <div className="h-3 w-36 rounded bg-zinc-800/60" />
             </div>
           </div>
         ))}
@@ -2664,44 +2248,29 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
   }
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-5 select-none">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 select-none">
       {cards.map((card, idx) => {
         const Icon = card.icon;
         return (
           <div
             key={idx}
-            className="relative group overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:border-gray-700/80 hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between"
+            className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm flex flex-col justify-between"
           >
-            <div
-              className={`absolute -top-20 -right-20 w-44 h-44 rounded-full ${card.glowBg} blur-[75px] pointer-events-none transition-all duration-500 group-hover:scale-125`}
-            />
-            <div
-              className={`absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent ${card.topBorder} to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300`}
-            />
-
-            <div className="relative z-10 flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-3">
               <div className="space-y-1">
-                <p className="text-[11px] font-mono font-medium text-gray-400 uppercase tracking-wider">
+                <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                   {card.title}
                 </p>
-                <p
-                  className={`text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${card.gradientText} tracking-tight font-mono`}
-                >
+                <p className="text-2xl font-extrabold text-white font-mono">
                   {card.value.toLocaleString("id-ID")}
                 </p>
               </div>
-
-              <div
-                className={`p-3 rounded-2xl border ${card.iconBox} shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}
-              >
-                <Icon className="w-5 h-5" />
+              <div className={`p-2 rounded-lg border ${card.iconBox}`}>
+                <Icon className="w-4 h-4" />
               </div>
             </div>
-
-            <div className="relative z-10 mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2 text-[11px] font-mono text-gray-400">
-              <span
-                className={`w-1.5 h-1.5 rounded-full ${card.dotColor} animate-pulse`}
-              />
+            <div className="mt-3 pt-2 border-t border-zinc-800 flex items-center gap-2 text-[11px] font-sans text-zinc-400">
+              <span className={`w-1.5 h-1.5 rounded-full ${card.dotColor} animate-pulse`} />
               <span className="truncate">{card.sub}</span>
             </div>
           </div>
@@ -2718,7 +2287,6 @@ export const RambutStats: React.FC<RambutStatsProps> = ({
 import React from "react";
 import { BaseModal } from "@/components/shared/BaseModal";
 import { QrCode, ScanBarcode, Loader2 } from "lucide-react";
-
 import { useRapidScanPos } from "../hooks/useRapidScanPos";
 import { PosHeader } from "./pos/PosHeader";
 import { PosResultCard } from "./pos/PosResultCard";
@@ -2759,10 +2327,10 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
   };
 
   const getInputBorderClass = () => {
-    if (isProcessing) return "border-amber-500 ring-2 ring-amber-500/20";
+    if (isProcessing) return "border-amber-500 focus:border-amber-400";
     if (lastResult.status === "success") return "border-emerald-500/80 focus:border-emerald-400";
     if (lastResult.status === "error") return "border-rose-500/80 focus:border-rose-400";
-    return "border-indigo-500/60 focus:border-indigo-400";
+    return "border-zinc-800 focus:border-indigo-500";
   };
 
   return (
@@ -2770,15 +2338,13 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
       isOpen={isOpen}
       onClose={onClose}
       title="POS Scan Setoran Rambut"
-      icon={<ScanBarcode className="w-5 h-5 text-indigo-400" />}
+      icon={<ScanBarcode className="w-4 h-4 text-indigo-400" />}
       maxWidth="max-w-5xl"
     >
-      {/* 🛑 TERKUNCI DENGAN OVERFLOW-HIDDEN AGAR KARTU MODAL TIDAK BISA DI-SCROLL */}
       <div
-        className="space-y-2.5 pt-0.5 select-none overflow-hidden px-0.5"
+        className="space-y-2.5 pt-0.5 select-none overflow-hidden px-0.5 font-sans"
         onClick={focusInput}
       >
-        {/* Sub-Header Bar */}
         <PosHeader
           wisTimeStr={wisTimeStr}
           enableSound={enableSound}
@@ -2787,19 +2353,16 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
           onChangePrintMode={setPrintMode}
         />
 
-        {/* Main Scanner Layout Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 items-stretch">
-          {/* SISI KIRI: INPUT BARCODE + KARTU HASIL VERIFIKASI */}
           <div className="lg:col-span-7 flex flex-col space-y-2.5 min-w-0">
             <div className="relative group shrink-0">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-indigo-400">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-indigo-400">
                 {isProcessing ? (
                   <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
                 ) : (
-                  <QrCode className="w-4 h-4 animate-pulse" />
+                  <QrCode className="w-4 h-4" />
                 )}
               </div>
-
               <input
                 ref={inputRef}
                 type="text"
@@ -2809,16 +2372,13 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
                 onFocus={(e) => e.target.select()}
                 placeholder="SIAP SCAN KARTU SANTRI / KETIK ID PPS..."
                 disabled={isProcessing}
-                className={`w-full pl-10 pr-3.5 py-2 bg-gray-950/80 border-2 rounded-2xl text-white text-xs font-mono font-bold placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xl transition-all ${getInputBorderClass()}`}
+                className={`w-full h-9 pl-9 pr-3 bg-zinc-950 border rounded-lg text-xs text-zinc-100 font-bold placeholder-zinc-500 focus:outline-none focus:ring-1 transition-colors ${getInputBorderClass()}`}
               />
             </div>
-
             <div className="flex-1 min-h-0">
               <PosResultCard lastResult={lastResult} />
             </div>
           </div>
-
-          {/* SISI KANAN: LOG RIWAYAT SESI SCAN */}
           <div className="lg:col-span-5 min-w-0 flex flex-col">
             <PosSessionLogs logs={sessionLogs} />
           </div>
@@ -2831,7 +2391,7 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
 
 ### `src/features/rambut/components/subtables/RambutAuditSubTable.tsx`
 ```tsx
-// src/components/rambut/subtables/RambutAuditSubTable.tsx
+// src/features/rambut/components/subtables/RambutAuditSubTable.tsx
 import React, { useMemo } from "react";
 import { parseNumericIdPps, type RiwayatSetorExpanded } from "../../hooks/useRambut";
 import { HijriText } from "../../../../components/shared/HijriText";
@@ -2853,107 +2413,92 @@ const getAlamatStr = (santri: any) => {
 export const RambutAuditSubTable: React.FC<Props> = ({
   items,
   isLoading,
-  page = 1,        // 👈 1. Destruktur prop page dengan default 1
-  perPage = 15,    // 👈 1. Destruktur prop perPage dengan default 15
+  page = 1,
+  perPage = 15,
 }) => {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
   }, [items]);
 
   return (
-    <div className="overflow-x-auto hide-scrollbar">
+    <div className="overflow-x-auto custom-scrollbar">
       <table className="w-full min-w-[1200px] text-xs text-left border-collapse table-fixed">
         <thead>
-          <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-            <th className="px-2.5 py-3 w-[4%] text-center">No</th>
-            <th className="px-2.5 py-3 w-[16%]">Tgl Hijriyah</th>
-            <th className="px-2.5 py-3 w-[10%]">ID PPS</th>
-            <th className="px-2.5 py-3 w-[16%]">Nama Santri</th>
-            <th className="px-2.5 py-3 w-[12%]">Domisili</th>
-            <th className="px-2.5 py-3 w-[16%]">Alamat</th>
-            <th className="px-2.5 py-3 w-[10%] text-center">Waktu</th>
-            <th className="px-2.5 py-3 w-[10%]">Petugas</th>
-            <th className="px-2.5 py-3 w-[16%]">Catatan</th>
+          <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
+            <th className="px-2.5 py-2.5 w-[4%] text-center">No</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Tgl Hijriyah</th>
+            <th className="px-2.5 py-2.5 w-[10%]">ID PPS</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Nama Santri</th>
+            <th className="px-2.5 py-2.5 w-[12%]">Domisili</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Alamat</th>
+            <th className="px-2.5 py-2.5 w-[10%] text-center">Waktu</th>
+            <th className="px-2.5 py-2.5 w-[10%]">Petugas</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Catatan</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800/50 bg-gray-900/30 font-mono">
+        <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, idx) => (
-              <tr key={`skel-a-${idx}`} className="animate-pulse border-b border-gray-800/40">
+              <tr key={`skel-a-${idx}`} className="animate-pulse">
                 {Array.from({ length: 9 }).map((_, c) => (
-                  <td key={c} className="px-2.5 py-2.5">
-                    <div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" />
-                  </td>
+                  <td key={c} className="px-2.5 py-2"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
                 ))}
               </tr>
             ))
           ) : sortedItems.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-6 py-16 text-center font-sans">
+              <td colSpan={9} className="px-6 py-8 text-center">
                 <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                    <History className="w-6 h-6 text-gray-400" />
+                  <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-400">
+                    <History className="w-6 h-6" />
                   </div>
-                  <p className="text-xs font-semibold text-gray-300">Belum Ada Log Transaksi Audit Trail</p>
+                  <p className="text-xs font-semibold text-zinc-300">Belum Ada Log Transaksi Audit Trail</p>
                 </div>
               </td>
             </tr>
           ) : (
             sortedItems.map((logItem, idx) => {
-              const rowNo = (page - 1) * perPage + idx + 1; // 👈 2. Kalkulasi nomor urut lintas halaman
+              const rowNo = (page - 1) * perPage + idx + 1;
               const log = logItem as any;
               const santriData = log.expand?.santri;
               const petugasData = log.expand?.petugas_eksekutor;
-
               return (
-                <tr key={log.id} className="group transition-colors duration-150 hover:bg-amber-500/[0.04]">
-                  <td className="px-2.5 py-2 text-center text-gray-500">{rowNo}</td>
-
+                <tr key={log.id} className="hover:bg-zinc-800/40 transition-colors">
+                  <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
                   <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap overflow-hidden">
                     <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-fit">
                       <Moon className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="font-bold text-[11px]">
-                        <HijriText date={log.tanggal_setor || log.created} />
-                      </span>
+                      <span className="font-bold text-[11px]"><HijriText date={log.tanggal_setor || log.created} /></span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 font-bold text-amber-400 whitespace-nowrap overflow-hidden">
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                      {log.id_pps || santriData?.id_pps || "-"}
-                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">{log.id_pps || santriData?.id_pps || "-"}</span>
                   </td>
-
                   <td className="px-2.5 py-2 font-sans whitespace-nowrap truncate overflow-hidden">
                     <div className="flex items-center gap-1.5 truncate">
-                      <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span className="font-semibold text-gray-200 truncate">{santriData?.nama || "Santri"}</span>
+                      <User className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="font-semibold text-zinc-200 truncate">{santriData?.nama || "Santri"}</span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap font-sans truncate overflow-hidden">
                     <div className="flex items-center gap-1 truncate">
                       <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
                       <span className="truncate">{santriData?.domisili || santriData?.status_domisili || "-"}</span>
                     </div>
                   </td>
-
-                  <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap font-sans truncate overflow-hidden" title={getAlamatStr(santriData)}>
+                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate overflow-hidden" title={getAlamatStr(santriData)}>
                     <div className="flex items-center gap-1 truncate">
-                      <Home className="w-3 h-3 text-gray-500 shrink-0" />
+                      <Home className="w-3 h-3 text-zinc-500 shrink-0" />
                       <span className="truncate">{getAlamatStr(santriData)}</span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 text-center font-bold text-emerald-400 whitespace-nowrap overflow-hidden">
                     {log.waktu_wis || "-"}
                   </td>
-
-                  <td className="px-2.5 py-2 text-gray-300 whitespace-nowrap font-sans truncate overflow-hidden">
+                  <td className="px-2.5 py-2 text-zinc-300 whitespace-nowrap font-sans truncate overflow-hidden">
                     {petugasData?.name || petugasData?.username || "Sistem"}
                   </td>
-
-                  <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
+                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
                     {log.catatan_operasional || log.catatan || "-"}
                   </td>
                 </tr>
@@ -3004,23 +2549,23 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
   return (
     <table className="w-full text-xs text-left border-collapse table-auto">
       <thead>
-        <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-          <th className="px-2.5 py-3 w-8 text-center">No</th>
-          <th className="px-2.5 py-3 w-20">ID PPS</th>
-          <th className="px-2.5 py-3 min-w-[150px]">Nama</th>
-          <th className="px-2.5 py-3 w-32 text-center">Jabatan</th>
-          <th className="px-2.5 py-3 w-28 whitespace-nowrap">Domisili</th>
-          <th className="px-2.5 py-3 min-w-[140px] max-w-[180px]">Alamat</th>
-          <th className="px-2.5 py-3 w-24 text-center">Status</th>
-          <th className="px-2.5 py-3 w-16 text-center">Aksi</th>
+        <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
+          <th className="px-2.5 py-2.5 w-8 text-center">No</th>
+          <th className="px-2.5 py-2.5 w-20">ID PPS</th>
+          <th className="px-2.5 py-2.5 min-w-[150px]">Nama</th>
+          <th className="px-2.5 py-2.5 w-32 text-center">Jabatan</th>
+          <th className="px-2.5 py-2.5 w-28 whitespace-nowrap">Domisili</th>
+          <th className="px-2.5 py-2.5 min-w-[140px] max-w-[180px]">Alamat</th>
+          <th className="px-2.5 py-2.5 w-24 text-center">Status</th>
+          <th className="px-2.5 py-2.5 w-16 text-center">Aksi</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-gray-800/50 bg-gray-900/30 font-mono">
+      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
         {isLoading ? (
           Array.from({ length: 5 }).map((_, idx) => (
-            <tr key={`skel-p-${idx}`} className="animate-pulse border-b border-gray-800/40">
+            <tr key={`skel-p-${idx}`} className="animate-pulse">
               {Array.from({ length: 8 }).map((_, c) => (
-                <td key={c} className="px-2.5 py-2.5"><div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" /></td>
+                <td key={c} className="px-2.5 py-2"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
               ))}
             </tr>
           ))
@@ -3028,7 +2573,7 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
           <tr>
             <td colSpan={8} className="px-6 py-8">
               <EmptyState
-                icon={<UserCheck className="w-6 h-6 text-gray-400" />}
+                icon={<UserCheck className="w-6 h-6 text-zinc-500" />}
                 title="Tidak Ada Pengurus Ditemukan"
                 description="Tambahkan pengurus baru secara manual atau impor via file Excel."
               />
@@ -3039,37 +2584,30 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
             const rowNo = (page - 1) * perPage + idx + 1;
             const santriData = p.expand?.santri;
             const isAktif = p.status_aktif !== false;
-
             return (
-              <tr key={p.id} className="group transition-colors duration-150 hover:bg-purple-500/[0.04]">
-                <td className="px-2.5 py-2 text-center text-gray-500">{rowNo}</td>
-
+              <tr key={p.id} className="hover:bg-zinc-800/40 transition-colors">
+                <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
                 <td className="px-2.5 py-2 font-bold text-purple-400 whitespace-nowrap">
                   <span className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">{p.id_pps}</span>
                 </td>
-
                 <td className="px-2.5 py-2 font-sans whitespace-nowrap">
                   <div className="flex items-center gap-1.5">
                     <User className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                    <span className="font-semibold text-gray-200 group-hover:text-purple-300 transition-colors">{santriData?.nama || "Pengurus / Petugas"}</span>
+                    <span className="font-semibold text-zinc-200">{santriData?.nama || "Pengurus / Petugas"}</span>
                   </div>
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
                   <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
                     <ShieldCheck className="w-3 h-3 text-indigo-400" />
                     <span>{p.jabatan || "Petugas Cukur"}</span>
                   </span>
                 </td>
-
                 <td className="px-2.5 py-2 text-purple-300 whitespace-nowrap font-sans">
                   <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-purple-400 shrink-0" /><span>{santriData?.domisili || santriData?.status_domisili || "-"}</span></div>
                 </td>
-
-                <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap font-sans truncate max-w-[170px]" title={getAlamatStr(santriData)}>
-                  <div className="flex items-center gap-1"><Home className="w-3 h-3 text-gray-500 shrink-0" /><span className="truncate">{getAlamatStr(santriData)}</span></div>
+                <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate max-w-[170px]" title={getAlamatStr(santriData)}>
+                  <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500 shrink-0" /><span className="truncate">{getAlamatStr(santriData)}</span></div>
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
                   <StatusBadge
                     variant={isAktif ? "success" : "danger"}
@@ -3078,10 +2616,11 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
                     {isAktif ? "Aktif" : "Purna"}
                   </StatusBadge>
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
                   {onDeletePengurus && (
-                    <button type="button" onClick={() => onDeletePengurus(p)} className="p-1 rounded-lg bg-gray-900 border border-gray-800 text-gray-400 hover:text-rose-400 hover:bg-rose-500/10 transition-all active:scale-90" title="Hapus"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => onDeletePengurus(p)} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors" title="Hapus">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </td>
               </tr>
@@ -3159,24 +2698,19 @@ export const RambutQueueSubTable: React.FC<Props> = ({
   const handlePrintFromRiwayat = async (wajibSetorId: string) => {
     try {
       setPrintingId(wajibSetorId);
-
       const log = await pb
         .collection("riwayat_setor_rambut")
         .getFirstListItem(`wajib_setor = "${wajibSetorId}"`, {
           expand: "santri,petugas_eksekutor",
         });
-
       if (log) {
         const santri = log.expand?.santri;
         const petugas = log.expand?.petugas_eksekutor;
-
         const hijriData = await fetchHijriByDate(log.tanggal_setor);
         const stringHijri = hijriData?.string_hijri || "-";
-
         const kelasVal = santri?.kelas ? `${santri.kelas}` : "";
         const tingkatanVal = santri?.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
-
         triggerAutoPrintReceipt({
           idPps: log.id_pps || santri?.id_pps || "-",
           nama: santri?.nama || "Santri",
@@ -3198,29 +2732,26 @@ export const RambutQueueSubTable: React.FC<Props> = ({
   return (
     <table className="w-full text-xs text-left border-collapse table-auto">
       <thead>
-        <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-          <th className="px-2.5 py-3 w-8 text-center">No</th>
-          <th className="px-2.5 py-3 w-20">ID PPS</th>
-          <th className="px-2.5 py-3 min-w-[150px]">Nama</th>
-          <th className="px-2.5 py-3 w-28 whitespace-nowrap">Domisili</th>
-          <th className="px-2.5 py-3 min-w-[140px] max-w-[180px]">Alamat</th>
-          <th className="px-2.5 py-3 min-w-[130px]">Tingkatan / Kelas</th>
-          <th className="px-2.5 py-3 w-24 text-center">Kategori</th>
-          <th className="px-2.5 py-3 w-24 text-center">Status</th>
-          <th className="px-2.5 py-3 w-28 text-center">Aksi</th>
+        <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
+          <th className="px-2.5 py-2.5 w-8 text-center">No</th>
+          <th className="px-2.5 py-2.5 w-20">ID PPS</th>
+          <th className="px-2.5 py-2.5 min-w-[150px]">Nama</th>
+          <th className="px-2.5 py-2.5 w-28 whitespace-nowrap">Domisili</th>
+          <th className="px-2.5 py-2.5 min-w-[140px] max-w-[180px]">Alamat</th>
+          <th className="px-2.5 py-2.5 min-w-[130px]">Tingkatan / Kelas</th>
+          <th className="px-2.5 py-2.5 w-24 text-center">Kategori</th>
+          <th className="px-2.5 py-2.5 w-24 text-center">Status</th>
+          <th className="px-2.5 py-2.5 w-28 text-center">Aksi</th>
         </tr>
       </thead>
 
-      <tbody className="divide-y divide-gray-800/50 bg-gray-900/30 font-mono">
+      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
         {isLoading ? (
           Array.from({ length: 8 }).map((_, idx) => (
-            <tr
-              key={`skel-q-${idx}`}
-              className="animate-pulse border-b border-gray-800/40"
-            >
+            <tr key={`skel-q-${idx}`} className="animate-pulse">
               {Array.from({ length: 9 }).map((_, c) => (
-                <td key={c} className="px-2.5 py-2.5">
-                  <div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" />
+                <td key={c} className="px-2.5 py-2">
+                  <div className="h-4 bg-zinc-800 rounded w-16 mx-auto" />
                 </td>
               ))}
             </tr>
@@ -3229,7 +2760,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
           <tr>
             <td colSpan={9} className="px-6 py-8">
               <EmptyState
-                icon={<Scissors className="w-6 h-6 text-gray-400" />}
+                icon={<Scissors className="w-6 h-6 text-zinc-500" />}
                 title="Tidak Ada Data Antrean Wajib Setor"
                 description="Pastikan antrean periode telah di-generate atau sesuaikan filter Anda."
               />
@@ -3239,62 +2770,45 @@ export const RambutQueueSubTable: React.FC<Props> = ({
           sortedItems.map((row, index) => {
             const rowNo = (page - 1) * perPage + index + 1;
             const santriData = row.expand?.santri;
-
             return (
-              <tr
-                key={row.id}
-                className="group transition-colors duration-150 hover:bg-indigo-500/[0.04]"
-              >
-                <td className="px-2.5 py-2 text-center text-gray-500">
-                  {rowNo}
-                </td>
-
-                <td className="px-2.5 py-2 font-bold text-indigo-400 whitespace-nowrap">
+              <tr key={row.id} className="hover:bg-zinc-800/40 transition-colors">
+                <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
+                <td className="px-2.5 py-2 font-bold text-indigo-300 whitespace-nowrap">
                   <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
                     {row.id_pps}
                   </span>
                 </td>
-
                 <td className="px-2.5 py-2 font-sans whitespace-nowrap">
                   <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-gray-500 shrink-0" />
-                    <span className="font-semibold text-gray-200 group-hover:text-indigo-300 transition-colors">
+                    <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
+                    <span className="font-semibold text-zinc-200 group-hover:text-indigo-300 transition-colors">
                       {santriData?.nama || "Tanpa Nama"}
                     </span>
                   </div>
                 </td>
-
                 <td className="px-2.5 py-2 text-indigo-300 whitespace-nowrap font-sans">
                   <div className="flex items-center gap-1">
                     <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
-                    <span>
-                      {santriData?.domisili ||
-                        santriData?.status_domisili ||
-                        "-"}
-                    </span>
+                    <span>{santriData?.domisili || santriData?.status_domisili || "-"}</span>
                   </div>
                 </td>
-
                 <td
-                  className="px-2.5 py-2 text-gray-400 whitespace-nowrap font-sans truncate max-w-[170px]"
+                  className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate max-w-[170px]"
                   title={getAlamatStr(santriData)}
                 >
                   <div className="flex items-center gap-1">
-                    <Home className="w-3 h-3 text-gray-500 shrink-0" />
+                    <Home className="w-3 h-3 text-zinc-500 shrink-0" />
                     <span className="truncate">{getAlamatStr(santriData)}</span>
                   </div>
                 </td>
-
-                <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap">
+                <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap">
                   {santriData?.tingkatan || "-"} / {santriData?.kelas || "-"}
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
                   <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
                     {row.kategori_wajib?.replace(/_/g, " ")}
                   </span>
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
                   {row.status_setor === "sudah" ? (
                     <StatusBadge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
@@ -3310,7 +2824,6 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                     </StatusBadge>
                   )}
                 </td>
-
                 <td className="px-2.5 py-2 text-center whitespace-nowrap">
                   {row.status_setor === "belum" ? (
                     canExecute ? (
@@ -3318,24 +2831,24 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                         <button
                           type="button"
                           onClick={() => onOpenExecuteModal(row)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white text-[10px] font-semibold shadow active:scale-95 transition-all"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold shadow-sm transition-colors"
                         >
                           <Scissors className="w-3 h-3" /> Setor
                         </button>
                         <button
                           type="button"
                           onClick={() => onOpenDispensasiModal(row)}
-                          className="inline-flex items-center gap-1 px-1.5 py-1 rounded-lg bg-gray-900 border border-gray-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold active:scale-95 transition-all"
+                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold transition-colors"
                         >
                           <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
                         </button>
                       </div>
                     ) : (
                       <div
-                        className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-gray-950/60 border border-gray-800 text-gray-500 text-[10px] font-mono cursor-not-allowed select-none"
+                        className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-500 text-[10px] font-mono cursor-not-allowed select-none"
                         title={disabledReason}
                       >
-                        <Lock className="w-3 h-3 text-gray-600" />
+                        <Lock className="w-3 h-3 text-zinc-600" />
                         <span>Terkunci</span>
                       </div>
                     )
@@ -3344,7 +2857,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                       type="button"
                       disabled={printingId === row.id}
                       onClick={() => handlePrintFromRiwayat(row.id)}
-                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-mono font-bold active:scale-95 transition-all disabled:opacity-50"
+                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold transition-colors disabled:opacity-50"
                       title="Cetak Ulang Bukti Setor"
                     >
                       {printingId === row.id ? (
@@ -3355,7 +2868,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                       <span>Struk</span>
                     </button>
                   ) : (
-                    <span className="text-gray-500">-</span>
+                    <span className="text-zinc-500">-</span>
                   )}
                 </td>
               </tr>
@@ -3370,11 +2883,11 @@ export const RambutQueueSubTable: React.FC<Props> = ({
 
 ### `src/features/rambut/components/toolbars/AuditToolbar.tsx`
 ```tsx
-// src/components/rambut/toolbars/AuditToolbar.tsx
+// src/features/rambut/components/toolbars/AuditToolbar.tsx
 import React from "react";
 import { Moon } from "lucide-react";
-import { BaseToolbar } from "../../../../components/shared/BaseToolbar";
-import { CustomGlassDropdown, type DropdownOption } from "./CustomGlassDropdown";
+import { BaseToolbar } from "@/components/shared/BaseToolbar";
+import { GlassDropdown, type DropdownOption } from "@/components/shared";
 
 interface AuditToolbarProps {
   search: string;
@@ -3404,18 +2917,13 @@ export const AuditToolbar: React.FC<AuditToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-amber-400"
     >
-      {/*
-        Dropdown Tanggal Hijriyah dimasukkan sebagai children.
-        Pastikan trigger/tombol di dalam <CustomGlassDropdown> memakai class `h-12`
-        dan `rounded-2xl` agar tingginya presisi mendampingi search bar.
-      */}
-      <CustomGlassDropdown
+      <GlassDropdown
         value={dateFilter}
         onChange={onDateFilterChange}
         options={availableHijriDateOptions}
         defaultLabel="Semua Tanggal Hijriyah"
-        icon={<Moon className="w-4 h-4 text-amber-400 shrink-0" />}
-        activeColorClass="border-amber-500/60 text-amber-200 ring-amber-500/20"
+        icon={<Moon className="w-3.5 h-3.5 text-amber-400" />}
+        activeColorClass="border-amber-500/60 text-amber-200"
         minWidthClass="min-w-[220px]"
       />
     </BaseToolbar>
@@ -3423,140 +2931,13 @@ export const AuditToolbar: React.FC<AuditToolbarProps> = ({
 };
 ```
 
-### `src/features/rambut/components/toolbars/CustomGlassDropdown.tsx`
-```tsx
-// src/components/rambut/toolbars/CustomGlassDropdown.tsx
-import React, { useState, useRef, useEffect } from "react";
-import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, Check } from "lucide-react";
-
-export interface DropdownOption {
-  value: string;
-  label: React.ReactNode;
-}
-
-interface CustomGlassDropdownProps {
-  value: string;
-  onChange: (value: string) => void;
-  options: DropdownOption[];
-  defaultLabel: string;
-  icon: React.ReactNode;
-  activeColorClass?: string; // Tipe warna aktif (purple untuk pengurus, amber untuk audit)
-  minWidthClass?: string;
-}
-
-export const CustomGlassDropdown: React.FC<CustomGlassDropdownProps> = ({
-  value,
-  onChange,
-  options,
-  defaultLabel,
-  icon,
-  activeColorClass = "border-purple-500/60 text-purple-200 ring-purple-500/20",
-  minWidthClass = "min-w-[200px]",
-}) => {
-  const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const selectedLabel =
-    value === "all"
-      ? defaultLabel
-      : options.find((opt) => opt.value === value)?.label || value;
-
-  const isActive = value !== "all";
-
-  return (
-    <div ref={dropdownRef} className={`relative ${minWidthClass}`}>
-      <button
-        type="button"
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between px-4 py-3 bg-gray-900/80 backdrop-blur-xl border rounded-2xl text-xs font-mono font-bold transition-all duration-200 shadow-lg ${
-          isOpen || isActive
-            ? `${activeColorClass} ring-2`
-            : "border-gray-800/80 text-gray-300 hover:border-gray-700"
-        }`}
-      >
-        <div className="flex items-center gap-2 truncate">
-          {icon}
-          <span className="truncate">{selectedLabel}</span>
-        </div>
-        <ChevronDown
-          className={`w-4 h-4 text-gray-500 transition-transform duration-200 shrink-0 ${
-            isOpen ? "rotate-180 text-white" : ""
-          }`}
-        />
-      </button>
-
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0, y: -8, scale: 0.98 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={{ duration: 0.15 }}
-            className="absolute right-0 z-30 mt-2 w-full max-h-56 overflow-y-auto bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-2xl shadow-2xl p-1.5 space-y-0.5 custom-scrollbar"
-          >
-            <button
-              type="button"
-              onClick={() => {
-                onChange("all");
-                setIsOpen(false);
-              }}
-              className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors ${
-                value === "all"
-                  ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
-                  : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
-              }`}
-            >
-              <span>{defaultLabel}</span>
-              {value === "all" && <Check className="w-3.5 h-3.5 text-indigo-400" />}
-            </button>
-
-            {options.map((opt) => {
-              const isSelected = value === opt.value;
-              return (
-                <button
-                  key={opt.value}
-                  type="button"
-                  onClick={() => {
-                    onChange(opt.value);
-                    setIsOpen(false);
-                  }}
-                  className={`w-full flex items-center justify-between rounded-xl px-3 py-2 text-xs font-mono transition-colors ${
-                    isSelected
-                      ? "bg-indigo-600/20 text-indigo-300 font-bold border border-indigo-500/30"
-                      : "text-gray-300 hover:bg-gray-800/60 hover:text-white"
-                  }`}
-                >
-                  <span className="truncate">{opt.label}</span>
-                  {isSelected && <Check className="w-3.5 h-3.5 text-indigo-400" />}
-                </button>
-              );
-            })}
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-};
-```
-
 ### `src/features/rambut/components/toolbars/PengurusToolbar.tsx`
 ```tsx
-// src/components/rambut/toolbars/PengurusToolbar.tsx
+// src/features/rambut/components/toolbars/PengurusToolbar.tsx
 import React, { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { BaseToolbar } from "@/components/shared/BaseToolbar";
-import { CustomGlassDropdown } from "./CustomGlassDropdown";
+import { GlassDropdown, type DropdownOption } from "@/components/shared";
 
 interface PengurusToolbarProps {
   search: string;
@@ -3577,10 +2958,10 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
   onRefresh,
   isLoading,
 }) => {
-  const dropdownOptions = useMemo(() => {
+  const dropdownOptions: DropdownOption[] = useMemo(() => {
     return daerahOptions.map((d) => ({
       value: d,
-      label: `Daerah ${d}`
+      label: `Daerah ${d}`,
     }));
   }, [daerahOptions]);
 
@@ -3593,19 +2974,13 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-purple-400"
     >
-      {/*
-        Dropdown Kompleks Daerah dimasukkan sebagai children.
-        Pastikan di dalam komponen <CustomGlassDropdown> tombol utamanya
-        menggunakan kelas `h-12` dan `rounded-2xl` agar selaras rata air
-        dengan Search Bar dan Tombol Refresh.
-      */}
-      <CustomGlassDropdown
+      <GlassDropdown
         value={daerahFilter}
         onChange={onDaerahFilterChange}
         options={dropdownOptions}
         defaultLabel="Semua Daerah"
-        icon={<MapPin className="w-4 h-4 text-purple-400 shrink-0" />}
-        activeColorClass="border-purple-500/60 text-purple-200 ring-purple-500/20"
+        icon={<MapPin className="w-3.5 h-3.5 text-purple-400" />}
+        activeColorClass="border-purple-500/60 text-purple-200"
         minWidthClass="min-w-[200px]"
       />
     </BaseToolbar>
@@ -3615,9 +2990,8 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
 
 ### `src/features/rambut/components/toolbars/QueueToolbar.tsx`
 ```tsx
-// src/components/rambut/toolbars/QueueToolbar.tsx
+// src/features/rambut/components/toolbars/QueueToolbar.tsx
 import React from "react";
-import { motion } from "framer-motion";
 import { BaseToolbar } from "../../../../components/shared/BaseToolbar";
 import type { WajibSetorRambutStatusSetorOptions } from "../../../../types/pocketbase-types";
 
@@ -3647,8 +3021,8 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-indigo-400"
     >
-      {/* Pills Status diselaraskan dengan h-12 dan rounded-2xl agar sejajar rata air */}
-      <div className="flex items-center gap-1 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 p-1 rounded-2xl shadow-lg h-12">
+      {/* Pills Status (h-9, rounded-lg, zinc) */}
+      <div className="flex items-center gap-0.5 h-9 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg">
         {(["all", "belum", "sudah", "dispensasi"] as const).map((st) => {
           const isActive = statusFilter === st;
           return (
@@ -3656,20 +3030,11 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
               key={st}
               type="button"
               onClick={() => onStatusFilterChange(st)}
-              className={`relative px-4 h-full flex items-center rounded-xl text-xs font-sans font-bold capitalize transition-colors duration-200 select-none active:scale-95 ${
-                isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
+              className={`relative h-full px-3 rounded-md text-xs font-medium capitalize transition-colors ${
+                isActive ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeStatusFilterPill"
-                  className="absolute inset-0 bg-indigo-600 rounded-xl shadow-md border border-indigo-400/30"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10 whitespace-nowrap">
-                {st === "all" ? "Semua Status" : st}
-              </span>
+              {st === "all" ? "Semua Status" : st}
             </button>
           );
         })}
@@ -5306,7 +4671,6 @@ export * from "./components/RambutStats";
 // src/features/rambut/pages/Rambut.tsx
 import React from "react";
 import { useRambutPage } from "../hooks/useRambutPage";
-
 import { RambutHeader } from "../components/RambutHeader";
 import { RambutStats } from "../components/RambutStats";
 import { RambutScanToolbar } from "../components/RambutScanToolbar";
@@ -5318,7 +4682,7 @@ export default function RambutPage() {
   const p = useRambutPage();
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 md:p-6 lg:p-8 space-y-6">
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
       {/* 1. Header Banner Shared */}
       <RambutHeader
         activePeriode={p.activePeriode || null}
@@ -5385,7 +4749,7 @@ export default function RambutPage() {
         canExecute={p.canExecute}
       />
 
-      {/* 5. Pagination Kontrol */}
+      {/* 5. Pagination */}
       {p.activeTab === "queue" && p.totalItems > 0 && (
         <MasterPagination
           page={p.page}
@@ -5395,7 +4759,6 @@ export default function RambutPage() {
           onPageChange={p.setPage}
         />
       )}
-
       {p.activeTab === "pengurus" && p.totalPengurusItems > 0 && (
         <MasterPagination
           page={p.pengurusPage}
@@ -5405,7 +4768,6 @@ export default function RambutPage() {
           onPageChange={p.setPengurusPage}
         />
       )}
-
       {p.activeTab === "audit" && p.totalAuditItems > 0 && (
         <MasterPagination
           page={p.auditPage}
@@ -5416,7 +4778,7 @@ export default function RambutPage() {
         />
       )}
 
-      {/* 6. Isolated Modal Container */}
+      {/* 6. Modals */}
       <RambutModals {...p} />
     </div>
   );
@@ -5741,38 +5103,60 @@ export const executePengurusImportBatch = async (
 ```typescript
 // src/features/rambut/utils/posAudio.ts
 
+let sharedAudioCtx: AudioContext | null = null;
+
+const getAudioContext = (): AudioContext | null => {
+  if (typeof window === "undefined") return null;
+
+  if (!sharedAudioCtx) {
+    const AudioCtxClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (AudioCtxClass) {
+      sharedAudioCtx = new AudioCtxClass();
+    }
+  }
+
+  // Bangunkan context jika dalam status suspended (kebijakan autoplay browser)
+  if (sharedAudioCtx && sharedAudioCtx.state === "suspended") {
+    sharedAudioCtx.resume().catch(() => {});
+  }
+
+  return sharedAudioCtx;
+};
+
 /**
- * Pemicu sinyal audio Beep menggunakan Web Audio API murni (tanpa file mp3 eksternal)
+ * Pemicu sinyal audio Beep menggunakan Singleton Web Audio API (Bebas Memory Leak)
  */
 export const playAudioFeedback = (type: "success" | "error") => {
   try {
-    const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioCtx) return;
-    const ctx = new AudioCtx();
+    const ctx = getAudioContext();
+    if (!ctx) return;
+
     const osc = ctx.createOscillator();
     const gain = ctx.createGain();
 
     osc.connect(gain);
     gain.connect(ctx.destination);
 
+    const now = ctx.currentTime;
+
     if (type === "success") {
       osc.type = "sine";
-      osc.frequency.setValueAtTime(880, ctx.currentTime);
-      osc.frequency.setValueAtTime(1200, ctx.currentTime + 0.08);
-      gain.gain.setValueAtTime(0.15, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.2);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.2);
+      osc.frequency.setValueAtTime(880, now);
+      osc.frequency.setValueAtTime(1200, now + 0.08);
+      gain.gain.setValueAtTime(0.15, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+      osc.start(now);
+      osc.stop(now + 0.2);
     } else {
       osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(220, ctx.currentTime);
-      gain.gain.setValueAtTime(0.2, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + 0.35);
+      osc.frequency.setValueAtTime(220, now);
+      gain.gain.setValueAtTime(0.2, now);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+      osc.start(now);
+      osc.stop(now + 0.35);
     }
   } catch (e) {
-    console.error("Audio feedback error:", e);
+    console.warn("Audio feedback error:", e);
   }
 };
 ```

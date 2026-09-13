@@ -55,51 +55,48 @@ export default function PersonilToolbar({
   );
 
   return (
-    <div className="mb-5 space-y-3 select-none">
-      {/* Search Input Universal */}
+    <div className="space-y-2 select-none font-sans">
+      {/* Search Input Universal (Tinggi h-9) */}
       <BaseToolbar
         search={search}
         onSearchChange={onSearchChange}
         placeholder="Cari nama, ID PPS, atau jabatan personil..."
         onRefresh={onRefresh}
         isLoading={isListLoading}
-        searchIconColorClass="text-indigo-400"
+        searchIconColorClass="text-zinc-500"
       />
 
-      {/* Grid Filter Dropdown dengan Gaya Aktif Halus (Bebas Ring Mencolok) */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 w-full font-mono">
-        {/* 1. Status Aktif */}
+      {/* Grid Filter Dropdown 3 Kolom (Tinggi h-9, Palet Netral Zinc) */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 w-full">
         <GlassDropdown
           value={statusFilter}
           onChange={(val) => onStatusFilterChange(val as "all" | "aktif" | "nonaktif")}
           options={statusDropdownOptions}
           defaultLabel="Semua Status"
-          icon={<Filter className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
-          activeColorClass="border-indigo-500/40 text-indigo-200 bg-indigo-500/10"
+          icon={<Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchable={false}
         />
 
-        {/* 2. Jabatan Tibkam */}
         <GlassDropdown
           value={jabatanFilter}
           onChange={onJabatanFilterChange}
           options={jabatanDropdownOptions}
           defaultLabel="Semua Jabatan"
-          icon={<ShieldCheck className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-          activeColorClass="border-sky-500/40 text-sky-200 bg-sky-500/10"
+          icon={<ShieldCheck className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchPlaceholder="Cari jabatan..."
         />
 
-        {/* 3. Kompleks Domisili */}
         <GlassDropdown
           value={domisiliFilter}
           onChange={onDomisiliFilterChange}
           options={domisiliDropdownOptions}
           defaultLabel="Semua Kompleks"
-          icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-          activeColorClass="border-amber-500/40 text-amber-200 bg-amber-500/10"
+          icon={<Building className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchPlaceholder="Cari kompleks..."
         />

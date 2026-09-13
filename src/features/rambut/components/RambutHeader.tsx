@@ -38,12 +38,9 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
       badgeLabel="Modul Layanan Rambut"
       statusBadge={statusBadge}
       title={
-        <>
-          Layanan{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-            Rambut Santri
-          </span>
-        </>
+        <span className="font-sans font-bold text-white tracking-tight">
+          Layanan <span className="text-indigo-400">Rambut Santri</span>
+        </span>
       }
       description="Sistem pemantauan setoran bulanan santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri."
       actions={
@@ -52,7 +49,7 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenManagePeriode}
-              className="px-4 py-3 bg-gray-900/90 hover:bg-gray-800 text-indigo-300 hover:text-white font-mono font-bold text-xs rounded-2xl border border-indigo-500/30 transition-all duration-200 shadow-lg active:scale-95 flex items-center gap-2 select-none"
+              className="h-9 px-3.5 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-indigo-300 hover:text-white font-semibold text-xs border border-zinc-800 hover:border-indigo-500/30 transition-colors active:scale-[0.98] flex items-center gap-2 select-none"
             >
               <CalendarDays className="w-4 h-4 text-indigo-400" />
               <span>Daftar Periode</span>
@@ -61,9 +58,9 @@ export const RambutHeader: React.FC<RambutHeaderProps> = ({
             <button
               type="button"
               onClick={onOpenCreatePeriode}
-              className="relative group overflow-hidden inline-flex items-center gap-2 px-5 py-3 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-300 shadow-xl shadow-indigo-600/25 active:scale-95 border border-indigo-400/30 select-none"
+              className="h-9 px-3.5 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors active:scale-[0.98] flex items-center gap-2 select-none"
             >
-              <PlusCircle className="w-4 h-4 text-indigo-100" />
+              <PlusCircle className="w-4 h-4 text-white" />
               <span>Periode Baru</span>
             </button>
           </>

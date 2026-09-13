@@ -7,8 +7,6 @@ import type { UsersResponse } from "@/types/pocketbase-types";
 export const LaporanRedirect: React.FC = () => {
   const { user } = useAuth();
   const currentUser = user as UsersResponse | null;
-  
-  // 🎯 Cast ke string agar TypeScript mengizinkan pengecekan role baru di masa depan
   const role = currentUser?.role as string | undefined;
 
   // 1. Role Penyidik / Admin Penyidik -> Auto Redirect ke Laporan Penyidik (Masa Depan)
@@ -21,6 +19,6 @@ export const LaporanRedirect: React.FC = () => {
     return <Navigate to="/laporan/rambut" replace />;
   }
 
-  // 3. Role tanpa akses laporan (misal: "umum") -> Kembali ke Dashboard
+  // 3. Role tanpa akses laporan -> Kembali ke Dashboard
   return <Navigate to="/dashboard" replace />;
-};  
+};

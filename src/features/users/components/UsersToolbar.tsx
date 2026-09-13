@@ -54,12 +54,12 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
         defaultLabel="Semua Role"
         icon={
           isAdminRambut ? (
-            <Lock className="w-4 h-4 text-amber-400" />
+            <Lock className="w-3.5 h-3.5 text-amber-400" />
           ) : (
-            <Shield className="w-4 h-4 text-indigo-400" />
+            <Shield className="w-3.5 h-3.5 text-indigo-400" />
           )
         }
-        activeColorClass="border-indigo-500/60 text-indigo-200 ring-indigo-500/20"
+        activeColorClass="border-zinc-700 bg-zinc-800 text-white"
         minWidthClass="min-w-[180px]"
         disabled={isAdminRambut}
       />
@@ -70,8 +70,8 @@ export const UsersToolbar: React.FC<UsersToolbarProps> = ({
         onChange={onStatusFilterChange}
         options={statusOptions}
         defaultLabel="Semua Status"
-        icon={<Activity className="w-4 h-4 text-emerald-400" />}
-        activeColorClass="border-emerald-500/60 text-emerald-200 ring-emerald-500/20"
+        icon={<Activity className="w-3.5 h-3.5 text-emerald-400" />}
+        activeColorClass="border-zinc-700 bg-zinc-800 text-white"
         minWidthClass="min-w-[180px]"
       />
     </BaseToolbar>

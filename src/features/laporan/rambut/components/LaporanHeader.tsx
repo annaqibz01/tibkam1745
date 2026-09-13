@@ -1,4 +1,4 @@
-// src/features/laporan/components/LaporanHeader.tsx
+// src/features/laporan/rambut/components/LaporanHeader.tsx
 import React from "react";
 import { FileSpreadsheet, FileText, Loader2 } from "lucide-react";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
@@ -18,11 +18,11 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
   return (
     <PageHeader
       badgeIcon={<FileText className="w-3.5 h-3.5" />}
-      badgeLabel="Modul Laporan Khusus"
+      badgeLabel="Rekapitulasi Laporan"
       statusBadge={
         selectedPeriode ? (
           <StatusBadge variant="success" dot>
-            Periode Ditinjau: {selectedPeriode.nama_periode}
+            Periode: {selectedPeriode.nama_periode}
           </StatusBadge>
         ) : (
           <StatusBadge variant="danger" dot>
@@ -31,24 +31,21 @@ export const LaporanHeader: React.FC<LaporanHeaderProps> = ({
         )
       }
       title={
-        <>
-          Laporan & Export{" "}
-          <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 via-purple-300 to-pink-300">
-            Rambut Santri
-          </span>
-        </>
+        <span className="font-sans font-bold text-white tracking-tight">
+          Laporan Setoran Rambut
+        </span>
       }
-      description="Pusat rekapitulasi data setoran rambut santri jenjang Aliyah, Kuliah Syariah, serta Petugas/Pengurus Pondok Pesantren Sidogiri."
+      description="Pusat rekapitulasi data setoran bulanan santri Aliyah, Kuliah Syariah, dan Pengurus/Petugas Pondok Pesantren Sidogiri."
       actions={
         <button
           type="button"
           onClick={onExportExcel}
           disabled={isExporting}
-          className="inline-flex items-center gap-2 px-5 py-3 bg-emerald-600 hover:bg-emerald-500 text-white font-mono font-bold text-xs rounded-2xl transition-all duration-200 shadow-xl shadow-emerald-600/20 active:scale-95 border border-emerald-400/30 select-none disabled:opacity-50 disabled:cursor-not-allowed"
+          className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-sans text-xs font-semibold shadow-sm transition-colors active:scale-98 select-none disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isExporting ? (
             <>
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-3.5 h-3.5 animate-spin" />
               <span>Memproses Excel...</span>
             </>
           ) : (

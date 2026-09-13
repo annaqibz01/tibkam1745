@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface CustomDatePickerMasehiProps {
-  value: string; // Format YYYY-MM-DD
+  value: string;
   onChange: (val: string) => void;
   placeholder?: string;
 }
@@ -25,7 +25,6 @@ const NAMA_BULAN_MASEHI = [
   "Juli", "Agustus", "September", "Oktober", "November", "Desember"
 ];
 
-// ✨ Helper parsing aman zona waktu (Local Midnight)
 const parseLocalYMD = (ymd: string): Date | null => {
   if (!ymd) return null;
   const parts = ymd.split("-").map(Number);
@@ -46,7 +45,6 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
   const selectedDate = useMemo(() => parseLocalYMD(value), [value]);
   const [viewDate, setViewDate] = useState<Date>(selectedDate || new Date());
 
-  // 1. 🔄 FIX SYNC EFFECT: Menjamin kalender otomatis reset ke bulan sekarang jika nilainya kosong (saat buat periode baru)
   useEffect(() => {
     if (selectedDate) {
       setViewDate(selectedDate);
@@ -61,15 +59,9 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDayOfMonth = new Date(year, month, 1).getDay();
 
-  const handlePrevMonth = () => {
-    setViewDate(new Date(year, month - 1, 1));
-  };
+  const handlePrevMonth = () => setViewDate(new Date(year, month - 1, 1));
+  const handleNextMonth = () => setViewDate(new Date(year, month + 1, 1));
 
-  const handleNextMonth = () => {
-    setViewDate(new Date(year, month + 1, 1));
-  };
-
-  // 🔍 Query 1: Ambil record Hijriyah untuk bulan Masehi aktif
   const { data: monthHijriRecords } = useQuery<KalenderHijriyahResponse[]>({
     queryKey: ["datepicker-masehi-hijri-month", year, monthPadded],
     queryFn: async () => {
@@ -85,7 +77,6 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     staleTime: 1000 * 60 * 30,
   });
 
-  // 🔍 Query 2: Ambil record Hijriyah untuk tanggal terpilih di Trigger Button
   const { data: selectedHijriRecord } = useQuery<KalenderHijriyahResponse | null>({
     queryKey: ["datepicker-masehi-selected-hijri", value],
     queryFn: async () => {
@@ -102,35 +93,32 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     staleTime: 1000 * 60 * 30,
   });
 
-  // 2. 🛡️ FIX MAP DAY ANTI-SHIFT: Ekstraksi string murni YYYY-MM-DD tanpa melalui engine Date JavaScript agar tidak bergeser hari
   const hijriDayMap = useMemo(() => {
     const map = new Map<number, KalenderHijriyahResponse>();
     if (!monthHijriRecords) return map;
     monthHijriRecords.forEach((rec) => {
-      const cleanStr = rec.tanggal_masehi.split(" ")[0].split("T")[0]; // "YYYY-MM-DD"
+      const cleanStr = rec.tanggal_masehi.split(" ")[0].split("T")[0];
       const parts = cleanStr.split("-").map(Number);
       if (parts.length === 3) {
-        const dayNum = parts[2]; // Ambil porsi tanggalnya saja
-        map.set(dayNum, rec);
+        map.set(parts[2], rec);
       }
     });
     return map;
   }, [monthHijriRecords]);
 
-  // Kalkulasi Posisi Popover
   const updatePosition = useCallback(() => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const popoverWidth = 288;
+      const popoverWidth = 260;
       let left = rect.left;
 
       if (left + popoverWidth > window.innerWidth - 16) {
         left = window.innerWidth - popoverWidth - 16;
       }
 
-      let top = rect.bottom + 6;
-      if (top + 300 > window.innerHeight) {
-        top = Math.max(16, rect.top - 300 - 6);
+      let top = rect.bottom + 4;
+      if (top + 280 > window.innerHeight) {
+        top = Math.max(16, rect.top - 280 - 4);
       }
 
       setPopoverPos({ top, left });
@@ -173,8 +161,8 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
     : placeholder;
 
   return (
-    <div className="w-full">
-      {/* TRIGGER BUTTON - [UBAH]: Disetarakan tinggi h-[42px] & layout shrink-0 agar sejajar sempurna */}
+    <div className="w-full font-sans select-none">
+      {/* Trigger Button: Tinggi Terkunci h-9 / 36px */}
       <button
         ref={triggerRef}
         type="button"
@@ -182,21 +170,21 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
           if (!isOpen && selectedDate) setViewDate(selectedDate);
           setIsOpen(!isOpen);
         }}
-        className={`w-full h-[42px] flex items-center justify-between px-3.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner shrink-0 overflow-hidden ${
+        className={`w-full h-9 flex items-center justify-between px-3 bg-zinc-900 border rounded-lg text-xs font-medium transition-colors shadow-sm ${
           isOpen
-            ? "border-amber-400 ring-2 ring-amber-500/20 text-white"
+            ? "border-zinc-700 bg-zinc-800/80 text-white"
             : value
-            ? "border-amber-500/50 text-amber-200 hover:border-amber-400"
-            : "border-amber-500/25 text-gray-400 hover:border-amber-500/40"
+            ? "border-zinc-700 text-zinc-100 hover:border-zinc-600"
+            : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
         }`}
       >
         <div className="flex items-center gap-2 truncate min-w-0 flex-1">
-          <Calendar className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
-          <span className="truncate font-bold text-xs">{formattedMasehiDisplay}</span>
+          <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+          <span className="truncate">{formattedMasehiDisplay}</span>
 
           {selectedHijriRecord && (
-            <span className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-300 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 flex-shrink-0 max-w-[120px] truncate">
-              <Moon className="w-2.5 h-2.5 text-amber-400 flex-shrink-0" />
+            <span className="inline-flex items-center gap-1 text-[10px] font-mono text-amber-300 bg-amber-500/10 px-1.5 py-0.2 rounded border border-amber-500/20 shrink-0 max-w-[110px] truncate">
+              <Moon className="w-2.5 h-2.5 text-amber-400 shrink-0" />
               <span className="truncate">{selectedHijriRecord.string_hijri}</span>
             </span>
           )}
@@ -204,7 +192,7 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
 
         {value ? (
           <X
-            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors flex-shrink-0 ml-1.5"
+            className="w-3.5 h-3.5 text-zinc-500 hover:text-rose-400 transition-colors shrink-0 ml-1.5"
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -212,8 +200,8 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
           />
         ) : (
           <ChevronDown
-            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 flex-shrink-0 ml-1.5 ${
-              isOpen ? "rotate-180 text-amber-400" : ""
+            className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 shrink-0 ml-1.5 ${
+              isOpen ? "rotate-180 text-zinc-200" : ""
             }`}
           />
         )}
@@ -229,37 +217,39 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
               left: `${popoverPos.left}px`,
               zIndex: 99999,
             }}
-            className="w-72 bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150 select-none"
+            className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl p-3 space-y-2.5 animate-in fade-in duration-100 select-none font-sans"
           >
-            <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={handlePrevMonth}
-                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
 
-              <span className="font-mono text-xs font-bold text-amber-300">
+              <span className="text-xs font-semibold text-zinc-200">
                 {NAMA_BULAN_MASEHI[month]} {year}
               </span>
 
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={handleNextMonth}
-                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-gray-500 font-semibold">
+            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-zinc-500 font-medium">
               {NAMA_HARI.map((h) => (
                 <div key={h}>{h}</div>
               ))}
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-center font-mono">
+            <div className="grid grid-cols-7 gap-0.5 text-center font-sans">
               {Array.from({ length: firstDayOfMonth }).map((_, i) => (
                 <div key={`blank-${i}`} />
               ))}
@@ -279,7 +269,6 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
                   new Date().getMonth() === month &&
                   new Date().getFullYear() === year;
 
-                // Format string YYYY-MM-DD lokal untuk fungsi onChange
                 const currentMasehiStr = `${year}-${monthPadded}-${String(dayNum).padStart(2, "0")}`;
 
                 return (
@@ -291,19 +280,19 @@ export const CustomDatePickerMasehi: React.FC<CustomDatePickerMasehiProps> = ({
                       setIsOpen(false);
                     }}
                     title={hijriRecord ? hijriRecord.string_hijri : undefined}
-                    className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                    className={`h-7 w-7 rounded-md flex flex-col items-center justify-center transition-colors mx-auto ${
                       isSelected
-                        ? "bg-amber-500 text-gray-950 font-bold shadow-md shadow-amber-500/30 scale-105"
+                        ? "bg-indigo-600 text-white font-semibold shadow-sm"
                         : isToday
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                        ? "bg-zinc-800 text-indigo-400 border border-zinc-700"
+                        : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
                     }`}
                   >
-                    <span className="text-xs font-bold leading-none">{dayNum}</span>
+                    <span className="text-[11px] leading-none">{dayNum}</span>
                     {hijriRecord && (
                       <span
-                        className={`text-[8px] font-mono leading-none mt-0.5 ${
-                          isSelected ? "text-gray-900 font-black" : "text-amber-400/80"
+                        className={`text-[7px] font-mono leading-none mt-0.5 ${
+                          isSelected ? "text-indigo-200" : "text-amber-400/80"
                         }`}
                       >
                         {hijriRecord.tanggal_hijri}

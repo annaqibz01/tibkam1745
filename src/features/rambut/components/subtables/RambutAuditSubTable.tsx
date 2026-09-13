@@ -1,4 +1,4 @@
-// src/components/rambut/subtables/RambutAuditSubTable.tsx
+// src/features/rambut/components/subtables/RambutAuditSubTable.tsx
 import React, { useMemo } from "react";
 import { parseNumericIdPps, type RiwayatSetorExpanded } from "../../hooks/useRambut";
 import { HijriText } from "../../../../components/shared/HijriText";
@@ -20,107 +20,92 @@ const getAlamatStr = (santri: any) => {
 export const RambutAuditSubTable: React.FC<Props> = ({
   items,
   isLoading,
-  page = 1,        // 👈 1. Destruktur prop page dengan default 1
-  perPage = 15,    // 👈 1. Destruktur prop perPage dengan default 15
+  page = 1,
+  perPage = 15,
 }) => {
   const sortedItems = useMemo(() => {
     return [...items].sort((a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps));
   }, [items]);
 
   return (
-    <div className="overflow-x-auto hide-scrollbar">
+    <div className="overflow-x-auto custom-scrollbar">
       <table className="w-full min-w-[1200px] text-xs text-left border-collapse table-fixed">
         <thead>
-          <tr className="bg-gray-950/90 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-            <th className="px-2.5 py-3 w-[4%] text-center">No</th>
-            <th className="px-2.5 py-3 w-[16%]">Tgl Hijriyah</th>
-            <th className="px-2.5 py-3 w-[10%]">ID PPS</th>
-            <th className="px-2.5 py-3 w-[16%]">Nama Santri</th>
-            <th className="px-2.5 py-3 w-[12%]">Domisili</th>
-            <th className="px-2.5 py-3 w-[16%]">Alamat</th>
-            <th className="px-2.5 py-3 w-[10%] text-center">Waktu</th>
-            <th className="px-2.5 py-3 w-[10%]">Petugas</th>
-            <th className="px-2.5 py-3 w-[16%]">Catatan</th>
+          <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
+            <th className="px-2.5 py-2.5 w-[4%] text-center">No</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Tgl Hijriyah</th>
+            <th className="px-2.5 py-2.5 w-[10%]">ID PPS</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Nama Santri</th>
+            <th className="px-2.5 py-2.5 w-[12%]">Domisili</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Alamat</th>
+            <th className="px-2.5 py-2.5 w-[10%] text-center">Waktu</th>
+            <th className="px-2.5 py-2.5 w-[10%]">Petugas</th>
+            <th className="px-2.5 py-2.5 w-[16%]">Catatan</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-gray-800/50 bg-gray-900/30 font-mono">
+        <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
           {isLoading ? (
             Array.from({ length: 5 }).map((_, idx) => (
-              <tr key={`skel-a-${idx}`} className="animate-pulse border-b border-gray-800/40">
+              <tr key={`skel-a-${idx}`} className="animate-pulse">
                 {Array.from({ length: 9 }).map((_, c) => (
-                  <td key={c} className="px-2.5 py-2.5">
-                    <div className="h-4 bg-gray-800/60 rounded-lg w-16 mx-auto" />
-                  </td>
+                  <td key={c} className="px-2.5 py-2"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
                 ))}
               </tr>
             ))
           ) : sortedItems.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-6 py-16 text-center font-sans">
+              <td colSpan={9} className="px-6 py-8 text-center">
                 <div className="flex flex-col items-center justify-center space-y-2">
-                  <div className="p-3 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-400">
-                    <History className="w-6 h-6 text-gray-400" />
+                  <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-400">
+                    <History className="w-6 h-6" />
                   </div>
-                  <p className="text-xs font-semibold text-gray-300">Belum Ada Log Transaksi Audit Trail</p>
+                  <p className="text-xs font-semibold text-zinc-300">Belum Ada Log Transaksi Audit Trail</p>
                 </div>
               </td>
             </tr>
           ) : (
             sortedItems.map((logItem, idx) => {
-              const rowNo = (page - 1) * perPage + idx + 1; // 👈 2. Kalkulasi nomor urut lintas halaman
+              const rowNo = (page - 1) * perPage + idx + 1;
               const log = logItem as any;
               const santriData = log.expand?.santri;
               const petugasData = log.expand?.petugas_eksekutor;
-
               return (
-                <tr key={log.id} className="group transition-colors duration-150 hover:bg-amber-500/[0.04]">
-                  <td className="px-2.5 py-2 text-center text-gray-500">{rowNo}</td>
-
+                <tr key={log.id} className="hover:bg-zinc-800/40 transition-colors">
+                  <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
                   <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap overflow-hidden">
                     <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-fit">
                       <Moon className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="font-bold text-[11px]">
-                        <HijriText date={log.tanggal_setor || log.created} />
-                      </span>
+                      <span className="font-bold text-[11px]"><HijriText date={log.tanggal_setor || log.created} /></span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 font-bold text-amber-400 whitespace-nowrap overflow-hidden">
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">
-                      {log.id_pps || santriData?.id_pps || "-"}
-                    </span>
+                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">{log.id_pps || santriData?.id_pps || "-"}</span>
                   </td>
-
                   <td className="px-2.5 py-2 font-sans whitespace-nowrap truncate overflow-hidden">
                     <div className="flex items-center gap-1.5 truncate">
-                      <User className="w-3.5 h-3.5 text-gray-400 shrink-0" />
-                      <span className="font-semibold text-gray-200 truncate">{santriData?.nama || "Santri"}</span>
+                      <User className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                      <span className="font-semibold text-zinc-200 truncate">{santriData?.nama || "Santri"}</span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap font-sans truncate overflow-hidden">
                     <div className="flex items-center gap-1 truncate">
                       <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
                       <span className="truncate">{santriData?.domisili || santriData?.status_domisili || "-"}</span>
                     </div>
                   </td>
-
-                  <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap font-sans truncate overflow-hidden" title={getAlamatStr(santriData)}>
+                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate overflow-hidden" title={getAlamatStr(santriData)}>
                     <div className="flex items-center gap-1 truncate">
-                      <Home className="w-3 h-3 text-gray-500 shrink-0" />
+                      <Home className="w-3 h-3 text-zinc-500 shrink-0" />
                       <span className="truncate">{getAlamatStr(santriData)}</span>
                     </div>
                   </td>
-
                   <td className="px-2.5 py-2 text-center font-bold text-emerald-400 whitespace-nowrap overflow-hidden">
                     {log.waktu_wis || "-"}
                   </td>
-                  
-                  <td className="px-2.5 py-2 text-gray-300 whitespace-nowrap font-sans truncate overflow-hidden">
+                  <td className="px-2.5 py-2 text-zinc-300 whitespace-nowrap font-sans truncate overflow-hidden">
                     {petugasData?.name || petugasData?.username || "Sistem"}
                   </td>
-                  
-                  <td className="px-2.5 py-2 text-gray-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
+                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
                     {log.catatan_operasional || log.catatan || "-"}
                   </td>
                 </tr>

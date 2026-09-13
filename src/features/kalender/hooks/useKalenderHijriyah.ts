@@ -1,14 +1,14 @@
-// src/hooks/useKalenderHijriyah.ts
+// src/features/kalender/hooks/useKalenderHijriyah.ts
 import { useQuery, useMutation, useQueryClient, keepPreviousData } from '@tanstack/react-query';
 import { pb } from '@/lib/pocketbase';
 import { parsePocketBaseError } from '@/utils/errorHandler';
-import type { 
-  KalenderHijriyahResponse, 
-  KalenderHijriyahBulanHijriNamaOptions 
+import type {
+  KalenderHijriyahResponse,
+  KalenderHijriyahBulanHijriNamaOptions
 } from '@/types/pocketbase-types';
 
 /**
- * 💡 HELPER ASYNC: Bisa dipanggil langsung di fungsi event handler / onClick (non-hook)
+ * 💡 HELPER ASYNC: Mengambil record Hijriyah berdasarkan tanggal Masehi
  */
 export async function fetchHijriByDate(dateInput?: string | Date | null): Promise<KalenderHijriyahResponse | null> {
   if (!dateInput) return null;
@@ -66,7 +66,7 @@ export function useHijriByDate(dateInput?: string | Date | null) {
 
   return useQuery<KalenderHijriyahResponse | null>({
     queryKey: ['kalender-hijriyah-by-date', dateStr],
-    queryFn: () => fetchHijriByDate(validDate), // Menggunakan helper di atas
+    queryFn: () => fetchHijriByDate(validDate),
     enabled: !!dateStr,
     staleTime: 1000 * 60 * 60 * 24,
   });
@@ -135,7 +135,7 @@ export function useAdminKalender() {
           });
 
           if (checkExistMonth.totalItems > 0) {
-            throw new Error(`Bulan ${payload.bulan_nama} ${payload.tahun} H sudah pernah dipetakan sebelumnya!`);
+            throw new Error(`Bulan ${payload.bulan_nama} ${payload.tahun} H sudah pernah dipetakan sebelumnya.`);
           }
 
           const checkOverlap = await pb.collection('kalender_hijriyah').getList(1, 1, {
@@ -144,7 +144,7 @@ export function useAdminKalender() {
 
           if (checkOverlap.totalItems > 0) {
             const sample = checkOverlap.items[0] as KalenderHijriyahResponse;
-            throw new Error(`Rentang Masehi yang Anda pilih bentrok dengan data terdaftar (${sample.string_hijri}).`);
+            throw new Error(`Rentang Masehi bertabrakan dengan data yang sudah ada (${sample.string_hijri}).`);
           }
 
           const start = new Date(payload.tanggal_awal_masehi);
@@ -156,7 +156,7 @@ export function useAdminKalender() {
           const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
           if (diffDays !== 29 && diffDays !== 30) {
-            throw new Error(`Jumlah hari terhitung ${diffDays} hari. Bulan Hijriyah wajib 29 atau 30 hari!`);
+            throw new Error(`Jumlah hari terhitung ${diffDays} hari. Bulan Hijriyah wajib 29 atau 30 hari.`);
           }
 
           const batch = pb.createBatch();

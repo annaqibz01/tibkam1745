@@ -12,12 +12,12 @@ import { Loader2, Scissors } from "lucide-react";
 interface User {
   name: string;
   username: string;
-  role: "admin" | "rambut" | "umum";
+  role: "admin" | "admin_rambut" | "rambut" | "umum";
 }
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth() as { user: User | null };
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "admin" || user?.role === "admin_rambut";
 
   const { getUsers } = useUsers();
   const { data: users, isLoading: isUsersLoading } = getUsers;
@@ -29,12 +29,11 @@ const Dashboard: React.FC = () => {
 
   if (isInitialLoading) {
     return (
-      <div className="relative min-h-screen flex items-center justify-center bg-gray-950 text-indigo-400 p-4">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-72 h-72 bg-indigo-600/15 rounded-full blur-[100px] pointer-events-none" />
-        <div className="relative z-10 flex flex-col items-center gap-3.5 p-6 rounded-3xl bg-gray-900/60 border border-gray-800/80 backdrop-blur-xl shadow-2xl">
-          <Loader2 className="w-8 h-8 animate-spin text-indigo-400" />
-          <p className="text-xs font-mono text-gray-400 animate-pulse">
-            Sinkronisasi data real-time...
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 font-sans select-none">
+        <div className="flex flex-col items-center gap-2.5 p-5 rounded-xl bg-zinc-900 border border-zinc-800 shadow-lg">
+          <Loader2 className="w-6 h-6 animate-spin text-indigo-400" />
+          <p className="text-xs text-zinc-400 font-sans">
+            Memuat ringkasan dashboard...
           </p>
         </div>
       </div>
@@ -43,30 +42,28 @@ const Dashboard: React.FC = () => {
 
   const renderRoleSpecificContent = () => {
     switch (user.role) {
-      case "admin": {
+      case "admin":
+      case "admin_rambut": {
         const safeUsers = users || [];
         return (
-          <div className="space-y-6 pt-2">
+          <div className="space-y-4">
             <AdminStatsGrid users={safeUsers} />
-            <div className="w-full">
-              <RecentActivityLog users={safeUsers} />
-            </div>
+            <RecentActivityLog users={safeUsers} />
           </div>
         );
       }
 
       case "rambut":
         return (
-          <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-8 shadow-2xl backdrop-blur-xl text-center space-y-3">
-            <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-            <div className="inline-flex p-3.5 rounded-2xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400 mb-1">
-              <Scissors className="w-6 h-6" />
+          <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6 text-center space-y-2 font-sans">
+            <div className="inline-flex p-2.5 rounded-lg bg-zinc-800 border border-zinc-700 text-indigo-400 mb-1">
+              <Scissors className="w-5 h-5" />
             </div>
-            <h3 className="text-base font-mono font-bold text-white">
+            <h3 className="text-sm font-semibold text-zinc-100">
               Modul Layanan Rambut
             </h3>
-            <p className="text-xs font-mono text-gray-400 max-w-md mx-auto leading-relaxed">
-              Manajemen antrean perapian rambut santri aktif. Gunakan menu sidebar untuk membuka ruang kerja penuh.
+            <p className="text-xs text-zinc-400 max-w-md mx-auto leading-relaxed">
+              Manajemen antrean perapian rambut santri aktif. Gunakan menu sidebar untuk membuka ruang kerja antrean dan kasir pemindaian barcode.
             </p>
           </div>
         );
@@ -77,14 +74,14 @@ const Dashboard: React.FC = () => {
   };
 
   return (
-    <div className="bg-gray-950 min-h-screen p-4 sm:p-6 lg:p-8 space-y-6 md:space-y-8">
-      {/* 1. Welcome Banner (Menggunakan PageHeader shared) */}
+    <div className="bg-zinc-950 min-h-screen p-4 sm:p-5 lg:p-6 space-y-4 font-sans">
+      {/* 1. Header Banner */}
       <WelcomeBanner user={user} />
 
-      {/* 2. Ringkasan Statistik Santri */}
+      {/* 2. Ringkasan Statistik Santri Master */}
       <SantriStatsSummary data={santriStats} isLoading={isSantriLoading} />
 
-      {/* 3. Konten Tambahan Khusus Role */}
+      {/* 3. Konten Tambahan Berdasarkan Role */}
       {renderRoleSpecificContent()}
     </div>
   );

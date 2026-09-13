@@ -69,10 +69,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
   ];
 
   return (
-    <div className="space-y-3 w-full select-none">
+    <div className="space-y-3 w-full select-none font-sans">
       {/* BARIS 1: TAB NAVIGASI UTAMA & AKSI POS/GENERATE */}
-      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-4 pb-3 border-b border-gray-800/80 w-full">
-        {/* Tab Penukar Utama dengan SegmentedControl */}
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 pb-3 border-b border-zinc-800 w-full">
         <SegmentedControl
           options={mainTabOptions}
           value={activeTab}
@@ -80,10 +79,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
           layoutId="activeRambutMainTabPill"
         />
 
-        {/* Akses Cepat & Badge Periode */}
-        <div className="flex items-center justify-end gap-2.5 flex-1 min-w-0">
-          <div className="flex items-center gap-2 px-3.5 h-12 rounded-2xl bg-gray-900/80 border border-gray-800/90 shadow-sm backdrop-blur-xl text-xs font-mono flex-1 min-w-0">
-            <div className={`p-1 rounded-lg shrink-0 ${selectedPeriode ? "bg-amber-500/10 text-amber-400" : "bg-rose-500/10 text-rose-400"}`}>
+        <div className="flex items-center justify-end gap-2 flex-1 min-w-0">
+          <div className="flex items-center gap-2 px-3 h-9 rounded-lg bg-zinc-900 border border-zinc-800 shadow-sm text-xs flex-1 min-w-0">
+            <div className={`p-1 rounded-md shrink-0 ${selectedPeriode ? "bg-amber-500/10 text-amber-400" : "bg-rose-500/10 text-rose-400"}`}>
               <Moon className="w-3.5 h-3.5" />
             </div>
             <div className="flex items-center gap-1.5 min-w-0 flex-1">
@@ -105,16 +103,16 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenGenerateQueue}
-                  className="flex items-center justify-center gap-2 h-12 px-4 bg-gray-900/90 hover:bg-gray-800 text-purple-300 hover:text-white font-mono font-bold text-xs rounded-2xl border border-purple-500/30 transition-all shadow-sm active:scale-95 whitespace-nowrap shrink-0"
+                  className="h-9 px-3 rounded-lg bg-zinc-900 hover:bg-zinc-800 text-purple-300 hover:text-white font-semibold text-xs border border-zinc-800 hover:border-purple-500/30 transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
                   {hasGeneratedQueue ? (
                     <>
-                      <RefreshCw className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                      <RefreshCw className="w-3.5 h-3.5 text-purple-400" />
                       <span>Sync Antrean</span>
                     </>
                   ) : (
                     <>
-                      <Wand2 className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                      <Wand2 className="w-3.5 h-3.5 text-purple-400" />
                       <span>Generate Antrean</span>
                     </>
                   )}
@@ -125,9 +123,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
                 <button
                   type="button"
                   onClick={onOpenPosModal}
-                  className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-mono text-xs font-bold shadow-sm shadow-indigo-600/20 active:scale-95 transition-all border border-indigo-400/30 whitespace-nowrap shrink-0"
+                  className="h-9 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors whitespace-nowrap shrink-0 flex items-center gap-1.5"
                 >
-                  <ScanBarcode className="w-3.5 h-3.5 shrink-0 text-amber-300 animate-pulse" />
+                  <ScanBarcode className="w-3.5 h-3.5 text-amber-300" />
                   <span>POS Setoran Rambut</span>
                 </button>
               )}
@@ -138,9 +136,9 @@ export const RambutScanToolbar: React.FC<RambutScanToolbarProps> = ({
             <button
               type="button"
               onClick={onOpenAddPengurusModal}
-              className="flex items-center justify-center gap-1.5 h-12 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white font-mono text-xs font-bold shadow-sm shadow-purple-600/20 active:scale-95 transition-all border border-purple-400/30 whitespace-nowrap shrink-0"
+              className="h-9 px-3 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs shadow-sm transition-colors flex items-center gap-1.5"
             >
-              <UserPlus className="w-3.5 h-3.5 shrink-0" />
+              <UserPlus className="w-3.5 h-3.5" />
               <span>+ Import Pengurus</span>
             </button>
           )}

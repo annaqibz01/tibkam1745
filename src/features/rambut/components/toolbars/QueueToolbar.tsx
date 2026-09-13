@@ -1,6 +1,5 @@
-// src/components/rambut/toolbars/QueueToolbar.tsx
+// src/features/rambut/components/toolbars/QueueToolbar.tsx
 import React from "react";
-import { motion } from "framer-motion";
 import { BaseToolbar } from "../../../../components/shared/BaseToolbar";
 import type { WajibSetorRambutStatusSetorOptions } from "../../../../types/pocketbase-types";
 
@@ -30,8 +29,8 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-indigo-400"
     >
-      {/* Pills Status diselaraskan dengan h-12 dan rounded-2xl agar sejajar rata air */}
-      <div className="flex items-center gap-1 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 p-1 rounded-2xl shadow-lg h-12">
+      {/* Pills Status (h-9, rounded-lg, zinc) */}
+      <div className="flex items-center gap-0.5 h-9 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg">
         {(["all", "belum", "sudah", "dispensasi"] as const).map((st) => {
           const isActive = statusFilter === st;
           return (
@@ -39,20 +38,11 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
               key={st}
               type="button"
               onClick={() => onStatusFilterChange(st)}
-              className={`relative px-4 h-full flex items-center rounded-xl text-xs font-sans font-bold capitalize transition-colors duration-200 select-none active:scale-95 ${
-                isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
+              className={`relative h-full px-3 rounded-md text-xs font-medium capitalize transition-colors ${
+                isActive ? "bg-zinc-800 text-white shadow-sm" : "text-zinc-400 hover:text-zinc-200"
               }`}
             >
-              {isActive && (
-                <motion.div
-                  layoutId="activeStatusFilterPill"
-                  className="absolute inset-0 bg-indigo-600 rounded-xl shadow-md border border-indigo-400/30"
-                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
-                />
-              )}
-              <span className="relative z-10 whitespace-nowrap">
-                {st === "all" ? "Semua Status" : st}
-              </span>
+              {st === "all" ? "Semua Status" : st}
             </button>
           );
         })}

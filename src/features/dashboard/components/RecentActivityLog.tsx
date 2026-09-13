@@ -1,4 +1,4 @@
-// src/components/dashboard/admin/RecentActivityLog.tsx
+// src/features/dashboard/components/RecentActivityLog.tsx
 import React from 'react';
 import { UserPlus, Clock, Activity, UserX } from 'lucide-react';
 import type { UsersResponse } from '../../../types/pocketbase-types';
@@ -8,96 +8,86 @@ interface RecentActivityLogProps {
 }
 
 export const RecentActivityLog: React.FC<RecentActivityLogProps> = ({ users }) => {
-  // Urutkan data berdasarkan tanggal dibuat (paling baru di atas) dan ambil maksimal 5 item
   const recentRegistrations = [...users]
     .sort((a, b) => new Date(b.created).getTime() - new Date(a.created).getTime())
     .slice(0, 5);
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-2xl backdrop-blur-xl h-full flex flex-col justify-between">
-      {/* 🔮 Garis Kilau Top-Border */}
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-      <div>
-        {/* Header Section */}
-        <div className="flex items-center justify-between mb-5 pb-3.5 border-b border-gray-800/80">
-          <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-              <Activity className="w-4 h-4" />
-            </div>
-            <h3 className="text-xs font-mono font-semibold text-gray-300 uppercase tracking-wider">
-              Pendaftaran Terbaru
-            </h3>
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 sm:p-5 shadow-sm font-sans select-none">
+      {/* Header Panel */}
+      <div className="flex items-center justify-between mb-3.5 pb-2.5 border-b border-zinc-800">
+        <div className="flex items-center gap-2">
+          <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+            <Activity className="w-4 h-4 text-indigo-400" />
           </div>
-          
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-medium text-emerald-400 shadow-sm">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-            Live Feed
-          </span>
+          <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+            Pendaftaran Pengguna Terbaru
+          </h3>
         </div>
 
-        {/* Timeline Log List */}
-        <div className="relative pl-1">
-          {/* Garis alur waktu vertikal dengan efek gradient */}
-          {recentRegistrations.length > 0 && (
-            <div className="absolute left-[17px] top-3 bottom-3 w-px bg-gradient-to-b from-indigo-500/50 via-purple-500/20 to-transparent" />
-          )}
+        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded text-[10px] font-mono font-medium text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+          Live Update
+        </span>
+      </div>
 
-          {recentRegistrations.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center space-y-3">
-              <div className="p-3.5 rounded-2xl bg-gray-800/50 border border-gray-700/50 text-gray-500 shadow-inner">
-                <UserX className="w-6 h-6" />
-              </div>
-              <p className="text-xs font-mono text-gray-500">
-                Belum ada aktivitas pendaftaran pengguna.
-              </p>
+      {/* Timeline List */}
+      <div className="relative">
+        {recentRegistrations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-center space-y-2">
+            <div className="p-2.5 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-500">
+              <UserX className="w-5 h-5" />
             </div>
-          ) : (
-            <div className="space-y-3">
-              {recentRegistrations.map((targetUser, index) => {
-                // Format waktu pendaftaran agar rapi
-                const registerDate = new Date(targetUser.created).toLocaleDateString('id-ID', {
-                  day: 'numeric',
-                  month: 'short',
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                });
+            <p className="text-xs text-zinc-500">
+              Belum ada riwayat aktivitas pendaftaran.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-zinc-800/60">
+            {recentRegistrations.map((targetUser, index) => {
+              const registerDate = new Date(targetUser.created).toLocaleDateString('id-ID', {
+                day: 'numeric',
+                month: 'short',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+              });
 
-                return (
-                  <div
-                    key={targetUser.id || index}
-                    className="group relative flex items-start gap-3.5 p-2.5 rounded-2xl transition-colors duration-200 hover:bg-indigo-500/[0.03]"
-                  >
-                    {/* Node Icon Timeline Glossy */}
-                    <div className="relative z-10 flex-shrink-0 w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-950 to-gray-900 border border-indigo-500/30 ring-2 ring-indigo-500/10 text-indigo-400 flex items-center justify-center shadow-md group-hover:scale-110 group-hover:ring-indigo-500/30 transition-all">
-                      <UserPlus className="w-3.5 h-3.5" />
+              return (
+                <div
+                  key={targetUser.id || index}
+                  className="flex items-center justify-between py-2.5 first:pt-1 last:pb-1 hover:bg-zinc-800/30 px-2 rounded-lg transition-colors"
+                >
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="w-7 h-7 rounded-md bg-zinc-800 border border-zinc-700 text-zinc-300 flex items-center justify-center shrink-0">
+                      <UserPlus className="w-3.5 h-3.5 text-indigo-400" />
                     </div>
 
-                    {/* Detail Konten Aktivitas */}
-                    <div className="min-w-0 flex-1 pt-0.5">
-                      <p className="text-xs leading-relaxed text-gray-300">
-                        Pengguna baru{' '}
-                        <span className="font-semibold text-white group-hover:text-indigo-300 transition-colors">
-                          {targetUser.name || targetUser.username}
-                        </span>{' '}
-                        <span className="text-gray-500 font-mono">(@{targetUser.username})</span> terdaftar sebagai{' '}
-                        <span className="inline-block px-2 py-0.5 rounded-md bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 font-mono text-[10px] font-semibold capitalize">
-                          {targetUser.role}
+                    <div className="min-w-0 truncate">
+                      <p className="text-xs text-zinc-200 font-medium truncate">
+                        {targetUser.name || targetUser.username}
+                        <span className="text-zinc-500 font-mono text-[11px] ml-1.5">
+                          (@{targetUser.username})
                         </span>
                       </p>
-
-                      <div className="flex items-center gap-1.5 mt-1.5 font-mono text-[10px] text-gray-500">
-                        <Clock className="w-3 h-3 text-gray-500" />
-                        <span>{registerDate}</span>
-                      </div>
                     </div>
                   </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
+
+                  <div className="flex items-center gap-2.5 shrink-0 ml-3">
+                    <span className="px-1.5 py-0.5 rounded text-[10px] font-mono font-medium capitalize bg-zinc-800 text-zinc-300 border border-zinc-700">
+                      {targetUser.role}
+                    </span>
+
+                    <div className="flex items-center gap-1 text-[10px] font-mono text-zinc-500">
+                      <Clock className="w-3 h-3" />
+                      <span>{registerDate}</span>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

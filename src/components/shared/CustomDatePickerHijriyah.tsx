@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 
 interface CustomDatePickerHijriyahProps {
-  value: string; // Format ISO YYYY-MM-DD
+  value: string;
   onChange: (val: string) => void;
   placeholder?: string;
 }
@@ -35,7 +35,6 @@ const BULAN_HIJRI_LIST: { angka: number; nama: KalenderHijriyahBulanHijriNamaOpt
   { angka: 12, nama: "Dzulhijjah" },
 ];
 
-// 🛠️ Pindahkan fungsi helper ke luar agar bisa dipakai di level root komponen
 const getLocalDateStr = (dInput: string | Date) => {
   const d = new Date(dInput);
   const yyyy = d.getFullYear();
@@ -54,14 +53,10 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
   const triggerRef = useRef<HTMLButtonElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  // String masehi hari ini untuk pencarian fallback
   const todayDateStr = useMemo(() => getLocalDateStr(new Date()), []);
-
-  // State tampilan bulan & tahun (default aman sebelum data termuat)
   const [viewTahunHijri, setViewTahunHijri] = useState<number>(1448);
-  const [viewBulanHijri, setViewBulanHijri] = useState<number>(2); // Safar sebagai cadangan terdekat
+  const [viewBulanHijri, setViewBulanHijri] = useState<number>(2);
 
-  // 1. 🔍 QUERY BARU: Ambil data Hijriyah hari ini dari database untuk acuan default buka calendar
   const { data: todayRecord } = useQuery<KalenderHijriyahResponse | null>({
     queryKey: ["datepicker-hijri-today-record", todayDateStr],
     queryFn: async () => {
@@ -73,10 +68,9 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
         return null;
       }
     },
-    staleTime: 1000 * 60 * 60 * 12, // Tahan 12 jam karena tanggal hari ini awet
+    staleTime: 1000 * 60 * 60 * 12,
   });
 
-  // Query record Hijriyah dari nilai terpilih
   const { data: selectedRecord, isLoading: isSelectedLoading } = useQuery<KalenderHijriyahResponse | null>({
     queryKey: ["datepicker-hijri-selected-record", value],
     queryFn: async () => {
@@ -93,19 +87,16 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
     staleTime: 1000 * 60 * 30,
   });
 
-  // 2. 🔄 FIX SYNC EFFECT: Cek record terpilih, jika kosong langsung pakai hari ini (Safar)
   useEffect(() => {
     if (selectedRecord) {
       if (selectedRecord.tahun_hijri) setViewTahunHijri(selectedRecord.tahun_hijri);
       if (selectedRecord.bulan_hijri_angka) setViewBulanHijri(selectedRecord.bulan_hijri_angka);
     } else if (!value && todayRecord) {
-      // Jika user belum memilih tanggal apapun, langsung sinkronkan ke bulan sekarang
       if (todayRecord.tahun_hijri) setViewTahunHijri(todayRecord.tahun_hijri);
       if (todayRecord.bulan_hijri_angka) setViewBulanHijri(todayRecord.bulan_hijri_angka);
     }
   }, [selectedRecord, todayRecord, value]);
 
-  // Query hari dalam bulan Hijriyah aktif
   const { data: hijriMonthDays, isLoading: isMonthLoading } = useQuery<KalenderHijriyahResponse[]>({
     queryKey: ["datepicker-hijri-grid-days", viewTahunHijri, viewBulanHijri],
     queryFn: async () => {
@@ -136,16 +127,16 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
   const updatePosition = useCallback(() => {
     if (triggerRef.current) {
       const rect = triggerRef.current.getBoundingClientRect();
-      const popoverWidth = 288;
+      const popoverWidth = 260;
       let left = rect.left;
 
       if (left + popoverWidth > window.innerWidth - 16) {
         left = window.innerWidth - popoverWidth - 16;
       }
 
-      let top = rect.bottom + 6;
-      if (top + 320 > window.innerHeight) {
-        top = Math.max(16, rect.top - 320 - 6);
+      let top = rect.bottom + 4;
+      if (top + 300 > window.innerHeight) {
+        top = Math.max(16, rect.top - 300 - 4);
       }
 
       setPopoverPos({ top, left });
@@ -204,7 +195,8 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
     : placeholder;
 
   return (
-    <div className="w-full">
+    <div className="w-full font-sans select-none">
+      {/* Trigger Button: Tinggi h-9 / 36px */}
       <button
         ref={triggerRef}
         type="button"
@@ -212,12 +204,12 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
           updatePosition();
           setIsOpen(!isOpen);
         }}
-        className={`w-full h-[42px] flex items-center justify-between px-3.5 bg-gray-950/90 border rounded-2xl font-mono text-xs transition-all duration-200 shadow-inner shrink-0 overflow-hidden ${
+        className={`w-full h-9 flex items-center justify-between px-3 bg-zinc-900 border rounded-lg text-xs font-medium transition-colors shadow-sm ${
           isOpen
-            ? "border-amber-400 ring-2 ring-amber-500/20 text-white"
+            ? "border-zinc-700 bg-zinc-800/80 text-white"
             : value
-            ? "border-amber-500/50 text-amber-200 hover:border-amber-400"
-            : "border-amber-500/25 text-gray-400 hover:border-amber-500/40"
+            ? "border-amber-500/40 text-amber-300 hover:border-amber-500/60"
+            : "border-zinc-800 text-zinc-400 hover:border-zinc-700 hover:text-zinc-200"
         }`}
       >
         <div className="flex items-center gap-2 truncate min-w-0">
@@ -225,13 +217,13 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
           {isSelectedLoading ? (
             <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-400" />
           ) : (
-            <span className="truncate font-bold text-xs">{displayText}</span>
+            <span className="truncate font-mono text-xs">{displayText}</span>
           )}
         </div>
 
         {value ? (
           <X
-            className="w-3.5 h-3.5 text-gray-500 hover:text-rose-400 transition-colors shrink-0 ml-1.5"
+            className="w-3.5 h-3.5 text-zinc-500 hover:text-rose-400 transition-colors shrink-0 ml-1.5"
             onClick={(e) => {
               e.stopPropagation();
               onChange("");
@@ -239,7 +231,7 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
           />
         ) : (
           <ChevronDown
-            className={`w-3.5 h-3.5 text-gray-500 transition-transform duration-200 shrink-0 ml-1.5 ${
+            className={`w-3.5 h-3.5 text-zinc-500 transition-transform duration-150 shrink-0 ml-1.5 ${
               isOpen ? "rotate-180 text-amber-400" : ""
             }`}
           />
@@ -256,46 +248,48 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
               left: `${popoverPos.left}px`,
               zIndex: 99999,
             }}
-            className="w-72 bg-gray-900/98 backdrop-blur-2xl border border-gray-800 rounded-3xl shadow-2xl p-3.5 space-y-3 animate-in fade-in zoom-in-95 duration-150 select-none"
+            className="w-64 bg-zinc-900 border border-zinc-800 rounded-xl shadow-xl p-3 space-y-2.5 animate-in fade-in duration-100 select-none font-sans"
           >
-            <div className="flex items-center justify-between border-b border-gray-800/80 pb-2.5">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={handlePrevHijriMonth}
-                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
               >
-                <ChevronLeft className="w-4 h-4" />
+                <ChevronLeft className="w-3.5 h-3.5" />
               </button>
 
-              <span className="font-mono text-xs font-extrabold text-amber-300">
+              <span className="text-xs font-semibold text-amber-300 font-mono">
                 {activeBulanObj.nama} {viewTahunHijri} H
               </span>
 
               <button
                 type="button"
+                tabIndex={-1}
                 onClick={handleNextHijriMonth}
-                className="p-1 rounded-xl bg-gray-800/80 text-gray-400 hover:text-white hover:bg-gray-700 transition-colors"
+                className="w-6 h-6 flex items-center justify-center rounded-md bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 transition-colors"
               >
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="w-3.5 h-3.5" />
               </button>
             </div>
 
-            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-gray-500 font-semibold">
+            <div className="grid grid-cols-7 text-center font-mono text-[10px] text-zinc-500 font-medium">
               {NAMA_HARI.map((h) => (
                 <div key={h}>{h}</div>
               ))}
             </div>
 
             {isMonthLoading ? (
-              <div className="py-8 text-center font-mono text-xs text-amber-400/80 animate-pulse">
-                Memuat Kalender Hijriyah...
+              <div className="py-6 text-center text-xs text-amber-400/80 font-sans">
+                Memuat kalender...
               </div>
             ) : !hijriMonthDays || hijriMonthDays.length === 0 ? (
-              <div className="py-6 text-center font-mono text-[11px] text-gray-500 p-2 bg-gray-950/40 rounded-2xl border border-gray-800">
-                Bulan {activeBulanObj.nama} {viewTahunHijri} H Belum Dipetakan di Database.
+              <div className="py-4 text-center text-[11px] text-zinc-500 bg-zinc-950/40 rounded-lg border border-zinc-800">
+                Bulan {activeBulanObj.nama} belum terdaftar di database.
               </div>
             ) : (
-              <div className="grid grid-cols-7 gap-1 text-center font-mono">
+              <div className="grid grid-cols-7 gap-0.5 text-center font-mono">
                 {Array.from({ length: firstDayOffset }).map((_, i) => (
                   <div key={`blank-${i}`} />
                 ))}
@@ -321,18 +315,18 @@ export const CustomDatePickerHijriyah: React.FC<CustomDatePickerHijriyahProps> =
                         month: "short",
                         year: "numeric",
                       })})`}
-                      className={`h-9 w-9 rounded-2xl flex flex-col items-center justify-center transition-all ${
+                      className={`h-7 w-7 rounded-md flex flex-col items-center justify-center transition-colors mx-auto ${
                         isSelected
-                          ? "bg-amber-500 text-gray-950 font-bold shadow-md shadow-amber-500/30 scale-105"
+                          ? "bg-amber-500 text-zinc-950 font-bold shadow-sm"
                           : isToday
-                          ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                          : "text-gray-300 hover:bg-gray-800 hover:text-white"
+                          ? "bg-amber-500/10 text-amber-300 border border-amber-500/30"
+                          : "text-zinc-300 hover:bg-zinc-800 hover:text-white"
                       }`}
                     >
-                      <span className="text-xs font-bold leading-none">{rec.tanggal_hijri}</span>
+                      <span className="text-[11px] font-bold leading-none">{rec.tanggal_hijri}</span>
                       <span
-                        className={`text-[8px] font-mono leading-none mt-0.5 ${
-                          isSelected ? "text-gray-900 font-black" : "text-gray-500"
+                        className={`text-[7px] font-mono leading-none mt-0.5 ${
+                          isSelected ? "text-zinc-950 font-black" : "text-zinc-500"
                         }`}
                       >
                         {masehiDayNum}

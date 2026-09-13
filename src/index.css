@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   ✨ LUXURY DARK UI - NATIVE APP CLEAN LAYOUT
+   📐 INDUSTRIAL WORKSTATION THEME - TIBKAM1745
    ========================================================================== */
 
 /* 🔮 System Defaults */
@@ -9,50 +9,48 @@ html, body {
   color-scheme: dark;
   -webkit-tap-highlight-color: transparent;
   scroll-behavior: smooth;
-  background-color: #090a0f; /* Samakan dengan warna background tergelap UI kamu */
+  background-color: #09090b; /* zinc-950 */
+  color: #f4f4f5; /* zinc-100 */
 }
 
-/* 🔒 Lock selection global untuk feel Native App */
-body {
-  -webkit-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
+/* 
+ * ⚠️ ATURAN SELEKSI TEKS:
+ * Global user-select: none DIHAPUS agar operator bisa bebas copy-paste
+ * Nama santri, ID PPS, NIK, dan Nomor HP ke aplikasi lain.
+ * Class select-none hanya dipasang spesifik di tombol, ikon, & titlebar.
+ */
 
 /* --- Firefox Scrollbar --- */
 * {
   scrollbar-width: thin;
-  scrollbar-color: rgba(99, 102, 241, 0.4) transparent;
+  scrollbar-color: #3f3f46 transparent; /* zinc-700 */
 }
 
-/* --- Webkit Browsers (Chrome, Edge, Safari, Opera) --- */
+/* --- Webkit Browsers (Chrome, Edge, WebView2) --- */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
 }
 
-/* Track transparan penuh agar tidak menyisakan kolom hitam mati */
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: #27272a; /* zinc-800 */
   border-radius: 9999px;
 }
 
-/* ✨ Interactive Hover State: Indigo Glow */
+/* Hover State: Bersih tanpa glow neon */
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
-  box-shadow: 0 0 8px rgba(99, 102, 241, 0.5);
+  background: #3f3f46; /* zinc-700 */
 }
 
-/* ⚡ Active Dragging State */
+/* Active Dragging State */
 ::-webkit-scrollbar-thumb:active {
-  background: rgba(129, 140, 248, 0.95);
+  background: #52525b; /* zinc-600 */
 }
 
-/* 🛡️ Prevent White Square on Corner Intersections */
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
@@ -69,20 +67,32 @@ body {
   scrollbar-width: none;
 }
 
-.scrollbar-mini::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
 }
-.scrollbar-mini::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #27272a;
+  border-radius: 4px;
 }
-.scrollbar-mini::-webkit-scrollbar-thumb:hover {
-  background: rgba(99, 102, 241, 0.8);
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #3f3f46;
 }
 
 @layer utilities {
   input::-ms-reveal,
   input::-ms-clear {
     display: none;
+  }
+}
+
+@keyframes tooltipFadeSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
   }
 }

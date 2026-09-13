@@ -1,4 +1,4 @@
-// src/components/shared/SantriStatsSummary.tsx
+// src/features/dashboard/components/SantriStatsSummary.tsx
 import React, { useMemo } from "react";
 import {
   UserCheck,
@@ -25,7 +25,6 @@ export default function SantriStatsSummary({
   data,
   isLoading = false,
 }: SantriStatsSummaryProps) {
-  // 🎓 Urutan Baku Tingkatan Pendidikan
   const TINGKATAN_ORDER = [
     "idadiyah",
     "ibtidaiyah",
@@ -34,7 +33,6 @@ export default function SantriStatsSummary({
     "kuliah syariah",
   ];
 
-  // Sort sebaran tingkatan berdasarkan hirarki pendidikan baku
   const tingkatanList = useMemo(() => {
     if (!data?.tingkatanCounts) return [];
 
@@ -49,15 +47,11 @@ export default function SantriStatsSummary({
       .sort((a, b) => {
         const indexA = getOrderIndex(a.nama);
         const indexB = getOrderIndex(b.nama);
-
-        if (indexA !== indexB) {
-          return indexA - indexB;
-        }
+        if (indexA !== indexB) return indexA - indexB;
         return b.jumlah - a.jumlah;
       });
   }, [data?.tingkatanCounts]);
 
-  // Sort sebaran domisili secara alfabetis (A -> Z)
   const domisiliList = useMemo(() => {
     if (!data?.domisiliCounts) return [];
     return Object.entries(data.domisiliCounts)
@@ -65,22 +59,22 @@ export default function SantriStatsSummary({
       .sort((a, b) => a.nama.localeCompare(b.nama));
   }, [data?.domisiliCounts]);
 
-  // SKELETON LOADING STATE MODERN
+  // Loading Skeleton Kompak
   if (isLoading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-5">
+      <div className="space-y-4">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
           {Array.from({ length: 3 }).map((_, idx) => (
             <div
               key={`stat-skeleton-${idx}`}
-              className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gray-900/60 p-5 md:p-6 shadow-xl backdrop-blur-xl animate-pulse"
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 animate-pulse space-y-3"
             >
               <div className="flex items-center justify-between">
-                <div className="h-3 w-28 rounded-lg bg-gray-800" />
-                <div className="h-10 w-10 rounded-2xl bg-gray-800" />
+                <div className="h-3 w-28 rounded bg-zinc-800" />
+                <div className="h-8 w-8 rounded-lg bg-zinc-800" />
               </div>
-              <div className="mt-4 h-9 w-24 rounded-xl bg-gray-800" />
-              <div className="mt-2 h-3 w-36 rounded bg-gray-800/60" />
+              <div className="h-8 w-20 rounded bg-zinc-800" />
+              <div className="h-2.5 w-36 rounded bg-zinc-800/60" />
             </div>
           ))}
         </div>
@@ -100,91 +94,65 @@ export default function SantriStatsSummary({
     {
       title: "Total Santri Aktif",
       value: stats.totalSantriAktif,
-      sub: "Seluruh santri berstatus aktif saat ini",
+      sub: "Seluruh santri terdata aktif",
       icon: UserCheck,
       unit: "Santri",
-      gradientText: "from-emerald-200 via-emerald-300 to-teal-300",
-      glowBg: "bg-emerald-600/15",
-      topBorder: "via-emerald-500/50",
-      iconBox: "bg-emerald-500/10 border-emerald-500/20 text-emerald-400",
+      iconColor: "text-emerald-400",
       dotColor: "bg-emerald-400",
     },
     {
       title: "Domisili PPS (Mukim)",
       value: stats.totalPps,
-      sub: "Domisili A–T dan Z (Non DKS-K)",
+      sub: "Kompleks A–T & Z (Non DKS-K)",
       icon: Building2,
       unit: "Santri",
-      gradientText: "from-indigo-200 via-indigo-300 to-purple-300",
-      glowBg: "bg-indigo-600/15",
-      topBorder: "via-indigo-500/50",
-      iconBox: "bg-indigo-500/10 border-indigo-500/20 text-indigo-400",
+      iconColor: "text-indigo-400",
       dotColor: "bg-indigo-400",
     },
     {
       title: "Domisili LPPS (Luar PPS)",
       value: stats.totalLpps,
-      sub: "Santri aktif berstatus domisili LPPS",
+      sub: "Santri non-mukim di luar asrama",
       icon: Home,
       unit: "Santri",
-      gradientText: "from-purple-200 via-purple-300 to-pink-300",
-      glowBg: "bg-purple-600/15",
-      topBorder: "via-purple-500/50",
-      iconBox: "bg-purple-500/10 border-purple-500/20 text-purple-400",
+      iconColor: "text-purple-400",
       dotColor: "bg-purple-400",
     },
   ];
 
   return (
-    <div className="space-y-6 md:space-y-8">
-      {/* 🚀 PANEL UTAMA: 3 Stat Cards Ringkasan */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 md:gap-5">
+    <div className="space-y-4 font-sans select-none">
+      {/* 1. Panel 3 Kartu Ringkasan Utama */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 md:gap-4">
         {topCards.map((card, idx) => {
           const Icon = card.icon;
           return (
             <div
               key={idx}
-              className="relative group overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 md:p-6 shadow-xl backdrop-blur-xl transition-all duration-300 hover:border-gray-700/80 hover:-translate-y-1 hover:shadow-2xl flex flex-col justify-between"
+              className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm flex flex-col justify-between"
             >
-              {/* 🔮 Ambient Glow Mesh Per Kartu */}
-              <div
-                className={`absolute -top-20 -right-20 w-48 h-48 rounded-full ${card.glowBg} blur-[80px] pointer-events-none transition-all duration-500 group-hover:scale-125`}
-              />
-
-              {/* Garis Kilau Top-Border */}
-              <div
-                className={`absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent ${card.topBorder} to-transparent opacity-60 group-hover:opacity-100 transition-opacity duration-300`}
-              />
-
-              <div className="relative z-10 flex items-start justify-between gap-3">
+              <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
-                  <p className="text-[11px] font-mono font-medium text-gray-400 uppercase tracking-wider">
+                  <p className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider">
                     {card.title}
                   </p>
-                  <div className="flex items-baseline gap-2">
-                    <p
-                      className={`text-3xl sm:text-4xl font-extrabold text-transparent bg-clip-text bg-gradient-to-r ${card.gradientText} tracking-tight font-mono`}
-                    >
+                  <div className="flex items-baseline gap-1.5">
+                    <p className="text-2xl sm:text-3xl font-bold text-zinc-100 font-mono tracking-tight">
                       {card.value.toLocaleString("id-ID")}
                     </p>
-                    <span className="text-xs font-mono text-gray-400">
+                    <span className="text-xs text-zinc-500 font-sans">
                       {card.unit}
                     </span>
                   </div>
                 </div>
 
-                <div
-                  className={`p-3 rounded-2xl border ${card.iconBox} shadow-lg backdrop-blur-md transition-transform duration-300 group-hover:scale-110 flex-shrink-0`}
-                >
-                  <Icon className="w-5 h-5" />
+                <div className="p-2 rounded-lg bg-zinc-950 border border-zinc-800 text-zinc-300 shrink-0">
+                  <Icon className={`w-4 h-4 ${card.iconColor}`} />
                 </div>
               </div>
 
-              {/* Footer Sub-Info */}
-              <div className="relative z-10 mt-4 pt-3 border-t border-gray-800/60 flex items-center gap-2 text-[11px] font-mono text-gray-400">
-                <span
-                  className={`w-1.5 h-1.5 rounded-full ${card.dotColor} animate-pulse`}
-                />
+              <div className="mt-3 pt-2.5 border-t border-zinc-800/80 flex items-center gap-1.5 text-[11px] text-zinc-400">
+                <span className={`w-1.5 h-1.5 rounded-full ${card.dotColor}`} />
                 <span className="truncate">{card.sub}</span>
               </div>
             </div>
@@ -192,29 +160,24 @@ export default function SantriStatsSummary({
         })}
       </div>
 
-      {/* 🎓 PANEL KEDUA: Sebaran Per Tingkatan Pendidikan */}
+      {/* 2. Panel Sebaran Jenjang Pendidikan */}
       {tingkatanList.length > 0 && (
-        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-          {/* Garis Kilau Top-Border */}
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
-          {/* Header Panel */}
-          <div className="mb-5 flex items-center justify-between border-b border-gray-800/80 pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-indigo-500/10 border border-indigo-500/20 text-indigo-400">
-                <GraduationCap className="h-4 w-4" />
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
+          <div className="mb-3.5 flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                <GraduationCap className="h-4 w-4 text-indigo-400" />
               </div>
-              <h3 className="text-xs font-mono font-semibold text-gray-200 uppercase tracking-wider">
-                Sebaran Tingkatan 
+              <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                Sebaran Tingkatan Pendidikan
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-[10px] font-mono font-medium text-indigo-300">
-              {tingkatanList.length} Jenjang Terdaftar
+            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+              {tingkatanList.length} Jenjang
             </span>
           </div>
 
-          {/* Grid Items */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
+          <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-5">
             {tingkatanList.map((item) => {
               const persentase =
                 stats.totalSantriAktif > 0
@@ -224,28 +187,28 @@ export default function SantriStatsSummary({
               return (
                 <div
                   key={item.nama}
-                  className="group relative rounded-2xl border border-gray-800/80 bg-gray-950/60 p-3.5 transition-all duration-200 hover:border-indigo-500/30 hover:bg-gray-900/80 hover:-translate-y-0.5 shadow-md"
+                  className="rounded-lg border border-zinc-800/80 bg-zinc-950/70 p-3 hover:border-zinc-700 transition-colors"
                 >
                   <span
-                    className="block truncate text-xs font-medium text-gray-400 group-hover:text-gray-200 transition-colors capitalize"
+                    className="block truncate text-xs font-medium text-zinc-400 capitalize"
                     title={item.nama}
                   >
                     {item.nama}
                   </span>
 
-                  <div className="mt-2 flex items-baseline justify-between">
-                    <span className="font-mono text-xl font-bold text-white">
+                  <div className="mt-1.5 flex items-baseline justify-between">
+                    <span className="font-mono text-lg font-bold text-zinc-100">
                       {item.jumlah.toLocaleString("id-ID")}
                     </span>
-                    <span className="font-mono text-[10px] font-semibold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded-md border border-indigo-500/20">
+                    <span className="font-mono text-[10px] font-medium text-indigo-300 bg-indigo-500/10 px-1 py-0.2 rounded border border-indigo-500/20">
                       {persentase}%
                     </span>
                   </div>
 
-                  {/* Progress Bar Glowing */}
-                  <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-gray-800/80">
+                  {/* Progress Bar Netral & Padat */}
+                  <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-zinc-800">
                     <div
-                      className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 transition-all duration-500"
+                      className="h-full rounded-full bg-indigo-500 transition-all duration-300"
                       style={{ width: `${persentase}%` }}
                     />
                   </div>
@@ -256,29 +219,24 @@ export default function SantriStatsSummary({
         </div>
       )}
 
-      {/* 📍 PANEL KETIGA: Sebaran Per Kompleks (PPS) */}
+      {/* 3. Panel Sebaran Domisili Kompleks Asrama (PPS) */}
       {domisiliList.length > 0 && (
-        <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 p-5 sm:p-6 shadow-2xl backdrop-blur-xl">
-          {/* Garis Kilau Top-Border */}
-          <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-emerald-500/30 to-transparent" />
-
-          {/* Header Panel */}
-          <div className="mb-5 flex items-center justify-between border-b border-gray-800/80 pb-4">
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-                <MapPin className="h-4 w-4" />
+        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4 shadow-sm">
+          <div className="mb-3.5 flex items-center justify-between border-b border-zinc-800 pb-2.5">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+                <MapPin className="h-4 w-4 text-emerald-400" />
               </div>
-              <h3 className="text-xs font-mono font-semibold text-gray-200 uppercase tracking-wider">
-                Sebaran Domisili (PPS)
+              <h3 className="text-xs font-semibold text-zinc-200 uppercase tracking-wider">
+                Sebaran Domisili Asrama (PPS)
               </h3>
             </div>
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[10px] font-mono font-medium text-emerald-300">
-              {domisiliList.length} Domisili Terdaftar
+            <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded border border-zinc-700">
+              {domisiliList.length} Daerah
             </span>
           </div>
 
-          {/* Grid Items */}
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:grid-cols-7">
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 lg:grid-cols-7">
             {domisiliList.map((item) => {
               const persentase =
                 stats.totalPps > 0
@@ -288,20 +246,20 @@ export default function SantriStatsSummary({
               return (
                 <div
                   key={item.nama}
-                  className="group relative rounded-2xl border border-gray-800/80 bg-gray-950/60 p-3 transition-all duration-200 hover:border-emerald-500/30 hover:bg-gray-900/80 hover:-translate-y-0.5 shadow-md"
+                  className="rounded-lg border border-zinc-800/80 bg-zinc-950/70 p-2.5 hover:border-zinc-700 transition-colors"
                 >
                   <span
-                    className="block truncate text-xs font-semibold text-emerald-400/90 group-hover:text-emerald-300 transition-colors"
+                    className="block truncate text-xs font-medium text-emerald-400"
                     title={item.nama}
                   >
                     {item.nama}
                   </span>
 
-                  <div className="mt-1.5 flex items-baseline justify-between">
-                    <span className="font-mono text-lg font-bold text-white">
+                  <div className="mt-1 flex items-baseline justify-between">
+                    <span className="font-mono text-base font-bold text-zinc-100">
                       {item.jumlah.toLocaleString("id-ID")}
                     </span>
-                    <span className="font-mono text-[10px] text-gray-400">
+                    <span className="font-mono text-[10px] text-zinc-500">
                       {persentase}%
                     </span>
                   </div>

@@ -1,4 +1,4 @@
-// src/features/laporan/components/LaporanToolbar.tsx
+// src/features/laporan/rambut/components/LaporanToolbar.tsx
 import React from "react";
 import { CalendarDays, FileText, Layers, MapPin } from "lucide-react";
 import { BaseToolbar, GlassDropdown, type DropdownOption } from "@/components/shared";
@@ -69,9 +69,9 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
       placeholder="Cari santri berdasarkan Nama atau ID PPS..."
       onRefresh={onRefresh}
       isLoading={isLoading}
-      searchIconColorClass="text-indigo-400"
+      searchIconColorClass="text-zinc-500"
     >
-      {/* 1. Dropdown Periode */}
+      {/* 1. Dropdown Periode (Tinggi h-9, Palet Netral Zinc) */}
       <GlassDropdown
         value={selectedPeriode?.id || "all"}
         onChange={(id) => {
@@ -80,9 +80,9 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
         }}
         options={periodeOptions}
         defaultLabel="Pilih Periode"
-        icon={<CalendarDays className="w-4 h-4 text-indigo-400" />}
-        activeColorClass="border-indigo-500/60 text-white ring-indigo-500/20"
-        minWidthClass="min-w-[200px]"
+        icon={<CalendarDays className="w-3.5 h-3.5 text-zinc-400" />}
+        activeColorClass="border-zinc-700 bg-zinc-800 text-white"
+        minWidthClass="min-w-[170px]"
       />
 
       {/* 2. Dropdown Jenis Rekapitulasi */}
@@ -91,33 +91,33 @@ export const LaporanToolbar: React.FC<LaporanToolbarProps> = ({
         onChange={(val) => onChangeReportType(val as ReportType)}
         options={reportOptions}
         defaultLabel="Semua Target Wajib Setor"
-        icon={<FileText className="w-4 h-4 text-purple-400" />}
-        activeColorClass="border-purple-500/60 text-purple-200 ring-purple-500/20"
-        minWidthClass="min-w-[200px]"
+        icon={<FileText className="w-3.5 h-3.5 text-zinc-400" />}
+        activeColorClass="border-zinc-700 bg-zinc-800 text-white"
+        minWidthClass="min-w-[190px]"
       />
 
-      {/* 3. Dropdown Kategori Wajib (Sembunyi jika mode riwayat) */}
+      {/* 3. Dropdown Kategori (Sembunyi otomatis saat mode riwayat) */}
       {reportType !== "riwayat" && (
         <GlassDropdown
           value={filterKategori}
           onChange={onChangeFilterKategori}
           options={kategoriOptions}
           defaultLabel="Semua Kategori"
-          icon={<Layers className="w-4 h-4 text-amber-400" />}
-          activeColorClass="border-amber-500/60 text-amber-200 ring-amber-500/20"
-          minWidthClass="min-w-[180px]"
+          icon={<Layers className="w-3.5 h-3.5 text-zinc-400" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
+          minWidthClass="min-w-[150px]"
         />
       )}
 
-      {/* 4. Dropdown Daerah Domisili */}
+      {/* 4. Dropdown Daerah Asrama */}
       <GlassDropdown
         value={filterDaerah}
         onChange={onChangeFilterDaerah}
         options={daerahDropdownOptions}
         defaultLabel="Semua Daerah"
-        icon={<MapPin className="w-4 h-4 text-emerald-400" />}
-        activeColorClass="border-emerald-500/60 text-emerald-200 ring-emerald-500/20"
-        minWidthClass="min-w-[170px]"
+        icon={<MapPin className="w-3.5 h-3.5 text-zinc-400" />}
+        activeColorClass="border-zinc-700 bg-zinc-800 text-white"
+        minWidthClass="min-w-[140px]"
       />
     </BaseToolbar>
   );

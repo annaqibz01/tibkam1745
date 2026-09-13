@@ -83,75 +83,70 @@ export default function MasterToolbar({
   );
 
   return (
-    <div className="mb-5 space-y-3 select-none">
-      {/* Search Input & Refresh Button */}
+    <div className="space-y-2 select-none font-sans">
+      {/* Search Bar & Tombol Refresh (Tinggi h-9) */}
       <BaseToolbar
         search={search}
         onSearchChange={onSearchChange}
-        placeholder="Cari nama atau ID PPS santri (Tekan Enter)..."
+        placeholder="Cari nama atau ID PPS santri..."
         onRefresh={onRefresh}
         isLoading={isListLoading}
-        searchIconColorClass="text-indigo-400"
+        searchIconColorClass="text-zinc-500"
       />
 
-      {/* Grid Filter Dropdowns */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 w-full font-mono">
-        {/* 1. Status Aktif */}
+      {/* Grid Filter Dropdown 5 Kolom (Tinggi h-9, Palet Netral Zinc) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 w-full">
         <GlassDropdown
           value={statusFilter}
           onChange={(val) => onStatusFilterChange(val as "all" | "aktif" | "nonaktif")}
           options={statusDropdownOptions}
           defaultLabel="Semua Status"
-          icon={<Filter className="w-3.5 h-3.5 text-indigo-400 shrink-0" />}
-          activeColorClass="border-indigo-500/50 text-indigo-300 ring-indigo-500/20"
+          icon={<Filter className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchable={false}
         />
 
-        {/* 2. Tingkatan */}
         <GlassDropdown
           value={tingkatanFilter}
           onChange={onTingkatanFilterChange}
           options={tingkatanDropdownOptions}
           defaultLabel="Semua Tingkatan"
-          icon={<GraduationCap className="w-3.5 h-3.5 text-purple-400 shrink-0" />}
-          activeColorClass="border-purple-500/50 text-purple-300 ring-purple-500/20"
+          icon={<GraduationCap className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
-          searchPlaceholder="Cari Tingkatan..."
+          searchPlaceholder="Cari tingkatan..."
         />
 
-        {/* 3. Kelas */}
         <GlassDropdown
           value={kelasFilter}
           onChange={onKelasFilterChange}
           options={kelasDropdownOptions}
           defaultLabel="Semua Kelas"
-          icon={<BookOpen className="w-3.5 h-3.5 text-sky-400 shrink-0" />}
-          activeColorClass="border-sky-500/50 text-sky-300 ring-sky-500/20"
+          icon={<BookOpen className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchPlaceholder="Cari kelas..."
         />
 
-        {/* 4. Status Domisili */}
         <GlassDropdown
           value={statusDomisiliFilter}
           onChange={onStatusDomisiliFilterChange}
           options={statusDomisiliDropdownOptions}
           defaultLabel="Semua Status Domisili"
-          icon={<Home className="w-3.5 h-3.5 text-emerald-400 shrink-0" />}
-          activeColorClass="border-emerald-500/50 text-emerald-300 ring-emerald-500/20"
+          icon={<Home className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchPlaceholder="Cari status domisili..."
         />
 
-        {/* 5. Kompleks Domisili */}
         <GlassDropdown
           value={domisiliFilter}
           onChange={onDomisiliFilterChange}
           options={domisiliDropdownOptions}
           defaultLabel="Semua Domisili"
-          icon={<Building className="w-3.5 h-3.5 text-amber-400 shrink-0" />}
-          activeColorClass="border-amber-500/50 text-amber-300 ring-amber-500/20"
+          icon={<Building className="w-3.5 h-3.5 text-zinc-400 shrink-0" />}
+          activeColorClass="border-zinc-700 bg-zinc-800 text-white"
           minWidthClass="w-full"
           searchPlaceholder="Cari domisili..."
         />

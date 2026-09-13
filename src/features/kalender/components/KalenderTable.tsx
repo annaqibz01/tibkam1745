@@ -18,40 +18,38 @@ export const KalenderTable: React.FC<KalenderTableProps> = ({
   perPage = 15,
 }) => {
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-gray-800/80 bg-gradient-to-b from-gray-900/90 via-gray-900/60 to-gray-950/90 shadow-2xl backdrop-blur-xl min-h-[480px]">
-      <div className="absolute top-0 inset-x-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/30 to-transparent" />
-
+    <div className="rounded-xl border border-zinc-800 bg-zinc-900 shadow-sm overflow-hidden font-sans select-none">
       <div className="overflow-x-auto">
-        <table className="w-full text-sm text-left border-collapse table-auto">
+        <table className="w-full text-xs text-left border-collapse table-auto">
           <thead>
-            <tr className="bg-gray-950/80 border-b border-gray-800/80 text-[11px] font-mono font-semibold text-gray-400 uppercase tracking-wider backdrop-blur-md select-none">
-              <th className="px-6 py-4 w-16 text-center">No</th>
-              <th className="px-6 py-4 min-w-[200px]">Tanggal Masehi</th>
-              <th className="px-6 py-4 min-w-[220px]">Format Hijriyah Resmi</th>
-              <th className="px-6 py-4 w-36 text-center">Tgl Hijri</th>
-              <th className="px-6 py-4 w-44 text-center">Bulan & Tahun</th>
-              <th className="px-6 py-4 w-40 text-center">Status Pemetaan</th>
+            <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider sticky top-0 z-10">
+              <th className="px-3 py-2.5 w-12 text-center">No</th>
+              <th className="px-3 py-2.5 min-w-[180px]">Tanggal Masehi</th>
+              <th className="px-3 py-2.5 min-w-[180px]">Format Hijriyah Resmi</th>
+              <th className="px-3 py-2.5 w-24 text-center">Tgl Hijri</th>
+              <th className="px-3 py-2.5 w-36 text-center">Bulan & Tahun</th>
+              <th className="px-3 py-2.5 w-28 text-center">Status</th>
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-gray-800/50 bg-gray-900/30 font-mono">
+          <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
             {isLoading ? (
               Array.from({ length: 8 }).map((_, idx) => (
-                <tr key={`skeleton-${idx}`} className="animate-pulse border-b border-gray-800/40">
+                <tr key={`skeleton-${idx}`} className="animate-pulse">
                   {Array.from({ length: 6 }).map((_, cellIdx) => (
-                    <td key={cellIdx} className="px-6 py-4">
-                      <div className="h-4 bg-gray-800/60 rounded-lg w-24 mx-auto" />
+                    <td key={cellIdx} className="px-3 py-2">
+                      <div className="h-4 bg-zinc-800 rounded w-20 mx-auto" />
                     </td>
                   ))}
                 </tr>
               ))
             ) : items.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8">
+                <td colSpan={6} className="px-4 py-10">
                   <EmptyState
-                    icon={<CalendarDays className="w-8 h-8 text-gray-400" />}
+                    icon={<CalendarDays className="w-6 h-6 text-zinc-500" />}
                     title="Belum Ada Data Kalender Terdaftar"
-                    description="Klik tombol 'Generate Bulan Baru' untuk membuat penanggalan baru."
+                    description="Klik tombol 'Generate Bulan Baru' untuk memetakan penanggalan."
                   />
                 </td>
               </tr>
@@ -68,37 +66,37 @@ export const KalenderTable: React.FC<KalenderTableProps> = ({
                 return (
                   <tr
                     key={row.id}
-                    className="group transition-colors duration-200 hover:bg-indigo-500/[0.03]"
+                    className="hover:bg-zinc-800/40 transition-colors"
                   >
-                    <td className="px-6 py-3.5 text-center text-gray-500 text-xs">
+                    <td className="px-3 py-2 text-center text-zinc-500 font-mono">
                       {rowNo}
                     </td>
 
-                    <td className="px-6 py-3.5 font-medium font-sans text-gray-200 whitespace-nowrap">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="w-4 h-4 text-indigo-400/80" />
+                    <td className="px-3 py-2 font-medium text-zinc-200 whitespace-nowrap">
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
                         <span>{dateMasehi}</span>
                       </div>
                     </td>
 
-                    <td className="px-6 py-3.5 whitespace-nowrap">
-                      <span className="inline-block px-3 py-1 rounded-xl text-xs font-bold bg-amber-500/10 text-amber-300 border border-amber-500/20 shadow-sm">
+                    <td className="px-3 py-2 whitespace-nowrap">
+                      <span className="font-mono text-xs font-bold text-amber-300 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
                         {row.string_hijri}
                       </span>
                     </td>
 
-                    <td className="px-6 py-3.5 text-center font-bold text-white text-sm">
+                    <td className="px-3 py-2 text-center font-mono font-bold text-zinc-100 text-sm">
                       {row.tanggal_hijri || "-"}
                     </td>
 
-                    <td className="px-6 py-3.5 text-center text-xs text-indigo-300">
+                    <td className="px-3 py-2 text-center font-mono text-xs text-zinc-400">
                       {row.bulan_hijri_nama} {row.tahun_hijri} H
                     </td>
 
-                    <td className="px-6 py-3.5 text-center whitespace-nowrap font-sans">
+                    <td className="px-3 py-2 text-center whitespace-nowrap">
                       <StatusBadge
                         variant="success"
-                        icon={<CheckCircle2 className="w-3.5 h-3.5" />}
+                        icon={<CheckCircle2 className="w-3 h-3" />}
                       >
                         Valid
                       </StatusBadge>

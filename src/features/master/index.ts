@@ -1,3 +1,3 @@
-// 🚪 Public API Gerbang Modul Master Data
+// src/features/master/index.ts
 export { default as MasterPage } from "./pages/Master";
-export {default as MasterPagination} from "./components/MasterPagination"
+export { default as MasterPagination } from "./components/MasterPagination";

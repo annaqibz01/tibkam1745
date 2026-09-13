@@ -1,8 +1,8 @@
-// src/components/rambut/toolbars/PengurusToolbar.tsx
+// src/features/rambut/components/toolbars/PengurusToolbar.tsx
 import React, { useMemo } from "react";
 import { MapPin } from "lucide-react";
 import { BaseToolbar } from "@/components/shared/BaseToolbar";
-import { CustomGlassDropdown } from "./CustomGlassDropdown";
+import { GlassDropdown, type DropdownOption } from "@/components/shared";
 
 interface PengurusToolbarProps {
   search: string;
@@ -23,10 +23,10 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
   onRefresh,
   isLoading,
 }) => {
-  const dropdownOptions = useMemo(() => {
-    return daerahOptions.map((d) => ({ 
-      value: d, 
-      label: `Daerah ${d}` 
+  const dropdownOptions: DropdownOption[] = useMemo(() => {
+    return daerahOptions.map((d) => ({
+      value: d,
+      label: `Daerah ${d}`,
     }));
   }, [daerahOptions]);
 
@@ -39,19 +39,13 @@ export const PengurusToolbar: React.FC<PengurusToolbarProps> = ({
       isLoading={isLoading}
       searchIconColorClass="text-purple-400"
     >
-      {/* 
-        Dropdown Kompleks Daerah dimasukkan sebagai children.
-        Pastikan di dalam komponen <CustomGlassDropdown> tombol utamanya 
-        menggunakan kelas `h-12` dan `rounded-2xl` agar selaras rata air 
-        dengan Search Bar dan Tombol Refresh.
-      */}
-      <CustomGlassDropdown
+      <GlassDropdown
         value={daerahFilter}
         onChange={onDaerahFilterChange}
         options={dropdownOptions}
         defaultLabel="Semua Daerah"
-        icon={<MapPin className="w-4 h-4 text-purple-400 shrink-0" />}
-        activeColorClass="border-purple-500/60 text-purple-200 ring-purple-500/20"
+        icon={<MapPin className="w-3.5 h-3.5 text-purple-400" />}
+        activeColorClass="border-purple-500/60 text-purple-200"
         minWidthClass="min-w-[200px]"
       />
     </BaseToolbar>

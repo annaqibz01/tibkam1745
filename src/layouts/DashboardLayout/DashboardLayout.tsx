@@ -10,11 +10,11 @@ export default function DashboardLayout() {
   useAutoBackup();
 
   return (
-    <div className="flex h-full w-full overflow-hidden bg-gray-950 text-gray-100">
+    <div className="flex h-full w-full overflow-hidden bg-zinc-950 text-zinc-100">
       <Sidebar />
 
-      {/* 🔮 Tambahkan min-h-0 agar scrollbar internal hanya bekerja di dalam area main */}
-      <main className="flex-1 h-full min-h-0 overflow-y-auto">
+      {/* Main Content Viewport */}
+      <main className="flex-1 h-full min-h-0 overflow-y-auto custom-scrollbar">
         <PageTransition key={location.pathname}>
           <Outlet />
         </PageTransition>

@@ -1,38 +1,32 @@
 // src/components/shared/PageTransition.tsx
-import React from 'react';
-import { motion, type Variants, useReducedMotion } from 'framer-motion';
+import React from "react";
+import { motion, type Variants, useReducedMotion } from "framer-motion";
 
 interface PageTransitionProps {
   children: React.ReactNode;
   className?: string;
 }
 
-// ⚡ Fast Decelerate Curve (Native Desktop & App Feel)
-const FAST_EASE = [0.25, 1, 0.5, 1] as const;
+const FAST_EASE = [0.2, 0, 0, 1] as const;
 
-/**
- * Varian Transisi Ringan (Pure Opacity + Light Y-Shift)
- * Menghapus properti `scale` & memotong durasi ke 180ms agar GPU tidak melakukan
- * re-rasterization pada elemen glassmorphism/tabel besar saat navigasi.
- */
 const pageVariants: Variants = {
   initial: {
     opacity: 0,
-    y: 6, // Pergeseran mikro 6px
+    y: 4,
   },
   animate: {
     opacity: 1,
     y: 0,
     transition: {
-      duration: 0.18, // ⏱️ Entry responsif (180ms)
+      duration: 0.12,
       ease: FAST_EASE,
     },
   },
   exit: {
     opacity: 0,
-    y: -4,
+    y: -2,
     transition: {
-      duration: 0.12, // ⏱️ Exit instan (120ms) agar halaman lama langsung lepas
+      duration: 0.08,
       ease: FAST_EASE,
     },
   },
@@ -42,17 +36,17 @@ const reducedMotionVariants: Variants = {
   initial: { opacity: 0 },
   animate: {
     opacity: 1,
-    transition: { duration: 0.15 },
+    transition: { duration: 0.1 },
   },
   exit: {
     opacity: 0,
-    transition: { duration: 0.1 },
+    transition: { duration: 0.08 },
   },
 };
 
 export const PageTransition: React.FC<PageTransitionProps> = ({
   children,
-  className = '',
+  className = "",
 }) => {
   const shouldReduceMotion = useReducedMotion();
   const activeVariants = shouldReduceMotion ? reducedMotionVariants : pageVariants;

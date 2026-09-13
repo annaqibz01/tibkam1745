@@ -12,7 +12,6 @@ interface SegmentedControlProps<T extends string> {
   options: SegmentOption<T>[];
   value: T;
   onChange: (value: T) => void;
-  /** Unique layout ID per halaman agar animasi slide Framer Motion bekerja presisi */
   layoutId: string;
   activeColorClass?: string;
   className?: string;
@@ -23,12 +22,12 @@ export function SegmentedControl<T extends string>({
   value,
   onChange,
   layoutId,
-  activeColorClass = "bg-gradient-to-r from-indigo-600 to-purple-600 border-indigo-400/30",
+  activeColorClass = "bg-zinc-800 text-white border-zinc-700",
   className = "",
 }: SegmentedControlProps<T>) {
   return (
     <div
-      className={`flex items-center gap-1 h-12 bg-gray-900/80 backdrop-blur-xl border border-gray-800/80 p-1 rounded-2xl shadow-lg select-none ${className}`.trim()}
+      className={`flex items-center gap-0.5 h-9 bg-zinc-900 border border-zinc-800 p-0.5 rounded-lg select-none font-sans ${className}`.trim()}
     >
       {options.map((option) => {
         const isActive = value === option.value;
@@ -38,15 +37,15 @@ export function SegmentedControl<T extends string>({
             key={option.value}
             type="button"
             onClick={() => onChange(option.value)}
-            className={`relative h-full px-3.5 rounded-xl text-xs font-mono font-bold transition-colors duration-200 flex items-center justify-center gap-2 active:scale-95 ${
-              isActive ? "text-white" : "text-gray-400 hover:text-gray-200"
+            className={`relative h-full px-3 rounded-md text-xs font-medium transition-colors duration-150 flex items-center justify-center gap-1.5 active:scale-98 ${
+              isActive ? "text-white font-semibold" : "text-zinc-400 hover:text-zinc-200"
             }`}
           >
             {isActive && (
               <motion.div
                 layoutId={layoutId}
-                className={`absolute inset-0 rounded-xl shadow-md border ${activeColorClass}`}
-                transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                className={`absolute inset-0 rounded-md border shadow-sm ${activeColorClass}`}
+                transition={{ duration: 0.12, ease: "easeOut" }}
               />
             )}
             {option.icon && (
