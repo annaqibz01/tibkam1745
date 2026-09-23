@@ -55,7 +55,7 @@ fn main() {
 ```toml
 [package]
 name = "tibkam1745"
-version = "1.5.0"
+version = "1.6.0"
 description = "layanan terpadu tibkam1745"
 authors = ["annaqibz01"]
 license = ""
@@ -415,6 +415,47 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use tauri::{AppHandle, Manager};
 
+fn resolve_backup_folder(app_handle: &AppHandle) -> PathBuf {
+    // 1. Tembak langsung Drive D (Gunakan raw string r#"..."#)
+    let target_d = PathBuf::from(r#"D:\Tibkam1745_Backups"#);
+    match fs::create_dir_all(&target_d) {
+        Ok(_) => {
+            println!("✅ [Backup] Menggunakan target Drive D: {:?}", target_d);
+            return target_d;
+        }
+        Err(err) => {
+            eprintln!("⚠️ [Backup] Drive D gagal/tidak tersedia (Alasan: {}), mencoba drive lain...", err);
+        }
+    }
+
+    // 2. Scan drive lain selain C (E sampai Z)
+    for letter in b'E'..=b'Z' {
+        let candidate = PathBuf::from(format!(r#"{}:\Tibkam1745_Backups"#, letter as char));
+        if fs::create_dir_all(&candidate).is_ok() {
+            println!("✅ [Backup] Menggunakan Drive alternatif: {:?}", candidate);
+            return candidate;
+        }
+    }
+
+    // 3. Failover ke Documents jika semua drive selain C tidak bisa ditulis
+    eprintln!("⚠️ [Backup] Tidak ada drive sekunder yang bisa ditulis. Mengalihkan ke Documents...");
+    if let Ok(document_dir) = app_handle.path().document_dir() {
+        let candidate = document_dir.join("Tibkam1745_Backups");
+        if fs::create_dir_all(&candidate).is_ok() {
+            return candidate;
+        }
+    }
+
+    // 4. Failover darurat terakhir: App Local Data
+    let emergency_dir = app_handle
+        .path()
+        .app_local_data_dir()
+        .unwrap_or_else(|_| PathBuf::from("."))
+        .join("Backups");
+    let _ = fs::create_dir_all(&emergency_dir);
+    emergency_dir
+}
+
 pub fn execute_backup(app_handle: &AppHandle, date_str: &str) -> Result<String, String> {
     let app_local_data = app_handle
         .path()
@@ -428,20 +469,13 @@ pub fn execute_backup(app_handle: &AppHandle, date_str: &str) -> Result<String, 
         return Err("File database (data.db) tidak ditemukan!".into());
     }
 
-    let document_dir = app_handle
-        .path()
-        .document_dir()
-        .map_err(|e| format!("Gagal Documents dir: {}", e))?;
-
-    let backup_folder = document_dir.join("Tibkam1745_Backups");
-    if !backup_folder.exists() {
-        fs::create_dir_all(&backup_folder).map_err(|e| e.to_string())?;
-    }
+    let backup_folder = resolve_backup_folder(app_handle);
 
     let target_db = backup_folder.join(format!("backup_tibkam_{}.db", date_str));
-    fs::copy(&source_db, &target_db).map_err(|e| e.to_string())?;
+    fs::copy(&source_db, &target_db)
+        .map_err(|e| format!("Gagal menyalin data.db: {}", e))?;
 
-    // 🛡️ Salin juga file WAL dan SHM jika sedang aktif agar data transaksi tidak terpotong
+    // Salin file WAL dan SHM jika ada
     let wal_source = pb_data_dir.join("data.db-wal");
     if wal_source.exists() {
         let wal_target = backup_folder.join(format!("backup_tibkam_{}.db-wal", date_str));
@@ -477,7 +511,6 @@ fn rotate_old_backups(backup_folder: &Path, max_keep: usize) {
         if backup_files.len() > max_keep {
             for old_file in backup_files.iter().skip(max_keep) {
                 let _ = fs::remove_file(old_file);
-                // Hapus juga file jurnal pendukungnya jika ada
                 let old_wal = old_file.with_extension("db-wal");
                 if old_wal.exists() { let _ = fs::remove_file(old_wal); }
                 let old_shm = old_file.with_extension("db-shm");
@@ -650,7 +683,7 @@ pub struct PocketbaseChild(pub Mutex<Option<Child>>);
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "tibkam1745",
-  "version": "1.5.0",
+  "version": "1.6.0",
   "identifier": "com.tibkam1745",
   "build": {
     "frontendDist": "../dist",

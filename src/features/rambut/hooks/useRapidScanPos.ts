@@ -10,7 +10,7 @@ import { buildReceiptHtml, getAlamatStr } from "../utils/posPrinter";
 import { executePrint } from "@/utils/printer";
 import { isDateWithinRange } from "@/utils/dateHelpers";
 import type { PrintMode } from "@/types/printer";
-import type { WajibSetorExpanded } from "./useRambut";
+import type { WajibSetorExpanded } from "../types";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export interface ScanSessionLog {

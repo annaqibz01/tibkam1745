@@ -22,12 +22,24 @@
 - `src/features/rambut/components/toolbars/AuditToolbar.tsx`
 - `src/features/rambut/components/toolbars/PengurusToolbar.tsx`
 - `src/features/rambut/components/toolbars/QueueToolbar.tsx`
+- `src/features/rambut/hooks/api/index.ts`
+- `src/features/rambut/hooks/api/usePeriodeRambut.ts`
+- `src/features/rambut/hooks/api/useQueueRambut.ts`
+- `src/features/rambut/hooks/api/useTransaksiRambut.ts`
+- `src/features/rambut/hooks/index.ts`
+- `src/features/rambut/hooks/page/index.ts`
+- `src/features/rambut/hooks/page/useRambutAuditTab.ts`
+- `src/features/rambut/hooks/page/useRambutModals.ts`
+- `src/features/rambut/hooks/page/useRambutPage.ts`
+- `src/features/rambut/hooks/page/useRambutPengurusTab.ts`
+- `src/features/rambut/hooks/page/useRambutQueueTab.ts`
 - `src/features/rambut/hooks/useImportPengurus.ts`
 - `src/features/rambut/hooks/useRambut.ts`
 - `src/features/rambut/hooks/useRambutPage.ts`
 - `src/features/rambut/hooks/useRapidScanPos.ts`
 - `src/features/rambut/index.ts`
 - `src/features/rambut/pages/Rambut.tsx`
+- `src/features/rambut/types.ts`
 - `src/features/rambut/utils/importPengurusUtils.ts`
 - `src/features/rambut/utils/posAudio.ts`
 - `src/features/rambut/utils/posPrinter.ts`
@@ -2393,8 +2405,9 @@ export const RapidScanPosModal: React.FC<RapidScanPosModalProps> = ({
 ```tsx
 // src/features/rambut/components/subtables/RambutAuditSubTable.tsx
 import React, { useMemo } from "react";
-import { parseNumericIdPps, type RiwayatSetorExpanded } from "../../hooks/useRambut";
-import { HijriText } from "../../../../components/shared/HijriText";
+import type { RiwayatSetorExpanded } from "../../types";
+import { HijriText } from "@/components/shared/HijriText";
+import { parseNumericIdPps, getAlamatStr } from "@/utils/userHelpers";
 import { History, Moon, User, MapPin, Home } from "lucide-react";
 
 interface Props {
@@ -2403,12 +2416,6 @@ interface Props {
   page?: number;
   perPage?: number;
 }
-
-const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten].map((v) => v?.toString().trim()).filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
 
 export const RambutAuditSubTable: React.FC<Props> = ({
   items,
@@ -2422,32 +2429,39 @@ export const RambutAuditSubTable: React.FC<Props> = ({
 
   return (
     <div className="overflow-x-auto custom-scrollbar">
-      <table className="w-full min-w-[1200px] text-xs text-left border-collapse table-fixed">
+      <table className="w-full min-w-[1150px] text-xs text-left border-collapse table-fixed select-none font-sans">
         <thead>
-          <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
-            <th className="px-2.5 py-2.5 w-[4%] text-center">No</th>
-            <th className="px-2.5 py-2.5 w-[16%]">Tgl Hijriyah</th>
-            <th className="px-2.5 py-2.5 w-[10%]">ID PPS</th>
-            <th className="px-2.5 py-2.5 w-[16%]">Nama Santri</th>
-            <th className="px-2.5 py-2.5 w-[12%]">Domisili</th>
-            <th className="px-2.5 py-2.5 w-[16%]">Alamat</th>
-            <th className="px-2.5 py-2.5 w-[10%] text-center">Waktu</th>
-            <th className="px-2.5 py-2.5 w-[10%]">Petugas</th>
-            <th className="px-2.5 py-2.5 w-[16%]">Catatan</th>
+          <tr className="h-10 bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+            <th className="px-3 w-[45px] text-center">No</th>
+            {/* Diperlebar ke 195px agar badge tanggal Hijriyah tidak menempel ke ID PPS */}
+            <th className="px-3 w-[195px]">Tgl Hijriyah</th>
+            <th className="px-3 w-[105px]">ID PPS</th>
+            <th className="px-3 w-[205px]">Nama Santri</th>
+            <th className="px-3 w-[95px]">Domisili</th>
+            <th className="px-3 w-[175px]">Alamat</th>
+            <th className="px-3 w-[105px] text-center">Waktu</th>
+            <th className="px-3 w-[105px]">Petugas</th>
+            <th className="px-3 w-[120px]">Catatan</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
+        <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
           {isLoading ? (
-            Array.from({ length: 5 }).map((_, idx) => (
-              <tr key={`skel-a-${idx}`} className="animate-pulse">
-                {Array.from({ length: 9 }).map((_, c) => (
-                  <td key={c} className="px-2.5 py-2"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
-                ))}
+            Array.from({ length: perPage || 5 }).map((_, idx) => (
+              <tr key={`skel-a-${idx}`} className="h-10 animate-pulse">
+                <td className="px-3 text-center"><div className="h-3.5 bg-zinc-800 rounded w-4 mx-auto" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-36" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-36" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-28" /></td>
+                <td className="px-3 text-center"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+                <td className="px-3"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
               </tr>
             ))
           ) : sortedItems.length === 0 ? (
             <tr>
-              <td colSpan={9} className="px-6 py-8 text-center">
+              <td colSpan={9} className="px-6 py-12 text-center">
                 <div className="flex flex-col items-center justify-center space-y-2">
                   <div className="p-3 rounded-lg bg-zinc-800/50 border border-zinc-700/50 text-zinc-400">
                     <History className="w-6 h-6" />
@@ -2462,44 +2476,76 @@ export const RambutAuditSubTable: React.FC<Props> = ({
               const log = logItem as any;
               const santriData = log.expand?.santri;
               const petugasData = log.expand?.petugas_eksekutor;
+
               return (
-                <tr key={log.id} className="hover:bg-zinc-800/40 transition-colors">
-                  <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
-                  <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap overflow-hidden">
-                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 w-fit">
-                      <Moon className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="font-bold text-[11px]"><HijriText date={log.tanggal_setor || log.created} /></span>
+                <tr key={log.id} className="h-10 hover:bg-zinc-800/40 transition-colors">
+                  {/* 1. No */}
+                  <td className="px-3 text-center text-zinc-500 font-mono text-[11px] truncate">
+                    {rowNo}
+                  </td>
+
+                  {/* 2. Tgl Hijriyah */}
+                  <td className="px-3 whitespace-nowrap">
+                    <div className="inline-flex items-center gap-1.5 bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20 text-amber-300 font-mono text-[11px] font-bold">
+                      <Moon className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                      <span className="truncate">
+                        <HijriText date={log.tanggal_setor || log.created} />
+                      </span>
                     </div>
                   </td>
-                  <td className="px-2.5 py-2 font-bold text-amber-400 whitespace-nowrap overflow-hidden">
-                    <span className="px-1.5 py-0.5 rounded bg-amber-500/10 border border-amber-500/20">{log.id_pps || santriData?.id_pps || "-"}</span>
+
+                  {/* 3. ID PPS */}
+                  <td className="px-3 whitespace-nowrap">
+                    <span className="inline-block px-1.5 py-0.5 rounded font-mono font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20">
+                      {log.id_pps || santriData?.id_pps || "-"}
+                    </span>
                   </td>
-                  <td className="px-2.5 py-2 font-sans whitespace-nowrap truncate overflow-hidden">
-                    <div className="flex items-center gap-1.5 truncate">
+
+                  {/* 4. Nama */}
+                  <td className="px-3 truncate" title={santriData?.nama || "Santri"}>
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <User className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                      <span className="font-semibold text-zinc-200 truncate">{santriData?.nama || "Santri"}</span>
+                      <span className="font-semibold text-zinc-200 truncate">
+                        {santriData?.nama || "Santri"}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-2.5 py-2 text-amber-300 whitespace-nowrap font-sans truncate overflow-hidden">
-                    <div className="flex items-center gap-1 truncate">
+
+                  {/* 5. Domisili */}
+                  <td className="px-3 text-amber-300 truncate font-sans">
+                    <div className="flex items-center gap-1 min-w-0">
                       <MapPin className="w-3 h-3 text-amber-400 shrink-0" />
-                      <span className="truncate">{santriData?.domisili || santriData?.status_domisili || "-"}</span>
+                      <span className="truncate">
+                        {santriData?.domisili || santriData?.status_domisili || "-"}
+                      </span>
                     </div>
                   </td>
-                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate overflow-hidden" title={getAlamatStr(santriData)}>
-                    <div className="flex items-center gap-1 truncate">
+
+                  {/* 6. Alamat */}
+                  <td className="px-3 text-zinc-400 truncate font-sans" title={getAlamatStr(santriData)}>
+                    <div className="flex items-center gap-1 min-w-0">
                       <Home className="w-3 h-3 text-zinc-500 shrink-0" />
                       <span className="truncate">{getAlamatStr(santriData)}</span>
                     </div>
                   </td>
-                  <td className="px-2.5 py-2 text-center font-bold text-emerald-400 whitespace-nowrap overflow-hidden">
+
+                  {/* 7. Waktu */}
+                  <td className="px-3 text-center font-mono font-bold text-emerald-400 whitespace-nowrap">
                     {log.waktu_wis || "-"}
                   </td>
-                  <td className="px-2.5 py-2 text-zinc-300 whitespace-nowrap font-sans truncate overflow-hidden">
-                    {petugasData?.name || petugasData?.username || "Sistem"}
+
+                  {/* 8. Petugas */}
+                  <td className="px-3 text-zinc-300 truncate font-sans" title={petugasData?.name || petugasData?.username || "Sistem"}>
+                    <span className="truncate block">
+                      {petugasData?.name || petugasData?.username || "Sistem"}
+                    </span>
                   </td>
-                  <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap truncate overflow-hidden" title={log.catatan_operasional || log.catatan || "-"}>
-                    {log.catatan_operasional || log.catatan || "-"}
+
+                  {/* 9. Catatan */}
+                  <td className="px-3 text-zinc-400 truncate font-sans" title={log.catatan_operasional || log.catatan || "-"}>
+                    <span className="truncate block">
+                      {log.catatan_operasional || log.catatan || "-"}
+                    </span>
                   </td>
                 </tr>
               );
@@ -2516,9 +2562,9 @@ export const RambutAuditSubTable: React.FC<Props> = ({
 ```tsx
 // src/features/rambut/components/subtables/RambutPengurusSubTable.tsx
 import React, { useMemo } from "react";
-import { parseNumericIdPps } from "../../hooks/useRambut";
 import type { PengurusItem } from "../RambutQueueTable";
 import { StatusBadge, EmptyState } from "@/components/shared";
+import { parseNumericIdPps, getAlamatStr } from "@/utils/userHelpers";
 import { UserCheck, User, ShieldCheck, MapPin, Home, CheckCircle2, Trash2 } from "lucide-react";
 
 interface Props {
@@ -2528,12 +2574,6 @@ interface Props {
   perPage?: number;
   onDeletePengurus?: (item: PengurusItem) => void;
 }
-
-const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten].map((v) => v?.toString().trim()).filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
 
 export const RambutPengurusSubTable: React.FC<Props> = ({
   items,
@@ -2547,31 +2587,36 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
   }, [items]);
 
   return (
-    <table className="w-full text-xs text-left border-collapse table-auto">
+    <table className="w-full min-w-[980px] text-xs text-left border-collapse table-fixed select-none font-sans">
       <thead>
-        <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
-          <th className="px-2.5 py-2.5 w-8 text-center">No</th>
-          <th className="px-2.5 py-2.5 w-20">ID PPS</th>
-          <th className="px-2.5 py-2.5 min-w-[150px]">Nama</th>
-          <th className="px-2.5 py-2.5 w-32 text-center">Jabatan</th>
-          <th className="px-2.5 py-2.5 w-28 whitespace-nowrap">Domisili</th>
-          <th className="px-2.5 py-2.5 min-w-[140px] max-w-[180px]">Alamat</th>
-          <th className="px-2.5 py-2.5 w-24 text-center">Status</th>
-          <th className="px-2.5 py-2.5 w-16 text-center">Aksi</th>
+        <tr className="h-10 bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <th className="px-2.5 w-[45px] text-center">No</th>
+          <th className="px-2.5 w-[95px]">ID PPS</th>
+          <th className="px-2.5 w-[220px]">Nama</th>
+          <th className="px-2.5 w-[160px] text-center">Jabatan</th>
+          <th className="px-2.5 w-[110px]">Domisili</th>
+          <th className="px-2.5 w-[180px]">Alamat</th>
+          <th className="px-2.5 w-[95px] text-center">Status</th>
+          <th className="px-2.5 w-[65px] text-center">Aksi</th>
         </tr>
       </thead>
-      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
+      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
         {isLoading ? (
-          Array.from({ length: 5 }).map((_, idx) => (
-            <tr key={`skel-p-${idx}`} className="animate-pulse">
-              {Array.from({ length: 8 }).map((_, c) => (
-                <td key={c} className="px-2.5 py-2"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
-              ))}
+          Array.from({ length: perPage || 5 }).map((_, idx) => (
+            <tr key={`skel-p-${idx}`} className="h-10 animate-pulse">
+              <td className="px-2.5 text-center"><div className="h-3.5 bg-zinc-800 rounded w-4 mx-auto" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-36" /></td>
+              <td className="px-2.5 text-center"><div className="h-4 bg-zinc-800 rounded w-24 mx-auto" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-28" /></td>
+              <td className="px-2.5 text-center"><div className="h-4 bg-zinc-800 rounded w-14 mx-auto" /></td>
+              <td className="px-2.5 text-center"><div className="h-5 bg-zinc-800 rounded w-6 mx-auto" /></td>
             </tr>
           ))
         ) : sortedItems.length === 0 ? (
           <tr>
-            <td colSpan={8} className="px-6 py-8">
+            <td colSpan={8} className="px-6 py-12">
               <EmptyState
                 icon={<UserCheck className="w-6 h-6 text-zinc-500" />}
                 title="Tidak Ada Pengurus Ditemukan"
@@ -2584,31 +2629,59 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
             const rowNo = (page - 1) * perPage + idx + 1;
             const santriData = p.expand?.santri;
             const isAktif = p.status_aktif !== false;
+
             return (
-              <tr key={p.id} className="hover:bg-zinc-800/40 transition-colors">
-                <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
-                <td className="px-2.5 py-2 font-bold text-purple-400 whitespace-nowrap">
-                  <span className="px-1.5 py-0.5 rounded bg-purple-500/10 border border-purple-500/20">{p.id_pps}</span>
+              <tr key={p.id} className="h-10 hover:bg-zinc-800/40 transition-colors">
+                {/* 1. No */}
+                <td className="px-2.5 text-center text-zinc-500 font-mono text-[11px] truncate">
+                  {rowNo}
                 </td>
-                <td className="px-2.5 py-2 font-sans whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
-                    <User className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                    <span className="font-semibold text-zinc-200">{santriData?.nama || "Pengurus / Petugas"}</span>
-                  </div>
-                </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
-                    <ShieldCheck className="w-3 h-3 text-indigo-400" />
-                    <span>{p.jabatan || "Petugas Cukur"}</span>
+
+                {/* 2. ID PPS */}
+                <td className="px-2.5 whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded font-mono font-bold text-purple-300 bg-purple-500/10 border border-purple-500/20">
+                    {p.id_pps}
                   </span>
                 </td>
-                <td className="px-2.5 py-2 text-purple-300 whitespace-nowrap font-sans">
-                  <div className="flex items-center gap-1"><MapPin className="w-3 h-3 text-purple-400 shrink-0" /><span>{santriData?.domisili || santriData?.status_domisili || "-"}</span></div>
+
+                {/* 3. Nama */}
+                <td className="px-2.5 truncate" title={santriData?.nama || "Pengurus / Petugas"}>
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <User className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                    <span className="font-semibold text-zinc-200 truncate">
+                      {santriData?.nama || "Pengurus / Petugas"}
+                    </span>
+                  </div>
                 </td>
-                <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate max-w-[170px]" title={getAlamatStr(santriData)}>
-                  <div className="flex items-center gap-1"><Home className="w-3 h-3 text-zinc-500 shrink-0" /><span className="truncate">{getAlamatStr(santriData)}</span></div>
+
+                {/* 4. Jabatan */}
+                <td className="px-2.5 text-center whitespace-nowrap" title={p.jabatan || "Petugas Cukur"}>
+                  <span className="inline-flex items-center gap-1 max-w-[150px] px-2 py-0.5 rounded text-[10px] font-bold bg-indigo-500/10 text-indigo-300 border border-indigo-500/20 truncate">
+                    <ShieldCheck className="w-3 h-3 text-indigo-400 shrink-0" />
+                    <span className="truncate">{p.jabatan || "Petugas Cukur"}</span>
+                  </span>
                 </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
+
+                {/* 5. Domisili */}
+                <td className="px-2.5 text-purple-300 truncate font-sans">
+                  <div className="flex items-center gap-1 min-w-0">
+                    <MapPin className="w-3 h-3 text-purple-400 shrink-0" />
+                    <span className="truncate">
+                      {santriData?.domisili || santriData?.status_domisili || "-"}
+                    </span>
+                  </div>
+                </td>
+
+                {/* 6. Alamat */}
+                <td className="px-2.5 text-zinc-400 truncate font-sans" title={getAlamatStr(santriData)}>
+                  <div className="flex items-center gap-1 min-w-0">
+                    <Home className="w-3 h-3 text-zinc-500 shrink-0" />
+                    <span className="truncate">{getAlamatStr(santriData)}</span>
+                  </div>
+                </td>
+
+                {/* 7. Status */}
+                <td className="px-2.5 text-center whitespace-nowrap">
                   <StatusBadge
                     variant={isAktif ? "success" : "danger"}
                     icon={isAktif ? <CheckCircle2 className="w-3 h-3" /> : undefined}
@@ -2616,9 +2689,16 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
                     {isAktif ? "Aktif" : "Purna"}
                   </StatusBadge>
                 </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap">
+
+                {/* 8. Aksi */}
+                <td className="px-2.5 text-center whitespace-nowrap">
                   {onDeletePengurus && (
-                    <button type="button" onClick={() => onDeletePengurus(p)} className="p-1 rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 transition-colors" title="Hapus">
+                    <button
+                      type="button"
+                      onClick={() => onDeletePengurus(p)}
+                      className="w-6 h-6 inline-flex items-center justify-center rounded-md bg-zinc-900 border border-zinc-800 text-zinc-400 hover:text-rose-400 hover:bg-rose-500/10 hover:border-rose-500/30 transition-colors active:scale-95"
+                      title="Hapus Pengurus"
+                    >
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   )}
@@ -2637,14 +2717,12 @@ export const RambutPengurusSubTable: React.FC<Props> = ({
 ```tsx
 // src/features/rambut/components/subtables/RambutQueueSubTable.tsx
 import React, { useMemo, useState } from "react";
-import {
-  parseNumericIdPps,
-  type WajibSetorExpanded,
-} from "../../hooks/useRambut";
+import type { WajibSetorExpanded } from "../../types";
 import { pb } from "@/lib/pocketbase";
 import { triggerAutoPrintReceipt } from "../../utils/posPrinter";
 import { fetchHijriByDate } from "@/features/kalender";
 import { StatusBadge, EmptyState } from "@/components/shared";
+import { parseNumericIdPps, getAlamatStr } from "@/utils/userHelpers";
 import {
   Scissors,
   User,
@@ -2668,14 +2746,6 @@ interface Props {
   onOpenExecuteModal: (item: WajibSetorExpanded) => void;
   onOpenDispensasiModal: (item: WajibSetorExpanded) => void;
 }
-
-const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten]
-    .map((v) => v?.toString().trim())
-    .filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
 
 export const RambutQueueSubTable: React.FC<Props> = ({
   items,
@@ -2711,6 +2781,7 @@ export const RambutQueueSubTable: React.FC<Props> = ({
         const kelasVal = santri?.kelas ? `${santri.kelas}` : "";
         const tingkatanVal = santri?.tingkatan || "";
         const kelasTingkatanStr = [kelasVal, tingkatanVal].filter(Boolean).join(" ");
+
         triggerAutoPrintReceipt({
           idPps: log.id_pps || santri?.id_pps || "-",
           nama: santri?.nama || "Santri",
@@ -2730,35 +2801,39 @@ export const RambutQueueSubTable: React.FC<Props> = ({
   };
 
   return (
-    <table className="w-full text-xs text-left border-collapse table-auto">
+    <table className="w-full min-w-[1050px] text-xs text-left border-collapse table-fixed select-none font-sans">
       <thead>
-        <tr className="bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider select-none">
-          <th className="px-2.5 py-2.5 w-8 text-center">No</th>
-          <th className="px-2.5 py-2.5 w-20">ID PPS</th>
-          <th className="px-2.5 py-2.5 min-w-[150px]">Nama</th>
-          <th className="px-2.5 py-2.5 w-28 whitespace-nowrap">Domisili</th>
-          <th className="px-2.5 py-2.5 min-w-[140px] max-w-[180px]">Alamat</th>
-          <th className="px-2.5 py-2.5 min-w-[130px]">Tingkatan / Kelas</th>
-          <th className="px-2.5 py-2.5 w-24 text-center">Kategori</th>
-          <th className="px-2.5 py-2.5 w-24 text-center">Status</th>
-          <th className="px-2.5 py-2.5 w-28 text-center">Aksi</th>
+        <tr className="h-10 bg-zinc-950 border-b border-zinc-800 text-[11px] font-semibold text-zinc-400 uppercase tracking-wider">
+          <th className="px-2.5 w-[45px] text-center">No</th>
+          <th className="px-2.5 w-[95px]">ID PPS</th>
+          <th className="px-2.5 w-[210px]">Nama</th>
+          <th className="px-2.5 w-[110px]">Domisili</th>
+          <th className="px-2.5 w-[170px]">Alamat</th>
+          <th className="px-2.5 w-[130px]">Tingkatan / Kelas</th>
+          <th className="px-2.5 w-[115px] text-center">Kategori</th>
+          <th className="px-2.5 w-[95px] text-center">Status</th>
+          <th className="px-2.5 w-[135px] text-center">Aksi</th>
         </tr>
       </thead>
 
-      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40 font-sans">
+      <tbody className="divide-y divide-zinc-800/60 bg-zinc-900/40">
         {isLoading ? (
-          Array.from({ length: 8 }).map((_, idx) => (
-            <tr key={`skel-q-${idx}`} className="animate-pulse">
-              {Array.from({ length: 9 }).map((_, c) => (
-                <td key={c} className="px-2.5 py-2">
-                  <div className="h-4 bg-zinc-800 rounded w-16 mx-auto" />
-                </td>
-              ))}
+          Array.from({ length: perPage || 8 }).map((_, idx) => (
+            <tr key={`skel-q-${idx}`} className="h-10 animate-pulse">
+              <td className="px-2.5 text-center"><div className="h-3.5 bg-zinc-800 rounded w-4 mx-auto" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-16" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-36" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-20" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-28" /></td>
+              <td className="px-2.5"><div className="h-4 bg-zinc-800 rounded w-20" /></td>
+              <td className="px-2.5 text-center"><div className="h-4 bg-zinc-800 rounded w-16 mx-auto" /></td>
+              <td className="px-2.5 text-center"><div className="h-4 bg-zinc-800 rounded w-14 mx-auto" /></td>
+              <td className="px-2.5 text-center"><div className="h-6 bg-zinc-800 rounded w-24 mx-auto" /></td>
             </tr>
           ))
         ) : sortedItems.length === 0 ? (
           <tr>
-            <td colSpan={9} className="px-6 py-8">
+            <td colSpan={9} className="px-6 py-12">
               <EmptyState
                 icon={<Scissors className="w-6 h-6 text-zinc-500" />}
                 title="Tidak Ada Data Antrean Wajib Setor"
@@ -2770,46 +2845,63 @@ export const RambutQueueSubTable: React.FC<Props> = ({
           sortedItems.map((row, index) => {
             const rowNo = (page - 1) * perPage + index + 1;
             const santriData = row.expand?.santri;
+
             return (
-              <tr key={row.id} className="hover:bg-zinc-800/40 transition-colors">
-                <td className="px-2.5 py-2 text-center text-zinc-500">{rowNo}</td>
-                <td className="px-2.5 py-2 font-bold text-indigo-300 whitespace-nowrap">
-                  <span className="px-1.5 py-0.5 rounded bg-indigo-500/10 border border-indigo-500/20">
+              <tr key={row.id} className="h-10 hover:bg-zinc-800/40 transition-colors">
+                {/* 1. No */}
+                <td className="px-2.5 text-center text-zinc-500 font-mono text-[11px] truncate">
+                  {rowNo}
+                </td>
+
+                {/* 2. ID PPS */}
+                <td className="px-2.5 whitespace-nowrap">
+                  <span className="inline-block px-1.5 py-0.5 rounded font-mono font-bold text-indigo-300 bg-indigo-500/10 border border-indigo-500/20">
                     {row.id_pps}
                   </span>
                 </td>
-                <td className="px-2.5 py-2 font-sans whitespace-nowrap">
-                  <div className="flex items-center gap-1.5">
+
+                {/* 3. Nama */}
+                <td className="px-2.5 truncate" title={santriData?.nama || "Tanpa Nama"}>
+                  <div className="flex items-center gap-1.5 min-w-0">
                     <User className="w-3.5 h-3.5 text-zinc-500 shrink-0" />
-                    <span className="font-semibold text-zinc-200 group-hover:text-indigo-300 transition-colors">
+                    <span className="font-semibold text-zinc-200 truncate">
                       {santriData?.nama || "Tanpa Nama"}
                     </span>
                   </div>
                 </td>
-                <td className="px-2.5 py-2 text-indigo-300 whitespace-nowrap font-sans">
-                  <div className="flex items-center gap-1">
+
+                {/* 4. Domisili */}
+                <td className="px-2.5 text-indigo-300 truncate font-sans">
+                  <div className="flex items-center gap-1 min-w-0">
                     <MapPin className="w-3 h-3 text-indigo-400 shrink-0" />
-                    <span>{santriData?.domisili || santriData?.status_domisili || "-"}</span>
+                    <span className="truncate">
+                      {santriData?.domisili || santriData?.status_domisili || "-"}
+                    </span>
                   </div>
                 </td>
-                <td
-                  className="px-2.5 py-2 text-zinc-400 whitespace-nowrap font-sans truncate max-w-[170px]"
-                  title={getAlamatStr(santriData)}
-                >
-                  <div className="flex items-center gap-1">
+
+                {/* 5. Alamat */}
+                <td className="px-2.5 text-zinc-400 truncate font-sans" title={getAlamatStr(santriData)}>
+                  <div className="flex items-center gap-1 min-w-0">
                     <Home className="w-3 h-3 text-zinc-500 shrink-0" />
                     <span className="truncate">{getAlamatStr(santriData)}</span>
                   </div>
                 </td>
-                <td className="px-2.5 py-2 text-zinc-400 whitespace-nowrap">
+
+                {/* 6. Tingkatan / Kelas */}
+                <td className="px-2.5 text-zinc-400 truncate font-mono text-[11px]">
                   {santriData?.tingkatan || "-"} / {santriData?.kelas || "-"}
                 </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap">
+
+                {/* 7. Kategori */}
+                <td className="px-2.5 text-center whitespace-nowrap">
                   <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold uppercase bg-indigo-500/10 border border-indigo-500/20 text-indigo-300">
                     {row.kategori_wajib?.replace(/_/g, " ")}
                   </span>
                 </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap font-sans">
+
+                {/* 8. Status */}
+                <td className="px-2.5 text-center whitespace-nowrap">
                   {row.status_setor === "sudah" ? (
                     <StatusBadge variant="success" icon={<CheckCircle2 className="w-3 h-3" />}>
                       Sudah
@@ -2824,52 +2916,58 @@ export const RambutQueueSubTable: React.FC<Props> = ({
                     </StatusBadge>
                   )}
                 </td>
-                <td className="px-2.5 py-2 text-center whitespace-nowrap">
-                  {row.status_setor === "belum" ? (
-                    canExecute ? (
-                      <div className="flex items-center justify-center gap-1 font-sans">
-                        <button
-                          type="button"
-                          onClick={() => onOpenExecuteModal(row)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold shadow-sm transition-colors"
-                        >
-                          <Scissors className="w-3 h-3" /> Setor
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => onOpenDispensasiModal(row)}
-                          className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-purple-300 hover:bg-purple-500/10 text-[10px] font-semibold transition-colors"
-                        >
-                          <ShieldAlert className="w-3 h-3 text-purple-400" /> Izin
-                        </button>
-                      </div>
-                    ) : (
-                      <div
-                        className="inline-flex items-center justify-center gap-1 px-2 py-1 rounded-lg bg-zinc-950/60 border border-zinc-800 text-zinc-500 text-[10px] font-mono cursor-not-allowed select-none"
-                        title={disabledReason}
-                      >
-                        <Lock className="w-3 h-3 text-zinc-600" />
-                        <span>Terkunci</span>
-                      </div>
-                    )
-                  ) : row.status_setor === "sudah" ? (
-                    <button
-                      type="button"
-                      disabled={printingId === row.id}
-                      onClick={() => handlePrintFromRiwayat(row.id)}
-                      className="inline-flex items-center gap-1 px-2 py-1 rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold transition-colors disabled:opacity-50"
-                      title="Cetak Ulang Bukti Setor"
-                    >
-                      {printingId === row.id ? (
-                        <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />
+
+                {/* 9. Aksi: Slot Terkunci Mutlak */}
+                <td className="px-2.5 text-center whitespace-nowrap">
+                  <div className="w-[125px] h-7 mx-auto flex items-center justify-center">
+                    {row.status_setor === "belum" ? (
+                      canExecute ? (
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => onOpenExecuteModal(row)}
+                            className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-semibold shadow-sm transition-colors active:scale-95"
+                          >
+                            <Scissors className="w-3 h-3" />
+                            <span>Setor</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => onOpenDispensasiModal(row)}
+                            className="inline-flex items-center gap-1 h-6 px-2 rounded-md bg-zinc-900 border border-zinc-800 text-purple-300 hover:bg-purple-500/10 hover:border-purple-500/30 text-[10px] font-semibold transition-colors active:scale-95"
+                          >
+                            <ShieldAlert className="w-3 h-3 text-purple-400" />
+                            <span>Izin</span>
+                          </button>
+                        </div>
                       ) : (
-                        <Printer className="w-3 h-3 text-emerald-400" />
-                      )}
-                      <span>Struk</span>
-                    </button>
-                  ) : (
-                    <span className="text-zinc-500">-</span>
-                  )}
+                        <div
+                          className="inline-flex items-center justify-center gap-1 h-6 px-2.5 rounded-md bg-zinc-950/80 border border-zinc-800 text-zinc-500 text-[10px] font-mono cursor-not-allowed select-none"
+                          title={disabledReason}
+                        >
+                          <Lock className="w-3 h-3 text-zinc-600" />
+                          <span>Terkunci</span>
+                        </div>
+                      )
+                    ) : row.status_setor === "sudah" ? (
+                      <button
+                        type="button"
+                        disabled={printingId === row.id}
+                        onClick={() => handlePrintFromRiwayat(row.id)}
+                        className="inline-flex items-center justify-center gap-1.5 h-6 px-3 rounded-md bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-[10px] font-semibold transition-colors active:scale-95 disabled:opacity-50"
+                        title="Cetak Ulang Bukti Setor"
+                      >
+                        {printingId === row.id ? (
+                          <Loader2 className="w-3 h-3 text-emerald-400 animate-spin" />
+                        ) : (
+                          <Printer className="w-3 h-3 text-emerald-400" />
+                        )}
+                        <span>Struk</span>
+                      </button>
+                    ) : (
+                      <span className="text-zinc-600 font-mono text-sm leading-none">-</span>
+                    )}
+                  </div>
                 </td>
               </tr>
             );
@@ -3044,6 +3142,1088 @@ export const QueueToolbar: React.FC<QueueToolbarProps> = ({
 };
 ```
 
+### `src/features/rambut/hooks/api/index.ts`
+```typescript
+export * from "./usePeriodeRambut";
+export * from "./useQueueRambut";
+export * from "./useTransaksiRambut";
+```
+
+### `src/features/rambut/hooks/api/usePeriodeRambut.ts`
+```typescript
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { pb } from "@/lib/pocketbase";
+import { parsePocketBaseError } from "@/utils/errorHandler";
+import { toLocalYMD } from "@/utils/dateHelpers";
+import type {
+  PeriodeRambutResponse,
+  PeriodeRambutStatusPeriodeOptions,
+} from "@/types/pocketbase-types";
+import type { CreatePeriodePayload } from "../../types";
+
+export function useActivePeriode() {
+  return useQuery<PeriodeRambutResponse | null>({
+    queryKey: ["rambut-periode-aktif"],
+    queryFn: async () => {
+      try {
+        return await pb
+          .collection("periode_rambut")
+          .getFirstListItem<PeriodeRambutResponse>('status_periode = "aktif"');
+      } catch {
+        return null;
+      }
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
+export function usePeriodeList() {
+  return useQuery<PeriodeRambutResponse[]>({
+    queryKey: ["rambut-periode-list"],
+    queryFn: async () => {
+      return await pb
+        .collection("periode_rambut")
+        .getFullList<PeriodeRambutResponse>({ sort: "-created" });
+    },
+  });
+}
+
+export function useCreatePeriode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: CreatePeriodePayload) => {
+      try {
+        const existingList = await pb
+          .collection("periode_rambut")
+          .getFullList<PeriodeRambutResponse>();
+
+        const startNew = toLocalYMD(payload.tanggal_mulai);
+        const endNew = toLocalYMD(payload.tanggal_selesai);
+
+        const isOverlap = existingList.some((p) => {
+          const startExist = toLocalYMD(p.tanggal_mulai);
+          const endExist = toLocalYMD(p.tanggal_selesai);
+          return startNew <= endExist && endNew >= startExist;
+        });
+
+        if (isOverlap) {
+          throw new Error("Gagal menyimpan! Rentang tanggal bertabrakan dengan periode yang sudah ada.");
+        }
+
+        return await pb
+          .collection("periode_rambut")
+          .create<PeriodeRambutResponse>({
+            ...payload,
+            status_periode: payload.status_periode || "draft",
+          });
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
+    },
+  });
+}
+
+export function useUpdateStatusPeriode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      periodeId,
+      status,
+    }: {
+      periodeId: string;
+      status: PeriodeRambutStatusPeriodeOptions;
+    }) => {
+      try {
+        if (status === "aktif") {
+          const activeList = await pb
+            .collection("periode_rambut")
+            .getFullList<PeriodeRambutResponse>({
+              filter: 'status_periode = "aktif"',
+            });
+
+          const batch = pb.createBatch();
+
+          for (const item of activeList) {
+            if (item.id !== periodeId) {
+              batch.collection("periode_rambut").update(item.id, { status_periode: "draft" });
+            }
+          }
+
+          batch.collection("periode_rambut").update(periodeId, { status_periode: "aktif" });
+          await batch.send();
+
+          return await pb.collection("periode_rambut").getOne<PeriodeRambutResponse>(periodeId);
+        }
+
+        return await pb
+          .collection("periode_rambut")
+          .update(periodeId, { status_periode: status });
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
+    },
+  });
+}
+
+export function useDeletePeriode() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (periodeId: string) => {
+      try {
+        const queueItems = await pb
+          .collection("wajib_setor_rambut")
+          .getFullList({ filter: `periode = "${periodeId}"`, fields: "id" });
+
+        if (queueItems.length > 0) {
+          let batch = pb.createBatch();
+          let count = 0;
+          for (const item of queueItems) {
+            batch.collection("wajib_setor_rambut").delete(item.id);
+            count++;
+            if (count >= 100) {
+              await batch.send();
+              batch = pb.createBatch();
+              count = 0;
+            }
+          }
+          if (count > 0) await batch.send();
+        }
+        return await pb.collection("periode_rambut").delete(periodeId);
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
+    },
+  });
+}
+```
+
+### `src/features/rambut/hooks/api/useQueueRambut.ts`
+```typescript
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { pb } from "@/lib/pocketbase";
+import { parsePocketBaseError } from "@/utils/errorHandler";
+import type {
+  PeriodeRambutResponse,
+  WajibSetorRambutResponse,
+  PengurusSantriResponse,
+  MasterResponse,
+  WajibSetorRambutKategoriWajibOptions,
+} from "@/types/pocketbase-types";
+import type { WajibSetorExpanded } from "../../types";
+
+export function useRambutStats(periodeId?: string) {
+  return useQuery({
+    queryKey: ["rambut-stats-real", periodeId],
+    queryFn: async () => {
+      if (!periodeId) {
+        return { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
+      }
+
+      const [totalRes, sudahRes, belumRes, dispensasiRes] = await Promise.all([
+        pb.collection("wajib_setor_rambut").getList(1, 1, { filter: `periode = "${periodeId}"`, fields: "id" }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "sudah"`,
+          fields: "id",
+        }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "belum"`,
+          fields: "id",
+        }),
+        pb.collection("wajib_setor_rambut").getList(1, 1, {
+          filter: `periode = "${periodeId}" && status_setor = "dispensasi"`,
+          fields: "id",
+        }),
+      ]);
+
+      return {
+        total: totalRes.totalItems,
+        sudah: sudahRes.totalItems,
+        belum: belumRes.totalItems,
+        dispensasi: dispensasiRes.totalItems,
+      };
+    },
+    enabled: !!periodeId,
+    staleTime: 1000 * 10,
+  });
+}
+
+export function useWajibSetorFullList(periodeId?: string) {
+  return useQuery({
+    queryKey: ["rambut-wajib-setor-list-full", periodeId],
+    queryFn: async () => {
+      if (!periodeId) return [];
+      return await pb
+        .collection("wajib_setor_rambut")
+        .getFullList<WajibSetorExpanded>({
+          filter: `periode = "${periodeId}"`,
+          expand: "santri",
+          batch: 500,
+        });
+    },
+    enabled: !!periodeId,
+    staleTime: 1000 * 15,
+  });
+}
+
+export function useGenerateWajibSetor() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (periodeId: string) => {
+      try {
+        const periode = await pb
+          .collection("periode_rambut")
+          .getOne<PeriodeRambutResponse>(periodeId);
+        if (!periode) throw new Error("Periode tidak ditemukan.");
+
+        const masterSantri = await pb
+          .collection("master")
+          .getFullList<MasterResponse>({
+            filter: 'status_aktif = true && status_domisili = "PPS" && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
+            batch: 500,
+          });
+
+        const pengurusList = await pb
+          .collection("pengurus_santri")
+          .getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
+            filter: "status_aktif = true",
+            expand: "santri",
+            batch: 500,
+          });
+
+        const personilTibkamList = await pb
+          .collection("personil_tibkam")
+          .getFullList<{ id_pps?: string; status_aktif?: boolean }>({
+            filter: "status_aktif = true",
+            fields: "id_pps,status_aktif",
+            batch: 500,
+          });
+
+        const excludedPersonilSet = new Set<string>();
+        personilTibkamList.forEach((p) => {
+          if (p.id_pps) excludedPersonilSet.add(p.id_pps.trim());
+        });
+
+        const targetEligibleMap = new Map<
+          string,
+          { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }
+        >();
+
+        for (const s of masterSantri) {
+          const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
+          if (!cleanIdPps || excludedPersonilSet.has(cleanIdPps)) continue;
+
+          const statusDomisili = (s.status_domisili || "").toString().trim().toUpperCase();
+          if (statusDomisili !== "PPS") continue;
+
+          const lowerTingkatan = (s.tingkatan || "").toLowerCase();
+          let kategori: WajibSetorRambutKategoriWajibOptions = "aliyah";
+          if (lowerTingkatan.includes("kuliah") || lowerTingkatan.includes("syariah")) {
+            kategori = "kuliah_syariah";
+          }
+          targetEligibleMap.set(cleanIdPps, { santriId: s.id, kategori });
+        }
+
+        for (const p of pengurusList) {
+          const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
+          if (!cleanIdPps || !p.expand?.santri || excludedPersonilSet.has(cleanIdPps)) continue;
+
+          const santriDomisili = (p.expand.santri.status_domisili || "").toString().trim().toUpperCase();
+          if (santriDomisili && santriDomisili !== "PPS") continue;
+
+          if (!targetEligibleMap.has(cleanIdPps)) {
+            targetEligibleMap.set(cleanIdPps, {
+              santriId: p.santri,
+              kategori: "pengurus_petugas",
+            });
+          }
+        }
+
+        const existingQueue = await pb
+          .collection("wajib_setor_rambut")
+          .getFullList<WajibSetorRambutResponse>({
+            filter: `periode = "${periodeId}"`,
+            batch: 500,
+          });
+
+        const existingMap = new Map<string, WajibSetorRambutResponse>();
+        existingQueue.forEach((item) => {
+          if (item.id_pps) existingMap.set(item.id_pps.trim(), item);
+        });
+
+        let batch = pb.createBatch();
+        let batchCount = 0;
+        let addedCount = 0;
+        let removedCount = 0;
+        let unchangedCount = 0;
+        let retainedHistoryCount = 0;
+
+        for (const [idPps, info] of targetEligibleMap.entries()) {
+          if (!existingMap.has(idPps)) {
+            batch.collection("wajib_setor_rambut").create({
+              periode: periodeId,
+              santri: info.santriId,
+              id_pps: idPps,
+              kategori_wajib: info.kategori,
+              status_setor: "belum",
+            });
+            addedCount++;
+            batchCount++;
+
+            if (batchCount >= 100) {
+              await batch.send();
+              batch = pb.createBatch();
+              batchCount = 0;
+            }
+          } else {
+            unchangedCount++;
+          }
+        }
+
+        for (const [idPps, record] of existingMap.entries()) {
+          if (!targetEligibleMap.has(idPps)) {
+            if (record.status_setor === "belum") {
+              batch.collection("wajib_setor_rambut").delete(record.id);
+              removedCount++;
+              batchCount++;
+
+              if (batchCount >= 100) {
+                await batch.send();
+                batch = pb.createBatch();
+                batchCount = 0;
+              }
+            } else {
+              retainedHistoryCount++;
+            }
+          }
+        }
+
+        if (batchCount > 0) await batch.send();
+
+        return {
+          addedCount,
+          removedCount,
+          retainedHistoryCount,
+          unchangedCount,
+        };
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
+    },
+  });
+}
+```
+
+### `src/features/rambut/hooks/api/useTransaksiRambut.ts`
+```typescript
+import { useQuery, useMutation, useQueryClient, keepPreviousData } from "@tanstack/react-query";
+import { pb } from "@/lib/pocketbase";
+import { parsePocketBaseError } from "@/utils/errorHandler";
+import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
+import { isDateWithinRange } from "@/utils/dateHelpers";
+import type { PeriodeRambutResponse, WajibSetorRambutResponse } from "@/types/pocketbase-types";
+import type { ExecuteSetorPayload, DispensasiPayload, RiwayatSetorExpanded } from "../../types";
+
+export function useExecuteSetorRambut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: ExecuteSetorPayload) => {
+      try {
+        const currentUser = pb.authStore.record || pb.authStore.model;
+        const isAdmin = currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+
+        const periode = await pb
+          .collection("periode_rambut")
+          .getOne<PeriodeRambutResponse>(payload.periodeId);
+        if (!periode) throw new Error("Periode tidak ditemukan.");
+
+        if (!isAdmin) {
+          if (periode.status_periode !== "aktif") {
+            throw new Error(`Setor ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
+          }
+
+          if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
+            throw new Error(`Setor ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
+          }
+        }
+
+        const nowIso = new Date().toISOString();
+        const detailWis = dapatkanDetailWis();
+        const currentUserId = currentUser?.id || "";
+
+        const updatedWajibSetor = await pb
+          .collection("wajib_setor_rambut")
+          .update<WajibSetorRambutResponse>(payload.wajibSetorId, {
+            status_setor: "sudah",
+            tanggal_setor: nowIso,
+          });
+
+        await pb.collection("riwayat_setor_rambut").create({
+          wajib_setor: payload.wajibSetorId,
+          santri: payload.santriId,
+          id_pps: payload.id_pps,
+          periode: payload.periodeId,
+          tanggal_setor: nowIso,
+          waktu_wis: detailWis.stringLengkap,
+          petugas_eksekutor: currentUserId,
+          catatan: payload.catatan || "",
+        });
+
+        return updatedWajibSetor;
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
+    },
+  });
+}
+
+export function useDispensasiRambut() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: DispensasiPayload) => {
+      try {
+        const currentUser = pb.authStore.record || pb.authStore.model;
+        const isAdmin = currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+
+        const periode = await pb
+          .collection("periode_rambut")
+          .getOne<PeriodeRambutResponse>(payload.periodeId);
+        if (!periode) throw new Error("Periode tidak ditemukan.");
+
+        if (!isAdmin) {
+          if (periode.status_periode !== "aktif") {
+            throw new Error(`Pemberian izin ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`);
+          }
+
+          if (!isDateWithinRange(new Date(), periode.tanggal_mulai, periode.tanggal_selesai)) {
+            throw new Error(`Pemberian izin ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`);
+          }
+        }
+
+        const nowIso = new Date().toISOString();
+        const detailWis = dapatkanDetailWis();
+        const currentUserId = currentUser?.id || "";
+
+        const updatedWajibSetor = await pb
+          .collection("wajib_setor_rambut")
+          .update(payload.wajibSetorId, {
+            status_setor: "dispensasi",
+            tanggal_setor: nowIso,
+          });
+
+        await pb.collection("riwayat_setor_rambut").create({
+          wajib_setor: payload.wajibSetorId,
+          santri: payload.santriId,
+          id_pps: payload.id_pps,
+          periode: payload.periodeId,
+          tanggal_setor: nowIso,
+          waktu_wis: detailWis.stringLengkap,
+          petugas_eksekutor: currentUserId,
+          catatan: `[DISPENSASI]: ${payload.catatan || "Izin berhalangan"}`,
+        });
+
+        return updatedWajibSetor;
+      } catch (error) {
+        throw new Error(parsePocketBaseError(error));
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["rambut-wajib-setor-list-full"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
+      queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
+    },
+  });
+}
+
+export function useRiwayatSetorList(periodeId?: string) {
+  return useQuery({
+    queryKey: ["rambut-riwayat-list", periodeId],
+    queryFn: async () => {
+      const filter = periodeId ? `periode = "${periodeId}"` : "";
+      return await pb
+        .collection("riwayat_setor_rambut")
+        .getFullList<RiwayatSetorExpanded>({
+          filter,
+          expand: "santri,petugas_eksekutor,periode",
+          sort: "-tanggal_setor",
+          batch: 500,
+        });
+    },
+    enabled: !!periodeId,
+    placeholderData: keepPreviousData,
+  });
+}
+```
+
+### `src/features/rambut/hooks/index.ts`
+```typescript
+export * from "./api";
+export * from "./page";
+export * from "./useRapidScanPos";
+export * from "./useImportPengurus";
+```
+
+### `src/features/rambut/hooks/page/index.ts`
+```typescript
+export * from "./useRambutQueueTab";
+export * from "./useRambutPengurusTab";
+export * from "./useRambutAuditTab";
+export * from "./useRambutModals";
+export * from "./useRambutPage";
+```
+
+### `src/features/rambut/hooks/page/useRambutAuditTab.ts`
+```typescript
+import React, { useState, useMemo, useEffect } from "react";
+import { useRiwayatSetorList } from "../api/useTransaksiRambut";
+import { toLocalYMD } from "@/utils/dateHelpers";
+import { parseNumericIdPps } from "@/utils/userHelpers";
+import { HijriText } from "@/components/shared/HijriText";
+
+export function useRambutAuditTab(currentPeriodeId?: string, perPage: number = 15) {
+  const [auditPage, setAuditPage] = useState(1);
+  const [auditSearch, setAuditSearch] = useState("");
+  const [auditDateFilter, setAuditDateFilter] = useState("all");
+
+  useEffect(() => {
+    setAuditPage(1);
+  }, [auditSearch, auditDateFilter]);
+
+  const { data: historyData = [], isLoading: isHistoryLoading } = useRiwayatSetorList(currentPeriodeId);
+
+  const availableHijriDateOptions = useMemo(() => {
+    if (!historyData) return [];
+    const map = new Map<string, string>();
+    historyData.forEach((item: any) => {
+      const dateKey = toLocalYMD(item.tanggal_setor || item.created);
+      if (dateKey && !map.has(dateKey)) {
+        map.set(dateKey, dateKey);
+      }
+    });
+    return Array.from(map.keys()).map((dateStr) => ({
+      value: dateStr,
+      label: React.createElement(HijriText, { date: dateStr }),
+    }));
+  }, [historyData]);
+
+  const filteredAuditItems = useMemo(() => {
+    if (!historyData) return [];
+    const list = historyData.filter((item: any) => {
+      const santriNama = item.expand?.santri?.nama || "";
+      const petugasNama =
+        item.expand?.petugas_eksekutor?.name ||
+        item.expand?.petugas_eksekutor?.username ||
+        "";
+      const catatan = item.catatan_operasional || item.catatan || "";
+
+      const matchSearch =
+        !auditSearch ||
+        (item.id_pps || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
+        santriNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        petugasNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
+        catatan.toLowerCase().includes(auditSearch.toLowerCase());
+
+      const itemDateKey = toLocalYMD(item.tanggal_setor || item.created);
+      const matchDate = auditDateFilter === "all" || itemDateKey === auditDateFilter;
+
+      return matchSearch && matchDate;
+    });
+
+    return list.sort(
+      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
+  }, [historyData, auditSearch, auditDateFilter]);
+
+  const totalAuditItems = filteredAuditItems.length;
+  const totalAuditPages = Math.ceil(totalAuditItems / perPage);
+
+  const paginatedAuditItems = useMemo(() => {
+    const start = (auditPage - 1) * perPage;
+    return filteredAuditItems.slice(start, start + perPage);
+  }, [filteredAuditItems, auditPage, perPage]);
+
+  return {
+    auditPage,
+    setAuditPage,
+    auditSearch,
+    setAuditSearch,
+    auditDateFilter,
+    setAuditDateFilter,
+    availableHijriDateOptions,
+    filteredAuditItems,
+    paginatedAuditItems,
+    totalAuditItems,
+    totalAuditPages,
+    isHistoryLoading,
+  };
+}
+```
+
+### `src/features/rambut/hooks/page/useRambutModals.ts`
+```typescript
+import { useState } from "react";
+import { pb } from "@/lib/pocketbase";
+import { useToast } from "@/context/ToastContext";
+import {
+  useCreatePeriode,
+  useUpdateStatusPeriode,
+  useDeletePeriode,
+} from "../api/usePeriodeRambut";
+import { useGenerateWajibSetor } from "../api/useQueueRambut";
+import { useExecuteSetorRambut, useDispensasiRambut } from "../api/useTransaksiRambut";
+import type { WajibSetorExpanded, CreatePeriodePayload } from "../../types";
+import type { PengurusItem } from "../../components/RambutQueueTable";
+import type {
+  PeriodeRambutResponse,
+  PeriodeRambutStatusPeriodeOptions,
+} from "@/types/pocketbase-types";
+
+export type RambutModalType =
+  | "CREATE_PERIODE"
+  | "MANAGE_PERIODE"
+  | "MANAGE_PENGURUS"
+  | "POS"
+  | "IMPORT_PENGURUS"
+  | "CONFIRM_GENERATE";
+
+interface UseRambutModalsProps {
+  currentPeriodeId?: string;
+  hasQueue: boolean;
+  selectedPeriode: PeriodeRambutResponse | null;
+  setSelectedPeriode: (p: PeriodeRambutResponse | null) => void;
+  refetchQueue: () => void;
+  refetchPengurus: () => void;
+}
+
+export function useRambutModals({
+  currentPeriodeId,
+  hasQueue,
+  selectedPeriode,
+  setSelectedPeriode,
+  refetchQueue,
+  refetchPengurus,
+}: UseRambutModalsProps) {
+  const { showSuccess, showError } = useToast();
+
+  const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
+  const [selectedExecuteItem, setSelectedExecuteItem] = useState<WajibSetorExpanded | null>(null);
+  const [selectedDispensasiItem, setSelectedDispensasiItem] = useState<WajibSetorExpanded | null>(null);
+  const [selectedDeletePengurus, setSelectedDeletePengurus] = useState<PengurusItem | null>(null);
+  const [isDeletingPengurus, setIsDeletingPengurus] = useState(false);
+
+  const createPeriodeMutation = useCreatePeriode();
+  const updateStatusPeriodeMutation = useUpdateStatusPeriode();
+  const deletePeriodeMutation = useDeletePeriode();
+  const generateQueueMutation = useGenerateWajibSetor();
+  const executeSetorMutation = useExecuteSetorRambut();
+  const dispensasiMutation = useDispensasiRambut();
+
+  const handleCreatePeriode = (payload: CreatePeriodePayload) => {
+    createPeriodeMutation.mutate(payload, {
+      onSuccess: () => {
+        showSuccess(`Periode ${payload.nama_periode} berhasil dibuat!`, "Periode Baru");
+        setActiveModal(null);
+      },
+      onError: (err) => showError(err.message, "Gagal Buat Periode"),
+    });
+  };
+
+  const handleUpdateStatusPeriode = (
+    periodeId: string,
+    status: PeriodeRambutStatusPeriodeOptions,
+  ) => {
+    updateStatusPeriodeMutation.mutate(
+      { periodeId, status },
+      {
+        onSuccess: () => {
+          showSuccess(`Status periode diubah ke ${status.toUpperCase()}`, "Status Diperbarui");
+        },
+        onError: (err) => showError(err.message, "Gagal Ubah Status"),
+      },
+    );
+  };
+
+  const handleDeletePeriode = (periodeId: string) => {
+    deletePeriodeMutation.mutate(periodeId, {
+      onSuccess: () => {
+        showSuccess("Periode berhasil dihapus!", "Periode Dihapus");
+        if (selectedPeriode?.id === periodeId) setSelectedPeriode(null);
+      },
+      onError: (err) => showError(err.message, "Gagal Hapus Periode"),
+    });
+  };
+
+  const handleConfirmSetor = (catatan: string) => {
+    if (!selectedExecuteItem || !currentPeriodeId) return;
+    executeSetorMutation.mutate(
+      {
+        wajibSetorId: selectedExecuteItem.id,
+        santriId: selectedExecuteItem.santri || selectedExecuteItem.expand?.santri?.id || "",
+        id_pps: selectedExecuteItem.id_pps,
+        periodeId: currentPeriodeId,
+        catatan,
+      },
+      {
+        onSuccess: () => {
+          showSuccess(`Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`, "Verifikasi Sukses");
+          setSelectedExecuteItem(null);
+        },
+        onError: (err) => showError(err.message, "Gagal Verifikasi"),
+      },
+    );
+  };
+
+  const handleConfirmDispensasi = (catatan: string) => {
+    if (!selectedDispensasiItem || !currentPeriodeId) return;
+    dispensasiMutation.mutate(
+      {
+        wajibSetorId: selectedDispensasiItem.id,
+        santriId: selectedDispensasiItem.santri || selectedDispensasiItem.expand?.santri?.id || "",
+        id_pps: selectedDispensasiItem.id_pps,
+        periodeId: currentPeriodeId,
+        catatan,
+      },
+      {
+        onSuccess: () => {
+          showSuccess(`Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`, "Dispensasi Disimpan");
+          setSelectedDispensasiItem(null);
+        },
+        onError: (err) => showError(err.message, "Gagal Dispensasi"),
+      },
+    );
+  };
+
+  const handleConfirmDeletePengurus = async () => {
+    if (!selectedDeletePengurus) return;
+    setIsDeletingPengurus(true);
+    try {
+      await pb.collection("pengurus_santri").delete(selectedDeletePengurus.id);
+      showSuccess(`Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`, "Berhasil Hapus");
+      setSelectedDeletePengurus(null);
+      refetchPengurus();
+    } catch {
+      showError("Gagal menghapus pengurus.", "Terjadi Kesalahan");
+    } finally {
+      setIsDeletingPengurus(false);
+    }
+  };
+
+  const handleConfirmGenerateQueue = () => {
+    if (!currentPeriodeId) return;
+    setActiveModal(null);
+
+    generateQueueMutation.mutate(currentPeriodeId, {
+      onSuccess: (res: any) => {
+        const addedCount = res?.addedCount ?? 0;
+        if (hasQueue) {
+          const msg = addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
+          showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
+        } else {
+          showSuccess(`Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`, "Generate Antrean Berhasil");
+        }
+        refetchQueue();
+      },
+      onError: (err) => showError(err.message, hasQueue ? "Gagal Sync Antrean" : "Gagal Generate Antrean"),
+    });
+  };
+
+  const handleOpenGenerateQueue = () => {
+    if (!currentPeriodeId) {
+      showError("Gagal memproses! Tidak ada periode yang sedang aktif atau ditinjau.", "Periode Tidak Ditemukan");
+      return;
+    }
+    setActiveModal("CONFIRM_GENERATE");
+  };
+
+  return {
+    activeModal,
+    setActiveModal,
+    selectedExecuteItem,
+    setSelectedExecuteItem,
+    selectedDispensasiItem,
+    setSelectedDispensasiItem,
+    selectedDeletePengurus,
+    setSelectedDeletePengurus,
+    isDeletingPengurus,
+    handleCreatePeriode,
+    handleUpdateStatusPeriode,
+    handleDeletePeriode,
+    handleConfirmSetor,
+    handleConfirmDispensasi,
+    handleConfirmDeletePengurus,
+    handleConfirmGenerateQueue,
+    handleOpenGenerateQueue,
+    isCreatePending: createPeriodeMutation.isPending,
+    isUpdateStatusPending: updateStatusPeriodeMutation.isPending,
+    isDeletePeriodePending: deletePeriodeMutation.isPending,
+    isExecutePending: executeSetorMutation.isPending,
+    isDispensasiPending: dispensasiMutation.isPending,
+    isGeneratePending: generateQueueMutation.isPending,
+  };
+}
+```
+
+### `src/features/rambut/hooks/page/useRambutPage.ts`
+```typescript
+import { useState, useEffect } from "react";
+import { useAuth } from "@/features/auth";
+import { isDateWithinRange } from "@/utils/dateHelpers";
+import { useActivePeriode, usePeriodeList } from "../api/usePeriodeRambut";
+import { useRambutStats } from "../api/useQueueRambut";
+import { useRambutQueueTab } from "./useRambutQueueTab";
+import { useRambutPengurusTab } from "./useRambutPengurusTab";
+import { useRambutAuditTab } from "./useRambutAuditTab";
+import { useRambutModals } from "./useRambutModals";
+import type { RambutTabType } from "../../components/RambutScanToolbar";
+import type { UsersResponse, PeriodeRambutResponse } from "@/types/pocketbase-types";
+
+const PER_PAGE = 15;
+
+export function useRambutPage() {
+  const { user } = useAuth();
+  const currentUser = user as UsersResponse | null;
+
+  const isAdmin = currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
+  const [activeTab, setActiveTab] = useState<RambutTabType>("queue");
+  const [selectedPeriode, setSelectedPeriode] = useState<PeriodeRambutResponse | null>(null);
+
+  const { data: activePeriode } = useActivePeriode();
+  const { data: periodeList = [], isLoading: isPeriodeListLoading } = usePeriodeList();
+
+  useEffect(() => {
+    if (activePeriode && !selectedPeriode) {
+      setSelectedPeriode(activePeriode);
+    }
+  }, [activePeriode, selectedPeriode]);
+
+  const currentPeriodeId = selectedPeriode?.id || activePeriode?.id;
+
+  const targetPeriode = selectedPeriode || activePeriode;
+  const isPeriodeAktif = targetPeriode?.status_periode === "aktif";
+  const isWithinDateRange = targetPeriode
+    ? isDateWithinRange(new Date(), targetPeriode.tanggal_mulai, targetPeriode.tanggal_selesai)
+    : false;
+
+  const canExecute = isAdmin || (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
+
+  const queueTab = useRambutQueueTab(currentPeriodeId, PER_PAGE);
+  const pengurusTab = useRambutPengurusTab(PER_PAGE);
+  const auditTab = useRambutAuditTab(currentPeriodeId, PER_PAGE);
+
+  const { data: statsData, isLoading: isStatsLoading } = useRambutStats(currentPeriodeId);
+  const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
+
+  const refetchAll = () => {
+    queueTab.refetchQueue();
+    pengurusTab.refetchPengurus();
+  };
+
+  const modals = useRambutModals({
+    currentPeriodeId,
+    hasQueue: stats.total > 0,
+    selectedPeriode,
+    setSelectedPeriode,
+    refetchQueue: queueTab.refetchQueue,
+    refetchPengurus: pengurusTab.refetchPengurus,
+  });
+
+  return {
+    isAdmin,
+    canExecute,
+    currentUser,
+    activeTab,
+    setActiveTab,
+    activePeriode,
+    selectedPeriode,
+    setSelectedPeriode,
+    currentPeriodeId,
+    periodeList,
+    isPeriodeListLoading,
+    stats,
+    isStatsLoading,
+    PER_PAGE,
+    refetchAll,
+    ...queueTab,
+    ...pengurusTab,
+    ...auditTab,
+    ...modals,
+  };
+}
+```
+
+### `src/features/rambut/hooks/page/useRambutPengurusTab.ts`
+```typescript
+import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { pb } from "@/lib/pocketbase";
+import { parseNumericIdPps } from "@/utils/userHelpers";
+import type { PengurusItem } from "../../components/RambutQueueTable";
+
+export function useRambutPengurusTab(perPage: number = 15) {
+  const [pengurusPage, setPengurusPage] = useState(1);
+  const [pengurusSearch, setPengurusSearch] = useState("");
+  const [pengurusDaerahFilter, setPengurusDaerahFilter] = useState("all");
+
+  useEffect(() => {
+    setPengurusPage(1);
+  }, [pengurusSearch, pengurusDaerahFilter]);
+
+  const {
+    data: rawPengurusData = [],
+    isLoading: isPengurusLoading,
+    refetch: refetchPengurus,
+  } = useQuery({
+    queryKey: ["pengurus-santri-list"],
+    queryFn: async () => {
+      return await pb.collection("pengurus_santri").getFullList<PengurusItem>({
+        expand: "santri",
+        sort: "-created",
+      });
+    },
+  });
+
+  const daerahOptions = useMemo(() => {
+    const set = new Set<string>();
+    rawPengurusData.forEach((p) => {
+      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
+      if (dom) {
+        const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+        if (firstChar >= "A" && firstChar <= "Z") set.add(firstChar);
+      }
+    });
+    return Array.from(set).sort();
+  }, [rawPengurusData]);
+
+  const filteredPengurusData = useMemo(() => {
+    const list = rawPengurusData.filter((p) => {
+      const santriNama = p.expand?.santri?.nama || "";
+      const matchSearch =
+        !pengurusSearch ||
+        p.id_pps.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
+        santriNama.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
+        p.jabatan.toLowerCase().includes(pengurusSearch.toLowerCase());
+
+      const dom = p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
+      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
+      const matchDaerah = pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
+
+      return matchSearch && matchDaerah;
+    });
+
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
+  }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
+
+  const totalPengurusItems = filteredPengurusData.length;
+  const totalPengurusPages = Math.ceil(totalPengurusItems / perPage);
+
+  const paginatedPengurusItems = useMemo(() => {
+    const start = (pengurusPage - 1) * perPage;
+    return filteredPengurusData.slice(start, start + perPage);
+  }, [filteredPengurusData, pengurusPage, perPage]);
+
+  return {
+    pengurusPage,
+    setPengurusPage,
+    pengurusSearch,
+    setPengurusSearch,
+    pengurusDaerahFilter,
+    setPengurusDaerahFilter,
+    daerahOptions,
+    filteredPengurusData,
+    paginatedPengurusItems,
+    totalPengurusItems,
+    totalPengurusPages,
+    isPengurusLoading,
+    refetchPengurus,
+  };
+}
+```
+
+### `src/features/rambut/hooks/page/useRambutQueueTab.ts`
+```typescript
+import { useState, useMemo } from "react";
+import { useWajibSetorFullList } from "../api/useQueueRambut";
+import { parseNumericIdPps } from "@/utils/userHelpers";
+import type { WajibSetorRambutStatusSetorOptions } from "@/types/pocketbase-types";
+
+export function useRambutQueueTab(currentPeriodeId?: string, perPage: number = 15) {
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"all" | WajibSetorRambutStatusSetorOptions>("all");
+
+  const {
+    data: fullQueueData = [],
+    isLoading: isQueueLoading,
+    refetch: refetchQueue,
+  } = useWajibSetorFullList(currentPeriodeId);
+
+  const filteredSortedQueue = useMemo(() => {
+    const list = fullQueueData.filter((item) => {
+      const santriNama = item.expand?.santri?.nama || "";
+      const matchSearch =
+        !search ||
+        item.id_pps.toLowerCase().includes(search.toLowerCase()) ||
+        santriNama.toLowerCase().includes(search.toLowerCase());
+
+      const matchStatus = statusFilter === "all" || item.status_setor === statusFilter;
+      return matchSearch && matchStatus;
+    });
+
+    return list.sort(
+      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
+    );
+  }, [fullQueueData, search, statusFilter]);
+
+  const totalItems = filteredSortedQueue.length;
+  const totalPages = Math.ceil(totalItems / perPage);
+
+  const paginatedQueueItems = useMemo(() => {
+    const start = (page - 1) * perPage;
+    return filteredSortedQueue.slice(start, start + perPage);
+  }, [filteredSortedQueue, page, perPage]);
+
+  return {
+    page,
+    setPage,
+    search,
+    setSearch,
+    statusFilter,
+    setStatusFilter,
+    paginatedQueueItems,
+    totalItems,
+    totalPages,
+    isQueueLoading,
+    refetchQueue,
+  };
+}
+```
+
 ### `src/features/rambut/hooks/useImportPengurus.ts`
 ```typescript
 // src/features/rambut/hooks/useImportPengurus.ts
@@ -3146,1216 +4326,14 @@ export function useImportPengurus(onSuccessImport?: () => void) {
 ### `src/features/rambut/hooks/useRambut.ts`
 ```typescript
 // src/features/rambut/hooks/useRambut.ts
-import {
-  useQuery,
-  useMutation,
-  useQueryClient,
-  keepPreviousData,
-} from "@tanstack/react-query";
-import { pb } from "@/lib/pocketbase";
-import { dapatkanDetailWis } from "@/utils/waktuIstiwa";
-import { parsePocketBaseError } from "@/utils/errorHandler";
-import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
-
-// 🎯 IMPORT PEMBANTU KALENDER HIJRIYAH INTERNAL SANGAT PRESISI
-import { fetchHijriByDate } from "@/features/kalender";
-
-import type {
-  PeriodeRambutResponse,
-  WajibSetorRambutResponse,
-  RiwayatSetorRambutResponse,
-  PengurusSantriResponse,
-  MasterResponse,
-  PeriodeRambutStatusPeriodeOptions,
-  WajibSetorRambutKategoriWajibOptions,
-} from "@/types/pocketbase-types";
-
-/**
- * 🎯 Format Tanggal Hijriyah Menggunakan Kalender Internal Pesantren
- * Mengeliminasi ketergantungan pada `islamic-umalqura` bawaan browser.
- */
-export const formatHijriDate = async (
-  dateInput?: string | Date | null,
-): Promise<string> => {
-  if (!dateInput) return "-";
-  const str = dateInput.toString().trim();
-
-  // 1. Jika input sudah berupa string format Hijriyah
-  if (/H$/i.test(str) || /^[\d]{1,2}[\/\s]/.test(str)) {
-    const cleanStr = str.replace(/\s*H+/gi, "").trim();
-    return `${cleanStr} H`;
-  }
-
-  try {
-    const d = new Date(dateInput);
-    if (isNaN(d.getTime())) return "-";
-
-    // 2. Query ke Database Kalender Hijriyah Internal
-    const hijriRecord = await fetchHijriByDate(d);
-    if (hijriRecord?.string_hijri) {
-      return hijriRecord.string_hijri;
-    }
-
-    // 3. Fallback 1: Gunakan penetapan Waktu Istiwa (WIS)
-    const detailWis = dapatkanDetailWis(d);
-    if (detailWis?.stringLengkap) {
-      return detailWis.stringLengkap;
-    }
-
-    // 4. Fallback 2: Tabular Islamic Standard (Non-Umm Al Qura)
-    const raw = new Intl.DateTimeFormat("id-ID-u-ca-islamic-tbla", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    }).format(d);
-
-    const clean = raw
-      .replace(/AH|M/g, "")
-      .replace(/\s+/g, " ")
-      .replace(/\s*H+/gi, "")
-      .trim();
-    return `${clean} H`;
-  } catch {
-    return "-";
-  }
-};
-
-export const parseNumericIdPps = (val?: string | number): number => {
-  if (!val) return 0;
-  const digits = String(val).replace(/\D/g, "");
-  return digits ? parseInt(digits, 10) : 0;
-};
-export interface CreatePeriodePayload {
-  nama_periode: string;
-  bulan_hijriyah_angka: number;
-  tahun_hijriyah: number;
-  tanggal_mulai: string;
-  tanggal_selesai: string;
-  status_periode?: PeriodeRambutStatusPeriodeOptions;
-}
-
-export interface ExecuteSetorPayload {
-  wajibSetorId: string;
-  santriId: string;
-  id_pps: string;
-  periodeId: string;
-  catatan?: string;
-}
-
-export interface DispensasiPayload {
-  wajibSetorId: string;
-  santriId: string;
-  id_pps: string;
-  periodeId: string;
-  catatan: string;
-}
-
-export type WajibSetorExpanded = WajibSetorRambutResponse<{
-  santri?: MasterResponse;
-}>;
-
-export type RiwayatSetorExpanded = RiwayatSetorRambutResponse<{
-  santri?: MasterResponse;
-  petugas_eksekutor?: { name: string; username: string };
-  periode?: PeriodeRambutResponse;
-}>;
-
-export function useRambutStats(periodeId?: string) {
-  return useQuery({
-    queryKey: ["rambut-stats-real", periodeId],
-    queryFn: async () => {
-      if (!periodeId) {
-        return { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
-      }
-
-      const [totalRes, sudahRes, belumRes, dispensasiRes] = await Promise.all([
-        pb
-          .collection("wajib_setor_rambut")
-          .getList(1, 1, { filter: `periode = "${periodeId}"`, fields: "id" }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, {
-          filter: `periode = "${periodeId}" && status_setor = "sudah"`,
-          fields: "id",
-        }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, {
-          filter: `periode = "${periodeId}" && status_setor = "belum"`,
-          fields: "id",
-        }),
-        pb.collection("wajib_setor_rambut").getList(1, 1, {
-          filter: `periode = "${periodeId}" && status_setor = "dispensasi"`,
-          fields: "id",
-        }),
-      ]);
-
-      return {
-        total: totalRes.totalItems,
-        sudah: sudahRes.totalItems,
-        belum: belumRes.totalItems,
-        dispensasi: dispensasiRes.totalItems,
-      };
-    },
-    enabled: !!periodeId,
-    staleTime: 1000 * 10,
-  });
-}
-
-export function useRambut() {
-  const queryClient = useQueryClient();
-
-  const useActivePeriode = () => {
-    return useQuery<PeriodeRambutResponse | null>({
-      queryKey: ["rambut-periode-aktif"],
-      queryFn: async () => {
-        try {
-          return await pb
-            .collection("periode_rambut")
-            .getFirstListItem<PeriodeRambutResponse>(
-              'status_periode = "aktif"',
-            );
-        } catch {
-          return null;
-        }
-      },
-      staleTime: 1000 * 60 * 5,
-    });
-  };
-
-  const usePeriodeList = () => {
-    return useQuery<PeriodeRambutResponse[]>({
-      queryKey: ["rambut-periode-list"],
-      queryFn: async () => {
-        return await pb
-          .collection("periode_rambut")
-          .getFullList<PeriodeRambutResponse>({ sort: "-created" });
-      },
-    });
-  };
-
-  const useCreatePeriode = () => {
-    return useMutation({
-      mutationFn: async (payload: CreatePeriodePayload) => {
-        try {
-          // 🛡️ PENGAMAN GANDA: Cek Irisan Tanggal Masehi Langsung di Database
-          const existingList = await pb
-            .collection("periode_rambut")
-            .getFullList<PeriodeRambutResponse>();
-
-          const startNew = toLocalYMD(payload.tanggal_mulai);
-          const endNew = toLocalYMD(payload.tanggal_selesai);
-
-          const isOverlap = existingList.some((p) => {
-            const startExist = toLocalYMD(p.tanggal_mulai);
-            const endExist = toLocalYMD(p.tanggal_selesai);
-            return startNew <= endExist && endNew >= startExist;
-          });
-
-          if (isOverlap) {
-            throw new Error(
-              "Gagal menyimpan! Rentang tanggal bertabrakan dengan periode yang sudah ada.",
-            );
-          }
-
-          return await pb
-            .collection("periode_rambut")
-            .create<PeriodeRambutResponse>({
-              ...payload,
-              status_periode: payload.status_periode || "draft",
-            });
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
-      },
-    });
-  };
-
-  const useGenerateWajibSetor = () => {
-    return useMutation({
-      mutationFn: async (periodeId: string) => {
-        try {
-          const periode = await pb
-            .collection("periode_rambut")
-            .getOne<PeriodeRambutResponse>(periodeId);
-          if (!periode) throw new Error("Periode tidak ditemukan.");
-
-          // 1. Ambil Santri Aliyah & Kuliah Syariah Aktif (Domisili PPS)
-          const masterSantri = await pb
-            .collection("master")
-            .getFullList<MasterResponse>({
-              filter:
-                'status_aktif = true && status_domisili = "PPS" && (tingkatan ~ "Aliyah" || tingkatan ~ "Kuliah Syariah")',
-              batch: 500,
-            });
-
-          // 2. Ambil Pengurus/Petugas Aktif
-          const pengurusList = await pb
-            .collection("pengurus_santri")
-            .getFullList<PengurusSantriResponse<{ santri?: MasterResponse }>>({
-              filter: "status_aktif = true",
-              expand: "santri",
-              batch: 500,
-            });
-
-          // 3. 🎯 PENGECUALIAN: Ambil Seluruh Personil Tibkam Aktif
-          const personilTibkamList = await pb
-            .collection("personil_tibkam")
-            .getFullList<{ id_pps?: string; status_aktif?: boolean }>({
-              filter: "status_aktif = true",
-              fields: "id_pps,status_aktif",
-              batch: 500,
-            });
-
-          // Buat Set ID PPS Personil Tibkam untuk pencocokan instan (O(1))
-          const excludedPersonilSet = new Set<string>();
-          personilTibkamList.forEach((p) => {
-            if (p.id_pps) {
-              excludedPersonilSet.add(p.id_pps.trim());
-            }
-          });
-
-          const targetEligibleMap = new Map<
-            string,
-            { santriId: string; kategori: WajibSetorRambutKategoriWajibOptions }
-          >();
-
-          // 4. Proses Santri Master
-          for (const s of masterSantri) {
-            const cleanIdPps = s.id_pps ? s.id_pps.trim() : "";
-            if (!cleanIdPps) continue;
-
-            // 🛡️ PENGECUALIAN: Jika santri terdaftar sebagai Personil Tibkam, LEWATI!
-            if (excludedPersonilSet.has(cleanIdPps)) continue;
-
-            // 🛡️ Double Check Status Domisili PPS
-            const statusDomisili = (s.status_domisili || "")
-              .toString()
-              .trim()
-              .toUpperCase();
-            if (statusDomisili !== "PPS") continue;
-
-            const lowerTingkatan = (s.tingkatan || "").toLowerCase();
-            let kategori: WajibSetorRambutKategoriWajibOptions = "aliyah";
-            if (
-              lowerTingkatan.includes("kuliah") ||
-              lowerTingkatan.includes("syariah")
-            ) {
-              kategori = "kuliah_syariah";
-            }
-            targetEligibleMap.set(cleanIdPps, { santriId: s.id, kategori });
-          }
-
-          // 5. Proses Pengurus Santri
-          for (const p of pengurusList) {
-            const cleanIdPps = p.id_pps ? p.id_pps.trim() : "";
-            if (!cleanIdPps || !p.expand?.santri) continue;
-
-            // 🛡️ PENGECUALIAN: Jika Pengurus terdaftar sebagai Personil Tibkam, LEWATI!
-            if (excludedPersonilSet.has(cleanIdPps)) continue;
-
-            // 🛡️ Pengurus yang berstatus domisili LPPS dilewati
-            const santriDomisili = (p.expand.santri.status_domisili || "")
-              .toString()
-              .trim()
-              .toUpperCase();
-            if (santriDomisili && santriDomisili !== "PPS") continue;
-
-            if (!targetEligibleMap.has(cleanIdPps)) {
-              targetEligibleMap.set(cleanIdPps, {
-                santriId: p.santri,
-                kategori: "pengurus_petugas",
-              });
-            }
-          }
-
-          // 6. Ambil Antrean Existing pada Periode Ini
-          const existingQueue = await pb
-            .collection("wajib_setor_rambut")
-            .getFullList<WajibSetorRambutResponse>({
-              filter: `periode = "${periodeId}"`,
-              batch: 500,
-            });
-
-          const existingMap = new Map<string, WajibSetorRambutResponse>();
-          existingQueue.forEach((item) => {
-            if (item.id_pps) existingMap.set(item.id_pps.trim(), item);
-          });
-
-          let batch = pb.createBatch();
-          let batchCount = 0;
-          let addedCount = 0;
-          let removedCount = 0;
-          let unchangedCount = 0;
-          let retainedHistoryCount = 0;
-
-          // 7. Tambahkan Data Baru ke Antrean
-          for (const [idPps, info] of targetEligibleMap.entries()) {
-            if (!existingMap.has(idPps)) {
-              batch.collection("wajib_setor_rambut").create({
-                periode: periodeId,
-                santri: info.santriId,
-                id_pps: idPps,
-                kategori_wajib: info.kategori,
-                status_setor: "belum",
-              });
-              addedCount++;
-              batchCount++;
-
-              if (batchCount >= 100) {
-                await batch.send();
-                batch = pb.createBatch();
-                batchCount = 0;
-              }
-            } else {
-              unchangedCount++;
-            }
-          }
-
-          // 8. Hapus Data dari Antrean jika tidak lagi eligibel (misal diangkat jadi Personil Tibkam)
-          for (const [idPps, record] of existingMap.entries()) {
-            if (!targetEligibleMap.has(idPps)) {
-              // Hanya hapus jika statusnya masih 'belum'
-              if (record.status_setor === "belum") {
-                batch.collection("wajib_setor_rambut").delete(record.id);
-                removedCount++;
-                batchCount++;
-
-                if (batchCount >= 100) {
-                  await batch.send();
-                  batch = pb.createBatch();
-                  batchCount = 0;
-                }
-              } else {
-                retainedHistoryCount++;
-              }
-            }
-          }
-
-          if (batchCount > 0) await batch.send();
-
-          return {
-            addedCount,
-            removedCount,
-            retainedHistoryCount,
-            unchangedCount,
-          };
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ["rambut-wajib-setor-list"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
-      },
-    });
-  };
-
-  const useWajibSetorFullList = (periodeId?: string) => {
-    return useQuery({
-      queryKey: ["rambut-wajib-setor-list-full", periodeId],
-      queryFn: async () => {
-        if (!periodeId) return [];
-        return await pb
-          .collection("wajib_setor_rambut")
-          .getFullList<WajibSetorExpanded>({
-            filter: `periode = "${periodeId}"`,
-            expand: "santri",
-            batch: 500,
-          });
-      },
-      enabled: !!periodeId,
-      staleTime: 1000 * 15,
-    });
-  };
-
-  const useExecuteSetorRambut = () => {
-    return useMutation({
-      mutationFn: async (payload: ExecuteSetorPayload) => {
-        try {
-          const currentUser = pb.authStore.record || pb.authStore.model;
-          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
-          const isAdmin =
-            currentUser?.role === "admin" ||
-            currentUser?.role === "admin_rambut";
-
-          const periode = await pb
-            .collection("periode_rambut")
-            .getOne<PeriodeRambutResponse>(payload.periodeId);
-          if (!periode) throw new Error("Periode tidak ditemukan.");
-
-          if (!isAdmin) {
-            if (periode.status_periode !== "aktif") {
-              throw new Error(
-                `Setor ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
-              );
-            }
-
-            if (
-              !isDateWithinRange(
-                new Date(),
-                periode.tanggal_mulai,
-                periode.tanggal_selesai,
-              )
-            ) {
-              throw new Error(
-                `Setor ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
-              );
-            }
-          }
-
-          const nowIso = new Date().toISOString();
-          const detailWis = dapatkanDetailWis();
-          const currentUserId = currentUser?.id || "";
-
-          const updatedWajibSetor = await pb
-            .collection("wajib_setor_rambut")
-            .update<WajibSetorRambutResponse>(payload.wajibSetorId, {
-              status_setor: "sudah",
-              tanggal_setor: nowIso,
-            });
-
-          await pb.collection("riwayat_setor_rambut").create({
-            wajib_setor: payload.wajibSetorId,
-            santri: payload.santriId,
-            id_pps: payload.id_pps,
-            periode: payload.periodeId,
-            tanggal_setor: nowIso,
-            waktu_wis: detailWis.stringLengkap,
-            petugas_eksekutor: currentUserId,
-            catatan: payload.catatan || "",
-          });
-
-          return updatedWajibSetor;
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ["rambut-wajib-setor-list-full"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
-      },
-    });
-  };
-
-  const useRiwayatSetorList = (periodeId?: string) => {
-    return useQuery({
-      queryKey: ["rambut-riwayat-list", periodeId],
-      queryFn: async () => {
-        const filter = periodeId ? `periode = "${periodeId}"` : "";
-        return await pb
-          .collection("riwayat_setor_rambut")
-          .getFullList<RiwayatSetorExpanded>({
-            filter,
-            expand: "santri,petugas_eksekutor,periode",
-            sort: "-tanggal_setor",
-            batch: 500,
-          });
-      },
-      enabled: !!periodeId,
-      placeholderData: keepPreviousData,
-    });
-  };
-
-  const useDispensasiRambut = () => {
-    return useMutation({
-      mutationFn: async (payload: DispensasiPayload) => {
-        try {
-          const currentUser = pb.authStore.record || pb.authStore.model;
-          // 🛡️ Izinkan bypass untuk admin maupun admin_rambut
-          const isAdmin =
-            currentUser?.role === "admin" ||
-            currentUser?.role === "admin_rambut";
-
-          const periode = await pb
-            .collection("periode_rambut")
-            .getOne<PeriodeRambutResponse>(payload.periodeId);
-          if (!periode) throw new Error("Periode tidak ditemukan.");
-
-          if (!isAdmin) {
-            if (periode.status_periode !== "aktif") {
-              throw new Error(
-                `Pemberian izin ditolak! Periode "${periode.nama_periode}" tidak dalam status AKTIF.`,
-              );
-            }
-
-            if (
-              !isDateWithinRange(
-                new Date(),
-                periode.tanggal_mulai,
-                periode.tanggal_selesai,
-              )
-            ) {
-              throw new Error(
-                `Pemberian izin ditolak! Hari ini berada di luar jadwal operasional periode "${periode.nama_periode}".`,
-              );
-            }
-          }
-
-          const nowIso = new Date().toISOString();
-          const detailWis = dapatkanDetailWis();
-          const currentUserId = currentUser?.id || "";
-
-          const updatedWajibSetor = await pb
-            .collection("wajib_setor_rambut")
-            .update(payload.wajibSetorId, {
-              status_setor: "dispensasi",
-              tanggal_setor: nowIso,
-            });
-
-          await pb.collection("riwayat_setor_rambut").create({
-            wajib_setor: payload.wajibSetorId,
-            santri: payload.santriId,
-            id_pps: payload.id_pps,
-            periode: payload.periodeId,
-            tanggal_setor: nowIso,
-            waktu_wis: detailWis.stringLengkap,
-            petugas_eksekutor: currentUserId,
-            catatan: `[DISPENSASI]: ${payload.catatan || "Izin berhalangan"}`,
-          });
-
-          return updatedWajibSetor;
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({
-          queryKey: ["rambut-wajib-setor-list-full"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["rambut-riwayat-list"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
-      },
-    });
-  };
-
-  const useUpdateStatusPeriode = () => {
-    return useMutation({
-      mutationFn: async ({
-        periodeId,
-        status,
-      }: {
-        periodeId: string;
-        status: PeriodeRambutStatusPeriodeOptions;
-      }) => {
-        try {
-          if (status === "aktif") {
-            const activeList = await pb
-              .collection("periode_rambut")
-              .getFullList<PeriodeRambutResponse>({
-                filter: 'status_periode = "aktif"',
-              });
-            for (const item of activeList) {
-              if (item.id !== periodeId) {
-                await pb
-                  .collection("periode_rambut")
-                  .update(item.id, { status_periode: "draft" });
-              }
-            }
-          }
-          return await pb
-            .collection("periode_rambut")
-            .update(periodeId, { status_periode: status });
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
-        queryClient.invalidateQueries({
-          queryKey: ["rambut-wajib-setor-list-full"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
-      },
-    });
-  };
-
-  const useDeletePeriode = () => {
-    return useMutation({
-      mutationFn: async (periodeId: string) => {
-        try {
-          const queueItems = await pb
-            .collection("wajib_setor_rambut")
-            .getFullList({ filter: `periode = "${periodeId}"`, fields: "id" });
-          if (queueItems.length > 0) {
-            let batch = pb.createBatch();
-            let count = 0;
-            for (const item of queueItems) {
-              batch.collection("wajib_setor_rambut").delete(item.id);
-              count++;
-              if (count >= 100) {
-                await batch.send();
-                batch = pb.createBatch();
-                count = 0;
-              }
-            }
-            if (count > 0) await batch.send();
-          }
-          return await pb.collection("periode_rambut").delete(periodeId);
-        } catch (error) {
-          throw new Error(parsePocketBaseError(error));
-        }
-      },
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-list"] });
-        queryClient.invalidateQueries({ queryKey: ["rambut-periode-aktif"] });
-        queryClient.invalidateQueries({
-          queryKey: ["rambut-wajib-setor-list-full"],
-        });
-        queryClient.invalidateQueries({ queryKey: ["rambut-stats-real"] });
-      },
-    });
-  };
-
-  return {
-    useActivePeriode,
-    usePeriodeList,
-    useCreatePeriode,
-    useUpdateStatusPeriode,
-    useDeletePeriode,
-    useGenerateWajibSetor,
-    useWajibSetorFullList,
-    useExecuteSetorRambut,
-    useDispensasiRambut,
-    useRiwayatSetorList,
-    useRambutStats,
-  };
-}
+export * from "./api";
+export * from "../types";
 ```
 
 ### `src/features/rambut/hooks/useRambutPage.ts`
 ```typescript
 // src/features/rambut/hooks/useRambutPage.ts
-import React, { useState, useMemo, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { pb } from "@/lib/pocketbase";
-import { useAuth } from "@/features/auth";
-import { useToast } from "@/context/ToastContext";
-import { HijriText } from "@/components/shared/HijriText";
-import { isDateWithinRange, toLocalYMD } from "@/utils/dateHelpers";
-import {
-  useRambut,
-  useRambutStats,
-  parseNumericIdPps,
-  type WajibSetorExpanded,
-  type CreatePeriodePayload,
-} from "./useRambut";
-import type { PengurusItem } from "../components/RambutQueueTable";
-import type { RambutTabType } from "../components/RambutScanToolbar";
-import type {
-  UsersResponse,
-  PeriodeRambutResponse,
-  PeriodeRambutStatusPeriodeOptions,
-  WajibSetorRambutStatusSetorOptions,
-} from "@/types/pocketbase-types";
-
-const PER_PAGE = 15;
-
-export type RambutModalType =
-  | "CREATE_PERIODE"
-  | "MANAGE_PERIODE"
-  | "MANAGE_PENGURUS"
-  | "POS"
-  | "IMPORT_PENGURUS"
-  | "CONFIRM_GENERATE";
-
-export function useRambutPage() {
-  const { user } = useAuth();
-  const currentUser = user as UsersResponse | null;
-
-  // Buka akses admin penuh untuk role "admin" DAN "admin_rambut"
-  const isAdmin =
-    currentUser?.role === "admin" || currentUser?.role === "admin_rambut";
-
-  const { showSuccess, showError } = useToast();
-
-  const [activeTab, setActiveTab] = useState<RambutTabType>("queue");
-
-  // Filter States - Queue
-  const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<
-    "all" | WajibSetorRambutStatusSetorOptions
-  >("all");
-
-  // Filter States - Pengurus
-  const [pengurusSearch, setPengurusSearch] = useState("");
-  const [pengurusDaerahFilter, setPengurusDaerahFilter] = useState("all");
-
-  // Filter States - Audit
-  const [auditSearch, setAuditSearch] = useState("");
-  const [auditDateFilter, setAuditDateFilter] = useState("all");
-
-  const [selectedPeriode, setSelectedPeriode] =
-    useState<PeriodeRambutResponse | null>(null);
-
-  // Unified Modal Registry State
-  const [activeModal, setActiveModal] = useState<RambutModalType | null>(null);
-
-  // Data-Driven Modals
-  const [selectedExecuteItem, setSelectedExecuteItem] =
-    useState<WajibSetorExpanded | null>(null);
-  const [selectedDispensasiItem, setSelectedDispensasiItem] =
-    useState<WajibSetorExpanded | null>(null);
-  const [selectedDeletePengurus, setSelectedDeletePengurus] =
-    useState<PengurusItem | null>(null);
-  const [isDeletingPengurus, setIsDeletingPengurus] = useState(false);
-
-  const {
-    useActivePeriode,
-    usePeriodeList,
-    useCreatePeriode,
-    useUpdateStatusPeriode,
-    useDeletePeriode,
-    useGenerateWajibSetor,
-    useWajibSetorFullList,
-    useExecuteSetorRambut,
-    useRiwayatSetorList,
-    useDispensasiRambut,
-  } = useRambut();
-
-  const { data: activePeriode } = useActivePeriode();
-  const { data: periodeList = [], isLoading: isPeriodeListLoading } =
-    usePeriodeList();
-  const deletePeriodeMutation = useDeletePeriode();
-  const [pengurusPage, setPengurusPage] = useState(1);
-
-  useEffect(() => {
-    setPengurusPage(1);
-  }, [pengurusSearch, pengurusDaerahFilter]);
-
-  const [auditPage, setAuditPage] = useState(1);
-
-  useEffect(() => {
-    setAuditPage(1);
-  }, [auditSearch, auditDateFilter]);
-
-  useEffect(() => {
-    if (activePeriode && !selectedPeriode) {
-      setSelectedPeriode(activePeriode);
-    }
-  }, [activePeriode, selectedPeriode]);
-
-  const currentPeriodeId = selectedPeriode?.id || activePeriode?.id;
-
-  const createPeriodeMutation = useCreatePeriode();
-  const updateStatusPeriodeMutation = useUpdateStatusPeriode();
-  const generateQueueMutation = useGenerateWajibSetor();
-  const executeSetorMutation = useExecuteSetorRambut();
-  const dispensasiMutation = useDispensasiRambut();
-
-  // Hitung status aktif & tanggal operasional
-  const targetPeriode = selectedPeriode || activePeriode;
-  const isPeriodeAktif = targetPeriode?.status_periode === "aktif";
-  const isWithinDateRange = targetPeriode
-    ? isDateWithinRange(
-        new Date(),
-        targetPeriode.tanggal_mulai,
-        targetPeriode.tanggal_selesai,
-      )
-    : false;
-
-  // Admin & Admin Rambut selalu bisa eksekusi; Role 'rambut' harus memenuhi syarat tanggal & status aktif
-  const canExecute =
-    isAdmin ||
-    (currentUser?.role === "rambut" && isPeriodeAktif && isWithinDateRange);
-
-  // 1. Pengurus Data (Filtered -> Sorted secara Global -> Paginated)
-  const {
-    data: rawPengurusData = [],
-    isLoading: isPengurusLoading,
-    refetch: refetchPengurus,
-  } = useQuery({
-    queryKey: ["pengurus-santri-list"],
-    queryFn: async () => {
-      return await pb.collection("pengurus_santri").getFullList<PengurusItem>({
-        expand: "santri",
-        sort: "-created",
-      });
-    },
-  });
-
-  const daerahOptions = useMemo(() => {
-    const set = new Set<string>();
-    rawPengurusData.forEach((p) => {
-      const dom =
-        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili;
-      if (dom) {
-        const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-        if (firstChar && firstChar >= "A" && firstChar <= "Z")
-          set.add(firstChar);
-      }
-    });
-    return Array.from(set).sort();
-  }, [rawPengurusData]);
-
-  const filteredPengurusData = useMemo(() => {
-    let list = rawPengurusData.filter((p) => {
-      const santriNama = p.expand?.santri?.nama || "";
-      const matchSearch =
-        !pengurusSearch ||
-        p.id_pps.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
-        santriNama.toLowerCase().includes(pengurusSearch.toLowerCase()) ||
-        p.jabatan.toLowerCase().includes(pengurusSearch.toLowerCase());
-
-      const dom =
-        p.expand?.santri?.domisili || p.expand?.santri?.status_domisili || "";
-      const firstChar = dom.toString().trim().toUpperCase().charAt(0);
-      const matchDaerah =
-        pengurusDaerahFilter === "all" || firstChar === pengurusDaerahFilter;
-
-      return matchSearch && matchDaerah;
-    });
-
-    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
-    return list.sort(
-      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
-    );
-  }, [rawPengurusData, pengurusSearch, pengurusDaerahFilter]);
-
-  const totalPengurusItems = filteredPengurusData.length;
-  const totalPengurusPages = Math.ceil(totalPengurusItems / PER_PAGE);
-
-  const paginatedPengurusItems = useMemo(() => {
-    const start = (pengurusPage - 1) * PER_PAGE;
-    return filteredPengurusData.slice(start, start + PER_PAGE);
-  }, [filteredPengurusData, pengurusPage]);
-
-  // 2. Queue Data (Filtered -> Sorted secara Global -> Paginated)
-  const {
-    data: fullQueueData = [],
-    isLoading: isQueueLoading,
-    refetch: refetchQueue,
-  } = useWajibSetorFullList(currentPeriodeId);
-
-  const filteredSortedQueue = useMemo(() => {
-    let list = fullQueueData.filter((item) => {
-      const santriNama = item.expand?.santri?.nama || "";
-      const matchSearch =
-        !search ||
-        item.id_pps.toLowerCase().includes(search.toLowerCase()) ||
-        santriNama.toLowerCase().includes(search.toLowerCase());
-
-      const matchStatus =
-        statusFilter === "all" || item.status_setor === statusFilter;
-
-      return matchSearch && matchStatus;
-    });
-
-    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
-    return list.sort(
-      (a, b) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
-    );
-  }, [fullQueueData, search, statusFilter]);
-
-  const totalItems = filteredSortedQueue.length;
-  const totalPages = Math.ceil(totalItems / PER_PAGE);
-
-  const paginatedQueueItems = useMemo(() => {
-    const start = (page - 1) * PER_PAGE;
-    return filteredSortedQueue.slice(start, start + PER_PAGE);
-  }, [filteredSortedQueue, page]);
-
-  // 3. Audit Data (Filtered -> Sorted secara Global -> Paginated)
-  const { data: historyData = [], isLoading: isHistoryLoading } =
-    useRiwayatSetorList(currentPeriodeId);
-
-  const availableHijriDateOptions = useMemo(() => {
-    if (!historyData) return [];
-    const map = new Map<string, string>();
-    historyData.forEach((item: any) => {
-      const dateKey = toLocalYMD(item.tanggal_setor || item.created);
-      if (dateKey && !map.has(dateKey)) {
-        map.set(dateKey, dateKey);
-      }
-    });
-    return Array.from(map.keys()).map((dateStr) => ({
-      value: dateStr,
-      label: React.createElement(HijriText, { date: dateStr }),
-    }));
-  }, [historyData]);
-
-  const filteredAuditItems = useMemo(() => {
-    if (!historyData) return [];
-    let list = historyData.filter((item: any) => {
-      const santriNama = item.expand?.santri?.nama || "";
-      const petugasNama =
-        item.expand?.petugas_eksekutor?.name ||
-        item.expand?.petugas_eksekutor?.username ||
-        "";
-      const catatan = item.catatan_operasional || item.catatan || "";
-
-      const matchSearch =
-        !auditSearch ||
-        (item.id_pps || "").toLowerCase().includes(auditSearch.toLowerCase()) ||
-        santriNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
-        petugasNama.toLowerCase().includes(auditSearch.toLowerCase()) ||
-        catatan.toLowerCase().includes(auditSearch.toLowerCase());
-
-      const itemDateKey = toLocalYMD(item.tanggal_setor || item.created);
-      const matchDate =
-        auditDateFilter === "all" || itemDateKey === auditDateFilter;
-
-      return matchSearch && matchDate;
-    });
-
-    // Urutkan ID PPS secara numerik sebelum dipotong per halaman
-    return list.sort(
-      (a: any, b: any) => parseNumericIdPps(a.id_pps) - parseNumericIdPps(b.id_pps)
-    );
-  }, [historyData, auditSearch, auditDateFilter]);
-
-  const totalAuditItems = filteredAuditItems.length;
-  const totalAuditPages = Math.ceil(totalAuditItems / PER_PAGE);
-
-  const paginatedAuditItems = useMemo(() => {
-    const start = (auditPage - 1) * PER_PAGE;
-    return filteredAuditItems.slice(start, start + PER_PAGE);
-  }, [filteredAuditItems, auditPage]);
-
-  // 4. Stats
-  const { data: statsData, isLoading: isStatsLoading } =
-    useRambutStats(currentPeriodeId);
-  const stats = statsData ?? { total: 0, sudah: 0, belum: 0, dispensasi: 0 };
-
-  // Handlers
-  const handleCreatePeriode = (payload: CreatePeriodePayload) => {
-    createPeriodeMutation.mutate(payload, {
-      onSuccess: () => {
-        showSuccess(
-          `Periode ${payload.nama_periode} berhasil dibuat!`,
-          "Periode Baru",
-        );
-        setActiveModal(null);
-      },
-      onError: (err) => showError(err.message, "Gagal Buat Periode"),
-    });
-  };
-
-  const handleUpdateStatusPeriode = (
-    periodeId: string,
-    status: PeriodeRambutStatusPeriodeOptions,
-  ) => {
-    updateStatusPeriodeMutation.mutate(
-      { periodeId, status },
-      {
-        onSuccess: () => {
-          showSuccess(
-            `Status periode diubah ke ${status.toUpperCase()}`,
-            "Status Diperbarui",
-          );
-        },
-        onError: (err) => showError(err.message, "Gagal Ubah Status"),
-      },
-    );
-  };
-
-  const handleDeletePeriode = (periodeId: string) => {
-    deletePeriodeMutation.mutate(periodeId, {
-      onSuccess: () => {
-        showSuccess("Periode berhasil dihapus!", "Periode Dihapus");
-        if (selectedPeriode?.id === periodeId) setSelectedPeriode(null);
-      },
-      onError: (err) => showError(err.message, "Gagal Hapus Periode"),
-    });
-  };
-
-  const handleConfirmSetor = (catatan: string) => {
-    if (!selectedExecuteItem || !currentPeriodeId) return;
-    executeSetorMutation.mutate(
-      {
-        wajibSetorId: selectedExecuteItem.id,
-        santriId:
-          selectedExecuteItem.santri ||
-          selectedExecuteItem.expand?.santri?.id ||
-          "",
-        id_pps: selectedExecuteItem.id_pps,
-        periodeId: currentPeriodeId,
-        catatan,
-      },
-      {
-        onSuccess: () => {
-          showSuccess(
-            `Setor ID PPS ${selectedExecuteItem.id_pps} berhasil!`,
-            "Verifikasi Sukses",
-          );
-          setSelectedExecuteItem(null);
-        },
-        onError: (err) => showError(err.message, "Gagal Verifikasi"),
-      },
-    );
-  };
-
-  const handleConfirmDispensasi = (catatan: string) => {
-    if (!selectedDispensasiItem || !currentPeriodeId) return;
-    dispensasiMutation.mutate(
-      {
-        wajibSetorId: selectedDispensasiItem.id,
-        santriId:
-          selectedDispensasiItem.santri ||
-          selectedDispensasiItem.expand?.santri?.id ||
-          "",
-        id_pps: selectedDispensasiItem.id_pps,
-        periodeId: currentPeriodeId,
-        catatan,
-      },
-      {
-        onSuccess: () => {
-          showSuccess(
-            `Dispensasi ID PPS ${selectedDispensasiItem.id_pps} disimpan!`,
-            "Dispensasi Disimpan",
-          );
-          setSelectedDispensasiItem(null);
-        },
-        onError: (err) => showError(err.message, "Gagal Dispensasi"),
-      },
-    );
-  };
-
-  const handleConfirmDeletePengurus = async () => {
-    if (!selectedDeletePengurus) return;
-    setIsDeletingPengurus(true);
-    try {
-      await pb.collection("pengurus_santri").delete(selectedDeletePengurus.id);
-      showSuccess(
-        `Pengurus ID PPS ${selectedDeletePengurus.id_pps} dihapus.`,
-        "Berhasil Hapus",
-      );
-      setSelectedDeletePengurus(null);
-      refetchPengurus();
-    } catch {
-      showError("Gagal menghapus pengurus.", "Terjadi Kesalahan");
-    } finally {
-      setIsDeletingPengurus(false);
-    }
-  };
-
-  const handleConfirmGenerateQueue = () => {
-    if (!currentPeriodeId) return;
-
-    const hasExistingQueue = stats.total > 0;
-
-    setActiveModal(null);
-    generateQueueMutation.mutate(currentPeriodeId, {
-      onSuccess: (res: any) => {
-        const addedCount = res?.addedCount ?? 0;
-
-        if (hasExistingQueue) {
-          const msg =
-            addedCount > 0 ? `+${addedCount} data baru` : "Sudah sinkron";
-          showSuccess(`Smart Sync Selesai! (${msg})`, "Rekonsiliasi Berhasil");
-        } else {
-          showSuccess(
-            `Berhasil generate antrean awal! (${addedCount} santri & pengurus terdaftar)`,
-            "Generate Antrean Berhasil",
-          );
-        }
-
-        refetchQueue();
-      },
-      onError: (err) =>
-        showError(
-          err.message,
-          hasExistingQueue ? "Gagal Sync Antrean" : "Gagal Generate Antrean",
-        ),
-    });
-  };
-
-  const handleOpenGenerateQueue = () => {
-    if (!currentPeriodeId) {
-      showError(
-        "Gagal memproses! Tidak ada periode yang sedang aktif atau ditinjau.",
-        "Periode Tidak Ditemukan",
-      );
-      return;
-    }
-    setActiveModal("CONFIRM_GENERATE");
-  };
-
-  return {
-    isAdmin,
-    canExecute,
-    currentUser,
-    activeTab,
-    setActiveTab,
-    page,
-    setPage,
-    search,
-    setSearch,
-    statusFilter,
-    setStatusFilter,
-    pengurusSearch,
-    setPengurusSearch,
-    pengurusDaerahFilter,
-    setPengurusDaerahFilter,
-    auditSearch,
-    setAuditSearch,
-    auditDateFilter,
-    setAuditDateFilter,
-    activePeriode,
-    selectedPeriode,
-    setSelectedPeriode,
-    currentPeriodeId,
-    periodeList,
-    isPeriodeListLoading,
-    stats,
-    isStatsLoading,
-    daerahOptions,
-    filteredPengurusData,
-    isPengurusLoading,
-    paginatedQueueItems,
-    isQueueLoading,
-    totalItems,
-    totalPages,
-    PER_PAGE,
-    filteredAuditItems,
-    isHistoryLoading,
-    availableHijriDateOptions,
-    activeModal,
-    setActiveModal,
-    selectedExecuteItem,
-    setSelectedExecuteItem,
-    selectedDispensasiItem,
-    setSelectedDispensasiItem,
-    selectedDeletePengurus,
-    setSelectedDeletePengurus,
-    isDeletingPengurus,
-    pengurusPage,
-    setPengurusPage,
-    totalPengurusItems,
-    totalPengurusPages,
-    paginatedPengurusItems,
-    auditPage,
-    setAuditPage,
-    totalAuditItems,
-    totalAuditPages,
-    paginatedAuditItems,
-    refetchAll: () => {
-      refetchQueue();
-      refetchPengurus();
-    },
-    handleCreatePeriode,
-    handleUpdateStatusPeriode,
-    handleDeletePeriode,
-    handleConfirmSetor,
-    handleConfirmDispensasi,
-    handleConfirmDeletePengurus,
-    handleConfirmGenerateQueue,
-    handleOpenGenerateQueue,
-    isCreatePending: createPeriodeMutation.isPending,
-    isUpdateStatusPending: updateStatusPeriodeMutation.isPending,
-    isDeletePeriodePending: deletePeriodeMutation.isPending,
-    isExecutePending: executeSetorMutation.isPending,
-    isDispensasiPending: dispensasiMutation.isPending,
-    isGeneratePending: generateQueueMutation.isPending,
-  };
-}
+export * from "./page/useRambutPage";
 ```
 
 ### `src/features/rambut/hooks/useRapidScanPos.ts`
@@ -4372,7 +4350,7 @@ import { buildReceiptHtml, getAlamatStr } from "../utils/posPrinter";
 import { executePrint } from "@/utils/printer";
 import { isDateWithinRange } from "@/utils/dateHelpers";
 import type { PrintMode } from "@/types/printer";
-import type { WajibSetorExpanded } from "./useRambut";
+import type { WajibSetorExpanded } from "../types";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export interface ScanSessionLog {
@@ -4659,18 +4637,22 @@ export function useRapidScanPos(isOpen: boolean, periodeId?: string) {
 
 ### `src/features/rambut/index.ts`
 ```typescript
+// src/features/rambut/index.ts
+
 // 🚪 Public API Gerbang Modul Layanan Rambut
 export { default as RambutPage } from "./pages/Rambut";
-export * from "./hooks/useRambut";
-export * from "./hooks/useRambutPage";
+export * from "./types";
+export * from "./hooks";
 export * from "./components/RambutStats";
+
+export { parseNumericIdPps } from "@/utils/userHelpers";
 ```
 
 ### `src/features/rambut/pages/Rambut.tsx`
 ```tsx
 // src/features/rambut/pages/Rambut.tsx
 import React from "react";
-import { useRambutPage } from "../hooks/useRambutPage";
+import { useRambutPage } from "../hooks";
 import { RambutHeader } from "../components/RambutHeader";
 import { RambutStats } from "../components/RambutStats";
 import { RambutScanToolbar } from "../components/RambutScanToolbar";
@@ -4783,6 +4765,53 @@ export default function RambutPage() {
     </div>
   );
 }
+```
+
+### `src/features/rambut/types.ts`
+```typescript
+// src/features/rambut/types.ts
+import type {
+  PeriodeRambutResponse,
+  WajibSetorRambutResponse,
+  RiwayatSetorRambutResponse,
+  MasterResponse,
+  PeriodeRambutStatusPeriodeOptions,
+} from "@/types/pocketbase-types";
+
+export interface CreatePeriodePayload {
+  nama_periode: string;
+  bulan_hijriyah_angka: number;
+  tahun_hijriyah: number;
+  tanggal_mulai: string;
+  tanggal_selesai: string;
+  status_periode?: PeriodeRambutStatusPeriodeOptions;
+}
+
+export interface ExecuteSetorPayload {
+  wajibSetorId: string;
+  santriId: string;
+  id_pps: string;
+  periodeId: string;
+  catatan?: string;
+}
+
+export interface DispensasiPayload {
+  wajibSetorId: string;
+  santriId: string;
+  id_pps: string;
+  periodeId: string;
+  catatan: string;
+}
+
+export type WajibSetorExpanded = WajibSetorRambutResponse<{
+  santri?: MasterResponse;
+}>;
+
+export type RiwayatSetorExpanded = RiwayatSetorRambutResponse<{
+  santri?: MasterResponse;
+  petugas_eksekutor?: { name: string; username: string };
+  periode?: PeriodeRambutResponse;
+}>;
 ```
 
 ### `src/features/rambut/utils/importPengurusUtils.ts`
@@ -5172,7 +5201,10 @@ import type {
 } from '@/types/pocketbase-types';
 import { fetchHijriByDate } from '@/features/kalender';
 import { executePrint } from '@/utils/printer';
+import { getAlamatStr } from '@/utils/userHelpers';
 import type { PrintMode } from '@/types/printer';
+
+export { getAlamatStr };
 
 export type RiwayatSetorExpanded = RiwayatSetorRambutResponse<{
   santri?: MasterResponse;
@@ -5191,24 +5223,12 @@ export interface ReceiptDetails {
   penerima?: string;
 }
 
-export const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten]
-    .map((v) => v?.toString().trim())
-    .filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
-
-/**
- * 🎨 Desain Template Struk 80mm Presisi Fisik (Footer Single Line)
- */
 export const buildReceiptHtml = (data: ReceiptDetails) => `
   <!DOCTYPE html>
   <html>
     <head>
       <title>Bukti Setor - ${data.idPps}</title>
       <style>
-        /* 🎯 SETTING HALAMAN PRINT BROWSER (MODE AUTO) */
         @page {
           size: 80mm auto;
           margin: 0;
@@ -5220,7 +5240,6 @@ export const buildReceiptHtml = (data: ReceiptDetails) => `
           font-weight: 800 !important;
         }
 
-        /* 🎯 KUNCI LEBAR CETAK FISIK KETAT KE 70mm */
         html, body {
           width: 70mm !important;
           max-width: 70mm !important;
@@ -5262,7 +5281,6 @@ export const buildReceiptHtml = (data: ReceiptDetails) => `
         .sep-col { width: 5%; text-align: center; }
         .value-col { width: 63%; }
 
-        /* ⚡ FIX FOOTER: MENCEGAH TEXT WRAP KELUAR BARIS */
         .footer-text {
           font-size: 9px;
           font-weight: 800;

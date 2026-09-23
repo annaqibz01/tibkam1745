@@ -1,6 +1,6 @@
 // src/features/rambut/pages/Rambut.tsx
 import React from "react";
-import { useRambutPage } from "../hooks/useRambutPage";
+import { useRambutPage } from "../hooks";
 import { RambutHeader } from "../components/RambutHeader";
 import { RambutStats } from "../components/RambutStats";
 import { RambutScanToolbar } from "../components/RambutScanToolbar";

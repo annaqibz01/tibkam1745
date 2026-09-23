@@ -1,17 +1,18 @@
 // src/features/laporan/hooks/useLaporanRambut.ts
 import { useState, useEffect, useMemo } from "react";
-import { useRambut, useRambutStats, parseNumericIdPps } from "@/features/rambut";
+import {
+  useActivePeriode,
+  usePeriodeList,
+  useWajibSetorFullList,
+  useRiwayatSetorList,
+  useRambutStats,
+} from "@/features/rambut";
+import { parseNumericIdPps } from "@/utils/userHelpers";
 import type { PeriodeRambutResponse } from "@/types/pocketbase-types";
 
 export type ReportType = "all" | "belum_setor" | "sudah_setor" | "riwayat";
 
 export function useLaporanRambut() {
-  const {
-    useActivePeriode,
-    usePeriodeList,
-    useWajibSetorFullList,
-    useRiwayatSetorList,
-  } = useRambut();
 
   const { data: activePeriode } = useActivePeriode();
   const { data: periodeList = [], isLoading: isPeriodeLoading } = usePeriodeList();

@@ -19,3 +19,30 @@ export const roleBadgeClass = (role: string) => {
       return "bg-gray-600/20 text-gray-400 border-gray-500/40";
   }
 };
+
+/**
+ * Parser angka murni dari string ID PPS untuk keperluan pengurutan numerik global
+ */
+export const parseNumericIdPps = (val?: string | number | null): number => {
+  if (!val) return 0;
+  const digits = String(val).replace(/\D/g, "");
+  return digits ? parseInt(digits, 10) : 0;
+};
+
+export interface SantriAddressEntity {
+  desa?: string | null;
+  kecamatan?: string | null;
+  kabupaten?: string | null;
+  provinsi?: string | null;
+}
+
+/**
+ * Format universal alamat santri (Desa, Kecamatan, Kabupaten)
+ */
+export const getAlamatStr = (santri?: SantriAddressEntity | null): string => {
+  if (!santri) return "-";
+  const parts = [santri.desa, santri.kecamatan, santri.kabupaten]
+    .map((v) => v?.toString().trim())
+    .filter(Boolean);
+  return parts.length > 0 ? parts.join(", ") : "-";
+};

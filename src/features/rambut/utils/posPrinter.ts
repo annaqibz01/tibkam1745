@@ -1,13 +1,16 @@
 // src/features/rambut/utils/posPrinter.ts
-import type { 
-  RiwayatSetorRambutResponse, 
-  MasterResponse, 
-  UsersResponse, 
-  WajibSetorRambutResponse 
+import type {
+  RiwayatSetorRambutResponse,
+  MasterResponse,
+  UsersResponse,
+  WajibSetorRambutResponse
 } from '@/types/pocketbase-types';
 import { fetchHijriByDate } from '@/features/kalender';
 import { executePrint } from '@/utils/printer';
+import { getAlamatStr } from '@/utils/userHelpers';
 import type { PrintMode } from '@/types/printer';
+
+export { getAlamatStr };
 
 export type RiwayatSetorExpanded = RiwayatSetorRambutResponse<{
   santri?: MasterResponse;
@@ -26,36 +29,23 @@ export interface ReceiptDetails {
   penerima?: string;
 }
 
-export const getAlamatStr = (santri: any) => {
-  if (!santri) return "-";
-  const parts = [santri.desa, santri.kecamatan, santri.kabupaten]
-    .map((v) => v?.toString().trim())
-    .filter(Boolean);
-  return parts.length > 0 ? parts.join(", ") : "-";
-};
-
-/**
- * 🎨 Desain Template Struk 80mm Presisi Fisik (Footer Single Line)
- */
 export const buildReceiptHtml = (data: ReceiptDetails) => `
   <!DOCTYPE html>
   <html>
     <head>
       <title>Bukti Setor - ${data.idPps}</title>
       <style>
-        /* 🎯 SETTING HALAMAN PRINT BROWSER (MODE AUTO) */
         @page {
           size: 80mm auto;
           margin: 0;
         }
 
-        * { 
-          box-sizing: border-box; 
-          -webkit-font-smoothing: antialiased; 
-          font-weight: 800 !important; 
+        * {
+          box-sizing: border-box;
+          -webkit-font-smoothing: antialiased;
+          font-weight: 800 !important;
         }
 
-        /* 🎯 KUNCI LEBAR CETAK FISIK KETAT KE 70mm */
         html, body {
           width: 70mm !important;
           max-width: 70mm !important;
@@ -97,13 +87,12 @@ export const buildReceiptHtml = (data: ReceiptDetails) => `
         .sep-col { width: 5%; text-align: center; }
         .value-col { width: 63%; }
 
-        /* ⚡ FIX FOOTER: MENCEGAH TEXT WRAP KELUAR BARIS */
-        .footer-text { 
-          font-size: 9px; 
-          font-weight: 800; 
-          text-align: center; 
+        .footer-text {
+          font-size: 9px;
+          font-weight: 800;
+          text-align: center;
           margin-top: 2px;
-          white-space: nowrap; 
+          white-space: nowrap;
           letter-spacing: -0.2px;
         }
       </style>
